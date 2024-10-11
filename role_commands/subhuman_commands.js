@@ -52,7 +52,7 @@ async function setupSubhumanBotEvents(client, lastMessageId) {
 			oldMember.roles.cache.has(process.env.ROLEID_RAT)||
 			newMember.roles.cache.has(process.env.ROLEID_MAGGOT)||
 			newMember.roles.cache.has(process.env.ROLEID_RAT)){
-			
+
 			await updateSelectMenu(client, lastMessageId);
 		}
 	});
@@ -90,13 +90,13 @@ async function setupSubhumanBotEvents(client, lastMessageId) {
 		if (interaction.customId === "Depravity") {
 			try {
 				if (!selectedSubHumans[userId]){
-						await sendInteractionReply(interaction,`No sub-human selected`)
-						return;
+					await sendInteractionReply(interaction,`No sub-human selected`)
+					return;
 				}
 				if(selectedSubHumans[userId].id == interaction.user.id){
-						await sendInteractionReply(interaction,`Unfortunately, you cannot eat yourself...`)
-						return;
-				
+					await sendInteractionReply(interaction,`Unfortunately, you cannot eat yourself...`)
+					return;
+
 				}
 				const userXP = await CacheGetUserXP(userId);
 				if (userXP < DepravityCost) {
@@ -107,7 +107,7 @@ async function setupSubhumanBotEvents(client, lastMessageId) {
 						await sendInteractionReply(interaction,"Depravity is on cooldown and cannot be used");
 						return;
 					}else {
-			
+
 						const targetUsername = selectedSubHumans[userId].user.username;
 						eventEmitter.emit('changeRole', selectedSubHumans[userId], 'Poop');
 						selectedSubHumans[userId] = null;
@@ -125,8 +125,8 @@ async function setupSubhumanBotEvents(client, lastMessageId) {
 		if (interaction.customId === "Manhunt") {
 			try {
 				if (!selectedPeasants[userId]){
-						await sendInteractionReply(interaction, `No peasant selected`);
-						return;
+					await sendInteractionReply(interaction, `No peasant selected`);
+					return;
 				}
 				const userXP = await CacheGetUserXP(userId);
 				if (userXP < ManhuntCost) {
@@ -202,11 +202,11 @@ async function updateSelectMenu(client, lastMessageId) {
 		const channel = await client.channels.fetch(process.env.CHANNELIDSUBHUMAN);
 		const messageToEdit = await channel.messages.fetch(lastMessageId);
 		const actionRow_0 = new ActionRowBuilder()
-					.addComponents(await buildSelectMenu(client, ["subhuman"], "SelectSubHuman")); 
+			.addComponents(await buildSelectMenu(client, ["subhuman"], "SelectSubHuman")); 
 		const actionRow_1 = new ActionRowBuilder()
-					.addComponents(await buildSelectMenu(client, ["peasant"], "SelectPeasant"));
+			.addComponents(await buildSelectMenu(client, ["peasant"], "SelectPeasant"));
 		const actionRow_2 = new ActionRowBuilder()
-					.addComponents(await buildSelectMenu(client, ["maggot", "rat"], "SelectPicking"));
+			.addComponents(await buildSelectMenu(client, ["maggot", "rat"], "SelectPicking"));
 		const existingComponents = messageToEdit.components.map(component => ActionRowBuilder.from(component.toJSON()));
 		existingComponents[0] = actionRow_0;
 		existingComponents[1] = actionRow_1;

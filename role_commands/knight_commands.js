@@ -31,7 +31,7 @@ function showErrorMsg(err) {
 
 async function setupKnightBotEvents(client, lastMessageId) {
 	client.on("guildMemberUpdate", async (oldMember, newMember) => {
-		
+
 		if (oldMember.roles.cache.has(process.env.ROLEID_PEASANT) || 
 			oldMember.roles.cache.has(process.env.ROLEID_SCHOLAR) ||
 			oldMember.roles.cache.has(process.env.ROLEID_MERCHANT) ||
@@ -445,7 +445,7 @@ async function executeCutDown(interaction, userId, targetId, userXP, client) {
 			case 3: xpReward = RoyalWritReward; break;
 			case 4: xpReward = ImperialWritReward; break;
 			default: showErrorMsg('Writ type incorrect');
- 
+
 		}
 		totalXpReward += xpReward;
 

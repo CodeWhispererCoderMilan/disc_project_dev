@@ -47,8 +47,8 @@ async function setupMaggotBotEvents(client, lastMessageId) {
 					if (selectedPoops[userId] && selectedPoops[userId].id === oldMember.id) {
 						delete selectedPoops[userId];
 						console.log(`Removed ${oldMember.user.username} from selectedSubHumans`);
+					}
 				}
-			}
 
 				const festeringMaggotId = await CacheIsPoopBeingFestered(oldMember.id);
 				if (festeringMaggotId) {
@@ -78,9 +78,9 @@ async function setupMaggotBotEvents(client, lastMessageId) {
 		if (interaction.customId === 'fester') {
 			const userId = interaction.user.id;
 			if (!selectedPoops[userId]) {
-					await sendInteractionReply(interaction, "You must select a poop.");
-					return;
-				}
+				await sendInteractionReply(interaction, "You must select a poop.");
+				return;
+			}
 			const userXP = await CacheGetUserXP(userId);
 			if (userXP < FesterCost) {
 				try {
@@ -131,14 +131,14 @@ async function messageMaggotCommands(client) {
 		const buttonRow = new ActionRowBuilder()
 			.addComponents(
 				new ButtonBuilder()
-					.setCustomId('fester')
-					.setLabel('fester')
-					.setStyle(ButtonStyle.Danger)
-					.setDisabled(true), // Initially disabled, enable after selection
+				.setCustomId('fester')
+				.setLabel('fester')
+				.setStyle(ButtonStyle.Danger)
+				.setDisabled(true), // Initially disabled, enable after selection
 				new ButtonBuilder()
-					.setCustomId('parasite')
-					.setLabel('parasite')
-					.setStyle(ButtonStyle.Primary),
+				.setCustomId('parasite')
+				.setLabel('parasite')
+				.setStyle(ButtonStyle.Primary),
 			);
 
 		return await channel.send({ // this is a message.

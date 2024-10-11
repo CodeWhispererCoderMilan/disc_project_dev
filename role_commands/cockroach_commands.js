@@ -1,33 +1,33 @@
 const {
-  ActionRowBuilder,
-  ButtonBuilder,
-  ButtonStyle,
-  StringSelectMenuBuilder,
+	ActionRowBuilder,
+	ButtonBuilder,
+	ButtonStyle,
+	StringSelectMenuBuilder,
 } = require("discord.js");
 const {
-  CacheGetCooldown,
-  CacheSetCooldown,
-  CacheGetUserXP,
-  CacheGetSwarmCooldown,
-  CacheSetSwarmCooldown,
+	CacheGetCooldown,
+	CacheSetCooldown,
+	CacheGetUserXP,
+	CacheGetSwarmCooldown,
+	CacheSetSwarmCooldown,
 } = require("../apis/redis/redisCache");
 const {
-  InfanticideCost,
-  InfanticideCooldown,
-  SwarmVoteTime,
-  SwarmSpawnTime,
-  SwarmThreshold,
+	InfanticideCost,
+	InfanticideCooldown,
+	SwarmVoteTime,
+	SwarmSpawnTime,
+	SwarmThreshold,
 } = require(`../game_config.json`);
 const { buildSelectMenu } = require(`../functions/botActions.js`);
 const { DBUpdateXP } = require("../apis/firebase/querys.js");
 const { eventEmitter } = require("../functions/eventEmitter.js");
 
 const content = "You have matured out of your larva phase into a full-fledged cockroach! " +
-			"Although cockroaches are harmless on their own, they may carry the plague in large numbers. " +
-			"However, they can only attack dirty humans (sub-humans, slaves, servants, peasants).\n\n" +
-			"**Abilities:**\n" +
-			"- **Pest Swarm**: With three or more cockroaches, you can choose one sub-human to infest.\n" +
-			"- **Infanticide**: Use 200 XP to kill a maggot.";
+	"Although cockroaches are harmless on their own, they may carry the plague in large numbers. " +
+	"However, they can only attack dirty humans (sub-humans, slaves, servants, peasants).\n\n" +
+	"**Abilities:**\n" +
+	"- **Pest Swarm**: With three or more cockroaches, you can choose one sub-human to infest.\n" +
+	"- **Infanticide**: Use 200 XP to kill a maggot.";
 const selectedMaggots = {};
 let selectedSubhumans = {};
 let swarmInitiatorId = null;
@@ -102,7 +102,7 @@ async function setupCockroachBotEvents(client, lastMessageId) {
 			}
 		}
 		if(hadRoleBeforeMaggot){
-		for (let userId in selectedMaggots) {
+			for (let userId in selectedMaggots) {
 				if (selectedMaggots[userId] && selectedMaggots[userId].id === oldMember.id) {
 					delete selectedMaggots[userId];
 					console.log(`Removed ${oldMember.user.username} from selected Maggots for infanticide`);
@@ -119,12 +119,12 @@ async function setupCockroachBotEvents(client, lastMessageId) {
 			}
 			if(swarmTargetId === oldMember.id && lastMessageId){
 				client.emit("SwarmTargetChangedRoles", oldMember.user.username);"You have matured out of your larva phase into a full-fledged cockroach! " +
-			"Although cockroaches are harmless on their own, they may carry the plague in large numbers. " +
-			"However, they can only attack dirty humans (sub-humans, slaves, servants, peasants).\n\n" +
-			"**Abilities:**\n" +
-			"- **Pest Swarm**: With three or more cockroaches, you can choose one sub-human to infest.\n" +
-			"- **Infanticide**: Use 200 XP to kill a maggot.",
-				resetSwarm(client, lastMessageId);
+					"Although cockroaches are harmless on their own, they may carry the plague in large numbers. " +
+					"However, they can only attack dirty humans (sub-humans, slaves, servants, peasants).\n\n" +
+					"**Abilities:**\n" +
+					"- **Pest Swarm**: With three or more cockroaches, you can choose one sub-human to infest.\n" +
+					"- **Infanticide**: Use 200 XP to kill a maggot.",
+					resetSwarm(client, lastMessageId);
 			}
 		}
 

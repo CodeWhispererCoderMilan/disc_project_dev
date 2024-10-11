@@ -1,10 +1,8 @@
 const { eventEmitter } = require("../functions/eventEmitter.js");
 const {
   sendInteractionReply,
-  buildSelectMenu,
 } = require("../functions/botActions");
 const {
-  CacheGetUserXP,
   CacheGetCooldown,
   CacheSetCooldown,
 } = require("../apis/redis/redisCache");
@@ -16,16 +14,7 @@ const {
   TextInputBuilder,
   TextInputStyle,
 } = require("discord.js");
-const { DBUpdateXP } = require("../apis/firebase/querys");
 const {
-  DegradationCost,
-  DegradationCooldown,
-  KnightCost,
-  KnightCooldown,
-  SiegeCost,
-  KingSiegeTimedPollDuration,
-  KingSiegeTimedPollWinningRate,
-  KingSiegeTimedPollCoolDown,
   ScholarSendMessageCoolDown,
 } = require("../game_config.json");
 
@@ -41,7 +30,6 @@ function showErrorMsg(err) {
 async function setupScholarBotEvents(client, lastMessageId) {
   client.on("interactionCreate", async (interaction) => {
     const userId = interaction.user.id;
-    const channel = await client.channels.fetch(process.env.CHANNELIDSCHOLAR);
     if (interaction.isButton()) {
       if (interaction.customId === "SendMessage") {
         const modal = new ModalBuilder()

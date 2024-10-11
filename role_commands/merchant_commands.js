@@ -34,13 +34,20 @@ function showErrorMsg(err) {
 
 async function setupMerchantBotEvents(client, lastMessageId) {
   client.on("guildMemberUpdate", async (oldMember, newMember) => {
-    const hadRoleBeforeMerchant = oldMember.roles.cache.has(
-      process.env.ROLEID_KNIGHT
-    );
-    const hasRoleNowMerchant = newMember.roles.cache.has(
-      process.env.ROLEID_KNIGHT
-    );
-    if (hadRoleBeforeMerchant || hasRoleNowMerchant) {
+    if (oldMember.roles.cache.has(process.env.ROLEID_PEASANT) ||
+			oldMember.roles.cache.has(process.env.ROLEID_SCHOLAR) ||
+			oldMember.roles.cache.has(process.env.ROLEID_MERCHANT) ||
+			oldMember.roles.cache.has(process.env.ROLEID_KNIGHT) ||
+			oldMember.roles.cache.has(process.env.ROLEID_NOBLE) ||
+			oldMember.roles.cache.has(process.env.ROLEID_LORD) ||
+			oldMember.roles.cache.has(process.env.ROLEID_KING) ||
+			newMember.roles.cache.has(process.env.ROLEID_PEASANT) ||
+			newMember.roles.cache.has(process.env.ROLEID_SCHOLAR) ||
+			newMember.roles.cache.has(process.env.ROLEID_MERCHANT) ||
+			newMember.roles.cache.has(process.env.ROLEID_KNIGHT) ||
+			newMember.roles.cache.has(process.env.ROLEID_NOBLE) ||
+			newMember.roles.cache.has(process.env.ROLEID_LORD) ||
+			newMember.roles.cache.has(process.env.ROLEID_KING)) {
       await updateSelectMenu(client, lastMessageId);
     }
   });
@@ -130,19 +137,12 @@ async function setupMerchantBotEvents(client, lastMessageId) {
         // Give XP to the target member
         const targetMember = selectedMembers[selectedMemberId];
         await DBUpdateXP(targetMember.user.id, xpAmount, client);
-        const channel = await client.channels.fetch(
-          process.env.CHANNELIDMERCHANT
-        );
-        const messageToEdit = await channel.messages.fetch(lastMessageId);
         await interaction.reply({
           content: `Successfully granted ${xpAmount} XP to ${targetMember.user.username}. Message: ${optionalMessage}`,
           ephemeral: true,
         });
         await CacheSetCooldown("MerchantCooldown", userId, MerchantCoolDown);
-        notifyTarget(
-          `You have been granted ${xpAmount} XP by ${interaction.user.username}. Message: ${optionalMessage}`
-        );
-        await resetPoll(client, messageToEdit);
+	eventEmitter.emit("BribeComplete", targetMember.user.id);
       } catch (err) {
         showErrorMsg(err);
       }
@@ -150,10 +150,6 @@ async function setupMerchantBotEvents(client, lastMessageId) {
   });
 }
 
-// Function to notify target member
-async function notifyTarget(messageContent) {
-  selectedMembers[selectedMemberId].send(messageContent).catch(showErrorMsg);
-}
 
 async function updateSelectMenu(client, lastMessageId) {
   try {
@@ -225,47 +221,6 @@ async function messageMerchantCommands(client) {
   }
 }
 
-async function resetPoll(client, messageToEdit) {
-  console.log("I am resetPoll is running--------------------------->");
-  try {
-    selectedMembers = {};
-    selectedMemberId = "";
-    const actionRow_0 = ActionRowBuilder.from(
-      messageToEdit.components[0].toJSON()
-    );
 
-    const memberSelectMenu = await buildSelectMenu(
-      client,
-      [
-        "peasant",
-        "scholar",
-        "merchant",
-        "knight",
-        "noble",
-        "lord",
-        "king",
-        "emperor",
-      ],
-      "MembersSelectMenu"
-    );
-
-    actionRow_0.components[0] = memberSelectMenu;
-
-    // Reset poll button
-    const buttonRow = new ActionRowBuilder().addComponents(
-      new ButtonBuilder()
-        .setCustomId("Bribe")
-        .setLabel("Bribe")
-        .setStyle(ButtonStyle.Danger)
-    );
-
-    await messageToEdit.edit({
-      content: initContent,
-      components: [actionRow_0, buttonRow],
-    });
-  } catch (err) {
-    throw err;
-  }
-}
 
 module.exports = { setupMerchantBotEvents, messageMerchantCommands };

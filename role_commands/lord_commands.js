@@ -18,6 +18,7 @@ const {
   LordKingTimedPollDuration,
   LordKingTimedPollWinningRate,
   GlobalCoolDown,
+  RoleChangeMessageDisplayTime,
 } = require("../game_config.json");
 const { eventEmitter } = require("../functions/eventEmitter.js");
 
@@ -30,12 +31,9 @@ let pollTargetName = null;
 let pollTargetId = null;
 let pollActive = false;
 let pollParticipants = new Set();
-let eventListenersSetUp = false; // Flag to track if event listeners are set up
 let pollTimeout;
 let type = "";
 let selectType = "";
-
-let interactions = [];
 
 function showErrorMsg(err) {
   console.error("ERROR: lord_commands.js", err);
@@ -57,8 +55,7 @@ async function setupLordBotEvents(client, lastMessageId) {
       process.env.ROLEID_LORD
     );
     const hasRoleNowLord = newMember.roles.cache.has(process.env.ROLEID_LORD);
-    const channel = await client.channels.fetch(process.env.CHANNELIDLORD);
-    const messageToEdit = await channel.messages.fetch(lastMessageId);
+
     if (pollActive && hadRoleBeforeLord && !hasRoleNowLord) {
       if (pollParticipants.has(newMember.id)) {
         try {
@@ -67,11 +64,15 @@ async function setupLordBotEvents(client, lastMessageId) {
 
           if (newMember.id === pollInitiatorId) {
             // If the initiator lost the role, reset the poll
-            await client.emit(
+            await eventEmitter.emit(
               "TimedPollInitiatorRoleChanged",
               pollInitiatorUsername
             );
             pollActive = false;
+            const channel = await client.channels.fetch(
+              process.env.CHANNELIDLORD
+            );
+            const messageToEdit = await channel.messages.fetch(lastMessageId);
             await triggerPollEarly(client, messageToEdit);
             return;
           }
@@ -83,8 +84,12 @@ async function setupLordBotEvents(client, lastMessageId) {
     if (pollActive && hadRoleBeforeNoble && !hasRoleNowNoble) {
       if (newMember.id === pollTargetId) {
         try {
-          await client.emit("TimedPollTargetRoleChanged", pollTargetName);
+          eventEmitter.emit("TimedPollTargetRoleChanged", pollTargetName);
           pollActive = false;
+          const channel = await client.channels.fetch(
+            process.env.CHANNELIDLORD
+          );
+          const messageToEdit = await channel.messages.fetch(lastMessageId);
           await triggerPollEarly(client, messageToEdit);
           return;
         } catch (e) {
@@ -95,8 +100,12 @@ async function setupLordBotEvents(client, lastMessageId) {
     if (pollActive && hadRoleBeforeLord && !hasRoleNowLord) {
       if (newMember.id === pollTargetId) {
         try {
-          await client.emit("TimedPollTargetRoleChanged", pollTargetName);
+          eventEmitter.emit("TimedPollTargetRoleChanged", pollTargetName);
           pollActive = false;
+          const channel = await client.channels.fetch(
+            process.env.CHANNELIDLORD
+          );
+          const messageToEdit = await channel.messages.fetch(lastMessageId);
           await triggerPollEarly(client, messageToEdit);
           return;
         } catch (e) {
@@ -279,8 +288,6 @@ async function setupLordBotEvents(client, lastMessageId) {
       pollActive = true;
       pollTargetName = selectedMembers[userId].user.username;
       pollTargetId = selectedMembers[userId].user.id;
-      interactions = [];
-      interactions.push(interaction);
 
       const channel = await client.channels.fetch(process.env.CHANNELIDLORD);
       if (lastMessageId) {
@@ -388,8 +395,6 @@ async function setupLordBotEvents(client, lastMessageId) {
       pollActive = true;
       pollTargetName = selectedMembers[userId].user.username;
       pollTargetId = selectedMembers[userId].user.id;
-      interactions = [];
-      interactions.push(interaction);
 
       const channel = await client.channels.fetch(process.env.CHANNELIDLORD);
       if (lastMessageId) {
@@ -486,7 +491,6 @@ async function setupLordBotEvents(client, lastMessageId) {
           return;
         }
 
-        interactions.push(interaction);
         pollParticipants.add(userId);
         await sendInteractionReply(interaction, "You have joind the poll.");
 
@@ -509,75 +513,88 @@ async function setupLordBotEvents(client, lastMessageId) {
       }
     }
   });
-  if (!eventListenersSetUp) {
-    eventEmitter.on(
-      "TimedPollComplete",
-      async (targetName, initiatorUsername) => {
-        try {
-          if (type == "noble") {
-            const message =
-              "Timed Poll successful! " +
-              targetName +
-              " has become a lord by " +
-              initiatorUsername +
-              ".";
-            sendMessage(message);
-          } else {
-            const message =
-              "Timed Poll successful! " +
-              targetName +
-              " has become a king by " +
-              initiatorUsername +
-              ".";
-            sendMessage(message);
-          }
-        } catch (err) {
-          throw err;
-        }
-      }
-    );
-
-    eventEmitter.on(
-      "TimedPollFailed",
-      async (targetName, initiatorUsername) => {
-        try {
+  eventEmitter.on(
+    "TimedPollComplete",
+    async (targetName, initiatorUsername) => {
+      try {
+        if (type == "noble") {
           const message =
-            "Timed Poll on " +
+            "Timed Poll successful! " +
             targetName +
-            " initiated by " +
+            " has become a lord by " +
             initiatorUsername +
-            " has been failed.";
-
-          sendMessage(message);
-        } catch (err) {
-          throw err;
+            ".";
+          eventEmitter.emit("NotifyLordChannel", message);
+        } else {
+          const message =
+            "Timed Poll successful! " +
+            targetName +
+            " has become a king by " +
+            initiatorUsername +
+            ".";
+          eventEmitter.emit("NotifyLordChannel", message);
         }
-      }
-    );
-
-    client.on("TimedPollInitiatorRoleChanged", async (username) => {
-      try {
-        const message = "The initiator " + username + " is no longer a lord.";
-        sendMessage(message);
       } catch (err) {
         throw err;
       }
-    });
+    }
+  );
 
-    client.on("TimedPollTargetRoleChanged", async (username) => {
-      console.log(
-        "I am target role is running---------------------------------------------->"
-      );
-      try {
-        const message = "The role of the target " + username + " has changed.";
-        sendMessage(message);
-      } catch (err) {
-        throw err;
-      }
-    });
+  eventEmitter.on("TimedPollFailed", async (targetName, initiatorUsername) => {
+    try {
+      let channel = await client.channels.fetch(process.env.CHANNELIDLORD);
+      const message = await channel.send({
+        content: `Timed poll on @${targetName} initiated by ${initiatorUsername} has been failed.`,
+      });
+      setTimeout(async () => {
+        await message.delete().catch(console.error);
+      }, RoleChangeMessageDisplayTime);
+    } catch (err) {
+      throw err;
+    }
+  });
 
-    eventListenersSetUp = true; // Set the flag to true
-  }
+  eventEmitter.on("TimedPollInitiatorRoleChanged", async (username) => {
+    try {
+      let channel = await client.channels.fetch(process.env.CHANNELIDLORD);
+      const message = await channel.send({
+        content: `The initiator @${username} is no loger a lord.`,
+      });
+      setTimeout(async () => {
+        await message.delete().catch(console.error);
+      }, RoleChangeMessageDisplayTime);
+    } catch (err) {
+      throw err;
+    }
+  });
+
+  eventEmitter.on("TimedPollTargetRoleChanged", async (username) => {
+    try {
+      let channel = await client.channels.fetch(process.env.CHANNELIDLORD);
+      const message = await channel.send({
+        content: `The role of the target @${username} has been changed.`,
+      });
+      setTimeout(async () => {
+        await message.delete().catch(console.error);
+      }, RoleChangeMessageDisplayTime);
+    } catch (err) {
+      throw err;
+    }
+  });
+
+  eventEmitter.on("NotifyLordChannel", async (content) => {
+    try {
+      let channel = await client.channels.fetch(process.env.CHANNELIDLORD);
+      const message = await channel.send({
+        content,
+      });
+      setTimeout(async () => {
+        await message.delete().catch(console.error);
+      }, RoleChangeMessageDisplayTime);
+    } catch (err) {
+      showErrorMsg(err);
+    }
+  });
 }
 
 async function startPoll(client, messageToEdit) {
@@ -593,7 +610,6 @@ async function startPoll(client, messageToEdit) {
 }
 
 async function handlePollEnd(client, messageToEdit) {
-  console.log("I am a type------------------------>", type);
   const participationRate = pollParticipants.size / roleMembersSize;
   if (type == "noble") {
     if (pollActive && participationRate >= LordNobleTimedPollWinningRate) {
@@ -652,27 +668,6 @@ async function triggerPollEarly(client, messageToEdit) {
     clearTimeout(pollTimeout); // Clear the original timeout
     await handlePollEnd(client, messageToEdit); // Manually trigger poll logic
   }
-}
-
-async function sendMessage(messsage) {
-  interactions.forEach(async (interaction) => {
-    if (!interaction) return;
-    else {
-      if (!interaction.replied && !interaction.deferred) {
-        // Send the initial reply if it hasn't been replied to yet
-        await interaction.reply({
-          content: messsage,
-          ephemeral: true,
-        });
-      } else {
-        // Send a follow-up message if the interaction has already been replied to
-        await interaction.followUp({
-          content: messsage,
-          ephemeral: true,
-        });
-      }
-    }
-  });
 }
 
 async function messageLordCommands(client) {

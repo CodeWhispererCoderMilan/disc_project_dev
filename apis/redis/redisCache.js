@@ -3,7 +3,16 @@ const redis = require("redis");
 // Client will be set in the initializeRedis function
 let client;
 let isInitialConnection = true;
-const { FesterCooldown, FesteringDuration, SwarmCooldown, HighWritTimeout,EminentWritTimeout,RoyalWritTimeout,ImperialWritTimeout, WritDeleteTimeout} = require("../../game_config.json");
+const {
+  FesterCooldown,
+  FesteringDuration,
+  SwarmCooldown,
+  HighWritTimeout,
+  EminentWritTimeout,
+  RoyalWritTimeout,
+  ImperialWritTimeout,
+  WritDeleteTimeout,
+} = require("../../game_config.json");
 // Initialize Redis connection
 
 function showErrorMsg(err) {
@@ -158,32 +167,32 @@ async function CacheGetSwarmCooldown() {
 
 // I will remove _(underline) after you check.
 async function CacheSetCooldown(cacheKey, userId, cooldownTime) {
-	const cooldownEndTime = Date.now() + cooldownTime;
-	const cooldownTimeLeft = cooldownEndTime - Date.now();
-	console.log("cooldownTimeLeft---------->",cooldownTimeLeft)
-	if(userId){
-	try {
-		if (cooldownTimeLeft > 0) {
-			await client.set(`${cacheKey}Cooldown:${userId}`, cooldownTimeLeft);
-		}
-		setTimeout(async () => {
-			await CacheClearCooldown(cacheKey, userId);
-		}, cooldownTimeLeft);
-	} catch (err) {
-		showErrorMsg(err);
-	}
-	}else{
-	try {
-		if (cooldownTimeLeft > 0) {
-			await client.set(`${cacheKey}Cooldown`, cooldownTimeLeft);
-		}
-		setTimeout(async () => {
-			await CacheClearCooldown(cacheKey);
-		}, cooldownTimeLeft);
-	} catch (err) {
-		showErrorMsg(err);
-	}
-	}	
+  const cooldownEndTime = Date.now() + cooldownTime;
+  const cooldownTimeLeft = cooldownEndTime - Date.now();
+  console.log("cooldownTimeLeft---------->", cooldownTimeLeft);
+  if (userId) {
+    try {
+      if (cooldownTimeLeft > 0) {
+        await client.set(`${cacheKey}Cooldown:${userId}`, cooldownTimeLeft);
+      }
+      setTimeout(async () => {
+        await CacheClearCooldown(cacheKey, userId);
+      }, cooldownTimeLeft);
+    } catch (err) {
+      showErrorMsg(err);
+    }
+  } else {
+    try {
+      if (cooldownTimeLeft > 0) {
+        await client.set(`${cacheKey}Cooldown`, cooldownTimeLeft);
+      }
+      setTimeout(async () => {
+        await CacheClearCooldown(cacheKey);
+      }, cooldownTimeLeft);
+    } catch (err) {
+      showErrorMsg(err);
+    }
+  }
 }
 
 async function CacheClearCooldown(cacheKey, userId) {
@@ -206,7 +215,6 @@ async function CacheGetCooldown(cacheKey, userId) {
   if (userId) {
     try {
       const cooldown = await client.get(`${cacheKey}Cooldown:${userId}`);
-      console.log("cooldown value---------->", cooldown);
       if (cooldown) {
         return cooldown;
       } else {
@@ -285,20 +293,37 @@ async function CacheIsPoopBeingFestered(poopId) {
 
 // Helper function to get the correct timeout based on writ type
 function getWritTimeout(writType) {
-  switch(writType) {
-    case 1: return parseInt(HighWritTimeout);
-    case 2: return parseInt(EminentWritTimeout);
-    case 3: return parseInt(RoyalWritTimeout);
-    case 4: return parseInt(ImperialWritTimeout);
-    default: throw new Error('Invalid writ type');
+  switch (writType) {
+    case 1:
+      return parseInt(HighWritTimeout);
+    case 2:
+      return parseInt(EminentWritTimeout);
+    case 3:
+      return parseInt(RoyalWritTimeout);
+    case 4:
+      return parseInt(ImperialWritTimeout);
+    default:
+      throw new Error("Invalid writ type");
   }
 }
 
 // Function to set a writ in the cache
-async function CacheSetWrit(writType, writerId, knightId, targetId, writStatus, writMessage) {
+async function CacheSetWrit(
+  writType,
+  writerId,
+  knightId,
+  targetId,
+  writStatus,
+  writMessage
+) {
   const writKey = `writ:${writType}:${writerId}:${knightId}:${targetId}`;
   const writData = JSON.stringify({
-    writType, writerId, knightId, targetId, writStatus, writMessage
+    writType,
+    writerId,
+    knightId,
+    targetId,
+    writStatus,
+    writMessage,
   });
 
   try {
@@ -318,14 +343,19 @@ async function CacheSetWrit(writType, writerId, knightId, targetId, writStatus, 
         await client.del(writKey);
       }, parseInt(WritDeleteTimeout));
     }, timeout);
-
   } catch (err) {
-    console.error('Error setting writ:', err);
+    console.error("Error setting writ:", err);
     throw err;
   }
 }
 
-async function CacheUpdateWritStatus(writType, writerId, knightId, targetId, newStatus) {
+async function CacheUpdateWritStatus(
+  writType,
+  writerId,
+  knightId,
+  targetId,
+  newStatus
+) {
   const writKey = `writ:${writType}:${writerId}:${knightId}:${targetId}`;
   try {
     const writData = await client.get(writKey);
@@ -335,7 +365,7 @@ async function CacheUpdateWritStatus(writType, writerId, knightId, targetId, new
       await client.set(writKey, JSON.stringify(updatedData));
     }
   } catch (err) {
-    console.error('Error updating writ status:', err);
+    console.error("Error updating writ status:", err);
     throw err;
   }
 }
@@ -345,7 +375,7 @@ async function CacheDeleteWrit(writType, writerId, knightId, targetId) {
   try {
     await client.del(writKey);
   } catch (err) {
-    console.error('Error deleting writ:', err);
+    console.error("Error deleting writ:", err);
     throw err;
   }
 }
@@ -362,11 +392,11 @@ async function CacheGetWrits(pattern) {
   try {
     const keys = await client.keys(pattern);
     const multi = client.multi();
-    keys.forEach(key => multi.get(key));
+    keys.forEach((key) => multi.get(key));
     const results = await multi.exec();
     return results.map(JSON.parse);
   } catch (err) {
-    console.error('Error getting writs:', err);
+    console.error("Error getting writs:", err);
     throw err;
   }
 }
@@ -382,7 +412,7 @@ async function CacheCheckActiveWrit(knightId, targetId) {
     }
     return false;
   } catch (err) {
-    console.error('Error checking active writ:', err);
+    console.error("Error checking active writ:", err);
     throw err;
   }
 }
@@ -394,7 +424,9 @@ async function CacheCheckAndUpdateUserWrits(userId) {
     const knightKeys = await client.keys(`writ:*:*:${userId}:*`);
     const targetKeys = await client.keys(`writ:*:*:*:${userId}`);
 
-    console.log(`Found keys - Writer: ${writerKeys.length}, Knight: ${knightKeys.length}, Target: ${targetKeys.length}`);
+    console.log(
+      `Found keys - Writer: ${writerKeys.length}, Knight: ${knightKeys.length}, Target: ${targetKeys.length}`
+    );
 
     const allKeys = [...new Set([...writerKeys, ...knightKeys, ...targetKeys])];
 
@@ -420,9 +452,9 @@ async function CacheCheckAndUpdateUserWrits(userId) {
         const writData = JSON.parse(result);
         console.log(`Checking writ: ${JSON.stringify(writData)}`);
         if (
-          (writData.writerId === userId || 
-           writData.knightId === userId || 
-           writData.targetId === userId) &&
+          (writData.writerId === userId ||
+            writData.knightId === userId ||
+            writData.targetId === userId) &&
           writData.writStatus !== 3
         ) {
           writData.writStatus = 3;
@@ -443,37 +475,36 @@ async function CacheCheckAndUpdateUserWrits(userId) {
       console.log(`No writs needed updating for userId: ${userId}`);
       return false;
     }
-
   } catch (err) {
-    console.error('Error checking and updating user writs:', err);
+    console.error("Error checking and updating user writs:", err);
     throw err;
   }
-}	
+}
 module.exports = {
-	initializeRedis,
-	CacheRemoveUser,
-	CacheAddUser,
-	CacheGetUserXP,
-	CacheSetUserXP,
-	CacheSetFestering,
-	CacheClearFestering,
-	CacheGetFesteringTarget,
-	CacheIsPoopBeingFestered,
-	CacheSetFesterCooldown,
-	CacheGetFesterCooldown,
-	CacheClearFesterCooldown,
-	closeRedisConnection,
-	CacheSetCooldown,
-	CacheGetCooldown,
-	CacheClearCooldown,
-	CacheGetSwarmCooldown,
-	CacheSetSwarmCooldown,
-	CacheClearSwarmCooldown,
-	CacheSetWrit,
-	CacheUpdateWritStatus,
-	CacheDeleteWrit,
-	CacheGetKnightWrits,
-	CacheGetWriterWrits,
-	CacheCheckActiveWrit,
-	CacheCheckAndUpdateUserWrits
+  initializeRedis,
+  CacheRemoveUser,
+  CacheAddUser,
+  CacheGetUserXP,
+  CacheSetUserXP,
+  CacheSetFestering,
+  CacheClearFestering,
+  CacheGetFesteringTarget,
+  CacheIsPoopBeingFestered,
+  CacheSetFesterCooldown,
+  CacheGetFesterCooldown,
+  CacheClearFesterCooldown,
+  closeRedisConnection,
+  CacheSetCooldown,
+  CacheGetCooldown,
+  CacheClearCooldown,
+  CacheGetSwarmCooldown,
+  CacheSetSwarmCooldown,
+  CacheClearSwarmCooldown,
+  CacheSetWrit,
+  CacheUpdateWritStatus,
+  CacheDeleteWrit,
+  CacheGetKnightWrits,
+  CacheGetWriterWrits,
+  CacheCheckActiveWrit,
+  CacheCheckAndUpdateUserWrits,
 };

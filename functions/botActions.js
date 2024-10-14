@@ -105,28 +105,25 @@ async function buildSelectMenu(client, roleNames, customId, chooseText) {
 }
 
 async function sendInteractionReply(interaction, msg) {
-	try {
-		if (interaction.replied || interaction.deferred) {
-			await interaction.followUp({
-				content: msg,
-				ephemeral: true,
-			});
-		} else {
-			await interaction.reply({
-				content: msg,
-				ephemeral: true,
-			});
-		}
-	} catch (error) {
-		console.error("Error sending interaction reply:", error);
-	}
+  try {
+    if (interaction.replied || interaction.deferred) {
+      await interaction.followUp(msg);
+    } else {
+      await interaction.reply({
+        content: msg,
+        ephemeral: true,
+      });
+    }
+  } catch (error) {
+    console.error("Error sending interaction reply:", error);
+  }
 }
 
 // Call this function at the end of your bot initialization process
 module.exports = {
-	scheduledXpBoost,
-	stopBoosting,
-	checkAndApplyMissedXPBoost,
-	buildSelectMenu,
-	sendInteractionReply,
+  scheduledXpBoost,
+  stopBoosting,
+  checkAndApplyMissedXPBoost,
+  buildSelectMenu,
+  sendInteractionReply,
 };

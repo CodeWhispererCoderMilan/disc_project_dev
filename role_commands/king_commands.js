@@ -22,6 +22,7 @@ const {
   KnightCooldown,
   SiegeCoolDown,
   SiegeCost,
+  RoleChangeMessageDisplayTime,
 } = require("../game_config.json");
 
 const initContent =
@@ -36,13 +37,10 @@ let selectedKnights = {};
 let selectedKings = {};
 let kings = [];
 let kingSize = 1;
-let siegeInitiatorId = "";
+let siegeInitiatorId = null;
 let siegeInitiatorUsername = "";
-let siegeTargetId = "";
 let siegeTargetName = "";
 let siegeActive = false;
-let isKnightPollFinished = false;
-let interactions = [];
 
 function showErrorMsg(err) {
   console.error("ERROR: king_commands.js", err);
@@ -57,26 +55,9 @@ async function setupKingBotEvents(client, lastMessageId) {
     if (siegeActive && hadRoleBeforeKing && !hasRoleNowKing) {
       if (newMember.id === siegeInitiatorId) {
         // If the initiator lost the role, reset the poll
-        await client.emit("SiegeInitiatorRoleChanged");
+        eventEmitter.emit("SiegeInitiatorRoleChanged");
         return;
       }
-      if (newMember.id === siegeTargetId) {
-        // If the target lost the role, reset the poll
-        await client.emit("SiegeTargetRoleChanged");
-        return;
-      }
-    }
-    if (
-      oldMember.roles.cache.has(process.env.ROLEID_KING) ||
-      newMember.roles.cache.has(process.env.ROLEID_KING)
-    ) {
-      const guild = await client.guilds.fetch(process.env.GUILDID);
-      await guild.members.fetch();
-      kings = guild.members.cache.filter((member) =>
-        member.roles.cache.has(process.env.ROLEID_KING)
-      );
-      kingSize = kings.size;
-      eventEmitter.emit("kingSizeChanged", kingSize);
     }
     if (
       oldMember.roles.cache.has(process.env.ROLEID_KNIGHT) ||
@@ -95,8 +76,8 @@ async function setupKingBotEvents(client, lastMessageId) {
   });
   client.on("interactionCreate", async (interaction) => {
     if (!interaction.isStringSelectMenu() && !interaction.isButton()) return;
-    const userId = interaction.user.id;
     if (interaction.customId === "SelectDegradation") {
+      const userId = interaction.user.id;
       let selectedKnightId = interaction.values[0];
       selectedKnights[userId] = await interaction.guild.members.cache.get(
         selectedKnightId
@@ -104,6 +85,7 @@ async function setupKingBotEvents(client, lastMessageId) {
       await interaction.deferUpdate();
     }
     if (interaction.customId === "SelectKnight") {
+      const userId = interaction.user.id;
       let selectedKnightId = interaction.values[0];
       selectedHumans[userId] = await interaction.guild.members.cache.get(
         selectedKnightId
@@ -112,6 +94,7 @@ async function setupKingBotEvents(client, lastMessageId) {
     }
     if (interaction.customId === "SelectKing") {
       try {
+        const userId = interaction.user.id;
         let selectedKingId = interaction.values[0];
         selectedKings[userId] = await interaction.guild.members.cache.get(
           selectedKingId
@@ -124,6 +107,7 @@ async function setupKingBotEvents(client, lastMessageId) {
 
     if (interaction.customId === "DegradationKnight") {
       try {
+        const userId = interaction.user.id;
         if (!selectedKnights[userId]) {
           await sendInteractionReply(interaction, `No knight selected`);
           return;
@@ -175,6 +159,7 @@ async function setupKingBotEvents(client, lastMessageId) {
     }
     if (interaction.customId === "Knight") {
       try {
+        const userId = interaction.user.id;
         if (!selectedHumans[userId]) {
           await sendInteractionReply(
             interaction,
@@ -221,6 +206,7 @@ async function setupKingBotEvents(client, lastMessageId) {
     }
     if (interaction.customId === "Siege") {
       try {
+        const userId = interaction.user.id;
         kings = interaction.guild.members.cache.filter((member) =>
           member.roles.cache.has(process.env.ROLEID_KING)
         );
@@ -257,16 +243,14 @@ async function setupKingBotEvents(client, lastMessageId) {
         siegeInitiatorUsername = interaction.user.username;
         siegeActive = true;
         siegeTargetName = selectedKings[userId].user.username;
-        siegeTargetId = selectedKings[userId].user.id;
-
-        interactions = [];
-        interactions.push(interaction);
 
         const channel = await client.channels.fetch(process.env.CHANNELIDKING);
         if (lastMessageId) {
           // Set cooldown
           await CacheSetCooldown("Siege", userId, SiegeCoolDown);
         }
+
+        console.log("LAST MESSAGE ID ===>", lastMessageId);
 
         const messageToEdit = await channel.messages.fetch(lastMessageId);
         const actionRow_0 = ActionRowBuilder.from(
@@ -314,12 +298,8 @@ async function setupKingBotEvents(client, lastMessageId) {
         );
         await sendInteractionReply(
           interaction,
-          "Siege initiated, waiting for other knights to join your siege."
+          "Siege initiated, waiting for knights to join your siege."
         );
-
-        await waitForKnightPollFinish();
-
-        await resetSiege(client, messageToEdit);
       } catch (err) {
         showErrorMsg(err);
       }
@@ -359,10 +339,10 @@ async function setupKingBotEvents(client, lastMessageId) {
     }
   );
   eventEmitter.on(
-    "SiegePollFinished",
-    async (pollParticipantsSize, knightsSize) => {
+    "SiegeFinished",
+    async (siegeParticipantsSize, knightsSize) => {
       try {
-        const success = pollParticipantsSize >= knightsSize / kingSize;
+        const success = siegeParticipantsSize >= knightsSize / kingSize;
         let message = "";
         if (success) {
           eventEmitter.emit(
@@ -385,11 +365,14 @@ async function setupKingBotEvents(client, lastMessageId) {
             " has been failed.";
         }
         if (siegeActive) {
-          //If the initiator's role has changed, you don't need to send message.
-          await sendMessage(message);
-          eventEmitter.emit("siegeResult", message);
+          eventEmitter.emit("NotifyKingChannel", message);
+          eventEmitter.emit("siegeResult", message, "normal");
         }
-        isKnightPollFinished = true;
+
+        // Reset
+        const channel = await client.channels.fetch(process.env.CHANNELIDKING);
+        const messageToEdit = await channel.messages.fetch(lastMessageId);
+        await resetComponents(client, messageToEdit);
       } catch (err) {
         showErrorMsg(err);
       }
@@ -397,13 +380,17 @@ async function setupKingBotEvents(client, lastMessageId) {
   );
   eventEmitter.on(
     "KnightParticipatedOnSiege",
-    async (pollParticipantsSize, knightsSize) => {
+    async (siegeParticipantsSize, knightsSize) => {
       try {
         const channel = await client.channels.fetch(process.env.CHANNELIDKING);
         const messageToEdit = await channel.messages.fetch(lastMessageId);
+
         const content =
           initContent +
-          `\n@${siegeInitiatorUsername} initiated a siege to downgrade ${siegeTargetName}. Currently joined ${pollParticipantsSize} out of ${knightsSize}.`;
+          `\n@${siegeInitiatorUsername} initiated a siege to downgrade ${siegeTargetName}. Currently joined ${siegeParticipantsSize} out of ${knightsSize}.`;
+        const existingComponents = messageToEdit.components.map((component) =>
+          ActionRowBuilder.from(component.toJSON())
+        );
         await messageToEdit.edit({
           content,
         });
@@ -412,54 +399,31 @@ async function setupKingBotEvents(client, lastMessageId) {
       }
     }
   );
-  client.on("SiegeInitiatorRoleChanged", async () => {
+  eventEmitter.on("SiegeInitiatorRoleChanged", async () => {
     try {
-      const message = "Siege failed because of role change of the initiator.";
-      eventEmitter.emit("triggerPollEarly", message);
-      sendMessage(message);
+      const message = "The role of the initiator has been changed.";
+      eventEmitter.emit("siegeResult", message, "early");
+      eventEmitter.emit("NotifyKingChannel", message);
+
+      //Reset
+      const channel = await client.channels.fetch(process.env.CHANNELIDKING);
+      const messageToEdit = await channel.messages.fetch(lastMessageId);
+      await resetComponents(client, messageToEdit);
     } catch (err) {
       showErrorMsg(err);
     }
   });
-  client.on("SiegeTargetRoleChanged", async () => {
+  eventEmitter.on("NotifyKingChannel", async (content) => {
     try {
-      const message = "Siege failed because of role change of the target.";
-      eventEmitter.emit("triggerPollEarly", message);
-      sendMessage(message);
+      let channel = await client.channels.fetch(process.env.CHANNELIDKING);
+      const message = await channel.send({
+        content,
+      });
+      setTimeout(async () => {
+        await message.delete().catch(console.error);
+      }, RoleChangeMessageDisplayTime);
     } catch (err) {
       showErrorMsg(err);
-    }
-  });
-}
-
-async function waitForKnightPollFinish() {
-  return new Promise((resolve, reject) => {
-    const interval = setInterval(() => {
-      if (isKnightPollFinished) {
-        clearInterval(interval); // Stop the interval once poll finishes
-        resolve(); // Resolve the promise once poll finishes
-      }
-    }, 1000); // Check every second (1000ms) for the variable change
-  });
-}
-
-async function sendMessage(messsage) {
-  interactions.forEach(async (interaction) => {
-    if (!interaction) return;
-    else {
-      if (!interaction.replied && !interaction.deferred) {
-        // Send the initial reply if it hasn't been replied to yet
-        await interaction.reply({
-          content: messsage,
-          ephemeral: true,
-        });
-      } else {
-        // Send a follow-up message if the interaction has already been replied to
-        await interaction.followUp({
-          content: messsage,
-          ephemeral: true,
-        });
-      }
     }
   });
 }
@@ -481,6 +445,9 @@ async function updateSelectMenu(client, lastMessageId) {
     const actionRow_2 = ActionRowBuilder.from(
       messageToEdit.components[2].toJSON()
     );
+    const actionRow_3 = ActionRowBuilder.from(
+      messageToEdit.components[3].toJSON()
+    );
 
     if (siegeActive) {
       const kingSelectMenu = StringSelectMenuBuilder.from(
@@ -489,6 +456,7 @@ async function updateSelectMenu(client, lastMessageId) {
         .setDisabled(true)
         .setPlaceholder(siegeTargetName);
       actionRow_2.components[0] = kingSelectMenu;
+      actionRow_3.components[2].setDisabled(true);
     } else {
       const kingSelectMenu = await buildSelectMenu(
         client,
@@ -496,6 +464,7 @@ async function updateSelectMenu(client, lastMessageId) {
         "SelectKing"
       );
       actionRow_2.components[0] = kingSelectMenu;
+      actionRow_3.components[2].setDisabled(false);
     }
     const existingComponents = messageToEdit.components.map((component) =>
       ActionRowBuilder.from(component.toJSON())
@@ -503,9 +472,9 @@ async function updateSelectMenu(client, lastMessageId) {
     existingComponents[0] = actionRow_0;
     existingComponents[1] = actionRow_1;
     existingComponents[2] = actionRow_2;
+    existingComponents[3] = actionRow_3;
 
     await messageToEdit.edit({
-      content: messageToEdit.content,
       components: existingComponents,
     });
   } catch (err) {
@@ -559,7 +528,7 @@ async function messageKingCommands(client) {
   }
 }
 
-async function resetSiege(client, messageToEdit) {
+async function resetComponents(client, messageToEdit) {
   try {
     siegeActive = false;
     selectedHumans = {};
@@ -569,8 +538,6 @@ async function resetSiege(client, messageToEdit) {
     kingSize = 1;
     siegeInitiatorUsername = "";
     siegeTargetName = "";
-    siegeTargetId = "";
-    isKnightPollFinished = false;
 
     const degradationSelectMenu = new ActionRowBuilder().addComponents(
       await buildSelectMenu(client, ["knight"], "SelectDegradation")

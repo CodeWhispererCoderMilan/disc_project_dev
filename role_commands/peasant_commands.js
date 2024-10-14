@@ -13,25 +13,23 @@ const {
   CacheSetCooldown,
 } = require("../apis/redis/redisCache");
 const {
-  PeasantMobFlayingVoteTime,
-  PeasantMobFlayingWinningRate,
-  PeasantMobFlayingCoolDown,
+  MobFlayingTime,
+  MobFlayingSuccessThreadshold,
+  MobFlayingCoolDown,
+  RoleChangeMessageDisplayTime,
 } = require("../game_config.json");
 const { eventEmitter } = require("../functions/eventEmitter.js");
 
-let selectedMembers = {};
-let roleMembers = [];
-let roleMembersSize = 1;
-let pollInitiatorId = null;
-let pollInitiatorUsername = null;
-let pollTargetName = null;
-let pollTargetId = null;
-let pollActive = false;
-let pollParticipants = new Set();
-let eventListenersSetUp = false; // Flag to track if event listeners are set up
-let pollTimeout;
-
-let interactions = [];
+let selectedTargets = {};
+let peasants = [];
+let peasantsSize = 1;
+let mobFlayingInitiatorId = null;
+let mobFlayingInitiatorUsername = null;
+let mobFlayingTargetId = null;
+let mobFlayingTargetName = null;
+let mobFlayingActive = false;
+let mobFlayingParticipants = new Set();
+let mobFlayingTimeout;
 
 const initContent =
   "Peasants can trigger a timed poll to strip a target of their role by selecting SUBHUMAN or PEASANT in a menu and clicking a button. If over 50% of participants join before the timer ends, the target's role is changed to POOP; otherwise, the attempt fails. A global cooldown is activated after each use.\n\n" +
@@ -57,22 +55,22 @@ async function setupPeasantBotEvents(client, lastMessageId) {
       process.env.ROLEID_PEASANT
     );
 
-    const channel = await client.channels.fetch(process.env.CHANNELIDPEASANT);
-    const messageToEdit = await channel.messages.fetch(lastMessageId);
-    if (pollActive && hadRoleBeforePeasant && !hasRoleNowPeasant) {
-      if (pollParticipants.has(newMember.id)) {
+    if (mobFlayingActive && hadRoleBeforePeasant && !hasRoleNowPeasant) {
+      if (mobFlayingParticipants.has(newMember.id)) {
         try {
-          selectedMembers[newMember.id] = null;
-          pollParticipants.delete(newMember.id);
+          selectedTargets[newMember.id] = null;
+          mobFlayingParticipants.delete(newMember.id);
+          const channel = await client.channels.fetch(
+            process.env.CHANNELIDPEASANT
+          );
+          const messageToEdit = await channel.messages.fetch(lastMessageId);
 
-          if (newMember.id === pollInitiatorId) {
+          if (newMember.id === mobFlayingInitiatorId) {
             // If the initiator lost the role, reset the poll
-            await client.emit(
-              "MobFlayingInitiatorRoleChanged",
-              pollInitiatorUsername
-            );
-            pollActive = false;
-            await triggerPollEarly(client, messageToEdit);
+            const msg = `The initiator ${mobFlayingInitiatorUsername} is no longer a peasant.`;
+            eventEmitter.emit("NotifyPeasantChannel", msg);
+            mobFlayingActive = false;
+            await ceaseMobFlaying(client, messageToEdit);
             return;
           }
         } catch (err) {
@@ -80,21 +78,34 @@ async function setupPeasantBotEvents(client, lastMessageId) {
         }
       }
     }
-    if (
-      pollActive &&
-      ((hadRoleBeforePeasant && !hasRoleNowPeasant) ||
-        (hadRoleBeforeSubHuman && !hasRoleNowSubhuman))
-    ) {
-      if (newMember.id === pollTargetId) {
-        try {
-          // If the poll target lost the role, reset the poll
-          await client.emit("MobFlayingTargetRoleChanged", pollTargetName);
-          pollActive = false;
-          await triggerPollEarly(client, messageToEdit);
-          return;
-        } catch (err) {
-          showErrorMsg(err);
+    if (hadRoleBeforePeasant || hasRoleNowPeasant) {
+      try {
+        if (mobFlayingActive) {
+          const guild = await client.guilds.fetch(process.env.GUILDID);
+          await guild.members.fetch();
+          peasants = guild.members.cache.filter((member) =>
+            member.roles.cache.has(process.env.ROLEID_PEASANT)
+          );
+          peasantsSize = peasants.size;
+
+          const channel = await client.channels.fetch(
+            process.env.CHANNELIDPEASANT
+          );
+          const messageToEdit = await channel.messages.fetch(lastMessageId);
+          const content =
+            initContent +
+            `\n@${mobFlayingInitiatorUsername} initiated mob flaying. Join to downgrade ${mobFlayingTargetName}. (Joined ${mobFlayingParticipants.size} / ${peasantsSize}.)`;
+          const participationRate = mobFlayingParticipants.size / peasantsSize;
+          if (participationRate >= MobFlayingSuccessThreadshold) {
+            ceaseMobFlaying(client, messageToEdit);
+            return;
+          }
+          await messageToEdit.edit({
+            content,
+          });
         }
+      } catch (err) {
+        showErrorMsg(err);
       }
     }
     if (
@@ -105,76 +116,7 @@ async function setupPeasantBotEvents(client, lastMessageId) {
     ) {
       if (lastMessageId) {
         try {
-          const guild = await client.guilds.fetch(process.env.GUILDID);
-          await guild.members.fetch();
-          roleMembers = guild.members.cache.filter((member) =>
-            member.roles.cache.has(process.env.ROLEID_PEASANT)
-          );
-          roleMembersSize = roleMembers.size;
-
-          let content = initContent;
-          if (pollActive) {
-            content =
-              content +
-              `\n@${pollInitiatorUsername} initiated a poll. Join poll to downgrade ${pollTargetName}. (Joined ${pollParticipants.size} / ${roleMembersSize}.)`;
-            const participationRate = pollParticipants.size / roleMembersSize;
-            if (participationRate >= PeasantMobFlayingWinningRate) {
-              triggerPollEarly(client, messageToEdit);
-              return;
-            }
-          }
-          const actionRow_0 = ActionRowBuilder.from(
-            messageToEdit.components[0].toJSON()
-          );
-
-          if (pollActive) {
-            const memberSelectMenu = StringSelectMenuBuilder.from(
-              actionRow_0.components[0].toJSON()
-            )
-              .setDisabled(true)
-              .setPlaceholder(pollInitiatorUsername);
-            actionRow_0.components[0] = memberSelectMenu;
-          } else {
-            const memberSelectMenu = await buildSelectMenu(
-              client,
-              ["peasant", "subhuman"],
-              "MembersSelectMenu"
-            );
-            actionRow_0.components[0] = memberSelectMenu;
-          }
-          const existingComponents = messageToEdit.components.map((component) =>
-            ActionRowBuilder.from(component.toJSON())
-          );
-          const actionRow_1 = ActionRowBuilder.from(
-            messageToEdit.components[1].toJSON()
-          );
-          if (pollActive) {
-            const pollButton = ButtonBuilder.from(
-              actionRow_1.components[0].toJSON()
-            );
-            pollButton.setDisabled(true);
-            const joinPollButton = new ButtonBuilder()
-              .setCustomId("JoinPoll")
-              .setLabel("Join Poll")
-              .setStyle(ButtonStyle.Primary);
-            actionRow_1.components[0] = pollButton;
-            actionRow_1.components[1] = joinPollButton;
-            existingComponents[1] = actionRow_1;
-          } else {
-            // Reset poll button
-            const buttonRow = new ActionRowBuilder().addComponents(
-              new ButtonBuilder()
-                .setCustomId("TimedPoll")
-                .setLabel("Mob Flaying")
-                .setStyle(ButtonStyle.Danger)
-            );
-            existingComponents[1] = buttonRow;
-          }
-          existingComponents[0] = actionRow_0;
-          await messageToEdit.edit({
-            content,
-            components: existingComponents,
-          });
+          await updateSelectMenu(client, lastMessageId);
         } catch (err) {
           showErrorMsg(err);
         }
@@ -185,12 +127,12 @@ async function setupPeasantBotEvents(client, lastMessageId) {
   client.on("interactionCreate", async (interaction) => {
     if (!interaction.isStringSelectMenu() && !interaction.isButton()) return;
 
-    if (interaction.customId === "MembersSelectMenu") {
+    if (interaction.customId === "TargetsSelectMenu") {
       const userId = interaction.user.id;
-      let selectedMemberId = interaction.values[0];
+      let targetId = interaction.values[0];
       try {
-        selectedMembers[userId] = await interaction.guild.members.cache.get(
-          selectedMemberId
+        selectedTargets[userId] = await interaction.guild.members.cache.get(
+          targetId
         );
         await interaction.deferUpdate();
       } catch (err) {
@@ -198,21 +140,21 @@ async function setupPeasantBotEvents(client, lastMessageId) {
       }
     }
 
-    if (interaction.customId === "TimedPoll") {
+    if (interaction.customId === "MobFlaying") {
       const userId = interaction.user.id;
-      roleMembers = interaction.guild.members.cache.filter((member) =>
+      peasants = interaction.guild.members.cache.filter((member) =>
         member.roles.cache.has(process.env.ROLEID_PEASANT)
       );
-      roleMembersSize = roleMembers.size;
+      peasantsSize = peasants.size;
 
-      if (!selectedMembers[userId]) {
+      if (!selectedTargets[userId]) {
         await sendInteractionReply(interaction, "No member selected");
         return;
       }
 
       let cooldown;
       try {
-        cooldown = await CacheGetCooldown("PeasantMobFlaying", userId);
+        cooldown = await CacheGetCooldown("MobFlaying", userId);
       } catch (err) {
         showErrorMsg(err);
       }
@@ -221,78 +163,67 @@ async function setupPeasantBotEvents(client, lastMessageId) {
         return;
       }
 
-      if (selectedMembers[userId].user.id === userId) {
+      if (selectedTargets[userId].user.id === userId) {
         await sendInteractionReply(interaction, "You cannot target yourself.");
         return;
       }
 
-      pollInitiatorId = userId;
-      pollInitiatorUsername = interaction.user.username;
-      pollParticipants.add(userId);
-      pollActive = true;
-      pollTargetName = selectedMembers[userId].user.username;
-      pollTargetId = selectedMembers[userId].user.id;
-
-      interactions = [];
-      interactions.push(interaction);
+      mobFlayingInitiatorId = userId;
+      mobFlayingInitiatorUsername = interaction.user.username;
+      mobFlayingParticipants.add(userId);
+      mobFlayingActive = true;
+      mobFlayingTargetName = selectedTargets[userId].user.username;
+      mobFlayingTargetId = selectedTargets[userId].user.id;
 
       const channel = await client.channels.fetch(process.env.CHANNELIDPEASANT);
       if (lastMessageId) {
         try {
           // Set cooldown
-          await CacheSetCooldown(
-            "PeasantMobFlaying",
-            userId,
-            PeasantMobFlayingCoolDown
-          );
+          await CacheSetCooldown("MobFlaying", userId, MobFlayingCoolDown);
 
           const messageToEdit = await channel.messages.fetch(lastMessageId);
           const actionRow_0 = ActionRowBuilder.from(
             messageToEdit.components[0].toJSON()
           );
-          const memberSelectMenu = StringSelectMenuBuilder.from(
+          const targetsSelectMenu = StringSelectMenuBuilder.from(
             actionRow_0.components[0].toJSON()
           )
             .setDisabled(true)
-            .setPlaceholder(selectedMembers[userId].user.username);
-          actionRow_0.components[0] = memberSelectMenu;
+            .setPlaceholder(selectedTargets[userId].user.username);
+          actionRow_0.components[0] = targetsSelectMenu;
 
           const actionRow_1 = ActionRowBuilder.from(
             messageToEdit.components[1].toJSON()
           );
-          const pollButton = ButtonBuilder.from(
+          const mobFlayingButton = ButtonBuilder.from(
             actionRow_1.components[0].toJSON()
           );
-          pollButton.setDisabled(true);
-          const joinPollButton = new ButtonBuilder()
-            .setCustomId("JoinPoll")
-            .setLabel("Join Poll")
+          mobFlayingButton.setDisabled(true);
+          const joinMobFlayingButton = new ButtonBuilder()
+            .setCustomId("JoinMobFlaying")
+            .setLabel("Join Mob Flaying")
             .setStyle(ButtonStyle.Primary);
-          actionRow_1.components[0] = pollButton;
-          actionRow_1.components[1] = joinPollButton;
+          actionRow_1.components[0] = mobFlayingButton;
+          actionRow_1.components[1] = joinMobFlayingButton;
 
           const content =
             initContent +
-            `\n@${pollInitiatorUsername} initiated a poll. Join poll to downgrade ${pollTargetName}. (Joined ${pollParticipants.size} / ${roleMembersSize}.)`;
+            `\n@${mobFlayingInitiatorUsername} initiated mob flaying. Join to downgrade ${mobFlayingTargetName}. (Joined ${mobFlayingParticipants.size} / ${peasantsSize}.)`;
           await messageToEdit.edit({
             content,
             components: [actionRow_0, actionRow_1],
           });
 
-          await startPoll(client, messageToEdit, PeasantMobFlayingVoteTime);
-
-          if (!interaction.deferred && !interaction.replied) {
-            await interaction.deferReply({ ephemeral: true });
-          }
+          await startMobFlaying(client, messageToEdit, MobFlayingTime);
 
           await sendInteractionReply(
             interaction,
-            "Timed poll initiated, waiting for other peasants to join your poll"
+            "Mob flaying initiated, waiting for other peasants to join"
           );
 
-          const participationRate = pollParticipants.size / roleMembersSize;
-          if (participationRate >= PeasantMobFlayingWinningRate) {
-            triggerPollEarly(client, messageToEdit);
+          const participationRate = mobFlayingParticipants.size / peasantsSize;
+          if (participationRate >= MobFlayingSuccessThreadshold) {
+            ceaseMobFlaying(client, messageToEdit);
             return;
           }
         } catch (err) {
@@ -300,50 +231,57 @@ async function setupPeasantBotEvents(client, lastMessageId) {
         }
       }
     }
-    if (interaction.customId === "JoinPoll") {
+    if (interaction.customId === "JoinMobFlaying") {
       try {
-        if (!pollActive) {
+        if (!mobFlayingActive) {
           await sendInteractionReply(
             interaction,
-            "There is no active poll to join."
+            "There is no active mob flaying to join."
           );
           return;
         }
 
         const userId = interaction.user.id;
-        if (userId === pollInitiatorId) {
+        if (userId === mobFlayingInitiatorId) {
           await sendInteractionReply(
             interaction,
-            "Once you created a poll, you don't need to join your poll since you are alreday a participant."
+            "Once you initiated mob flaying, you don't need to join since you are alreday a participant."
           );
           return;
         }
 
-        if (pollParticipants.has(userId)) {
+        if (userId === mobFlayingTargetId) {
           await sendInteractionReply(
             interaction,
-            "You've already joined this poll."
+            "You cannot join mob flyaing on yourself."
           );
           return;
         }
 
-        interactions.push(interaction);
-        pollParticipants.add(userId);
-        await sendInteractionReply(interaction, "You have joind the poll.");
+        if (mobFlayingParticipants.has(userId)) {
+          await sendInteractionReply(interaction, "You've already joined.");
+          return;
+        }
 
-        const participationRate = pollParticipants.size / roleMembersSize;
+        mobFlayingParticipants.add(userId);
+        await sendInteractionReply(interaction, "You have joind mob flaying.");
+
+        const participationRate = mobFlayingParticipants.size / peasantsSize;
         const channel = await client.channels.fetch(
           process.env.CHANNELIDPEASANT
         );
         const messageToEdit = await channel.messages.fetch(lastMessageId);
-        if (pollActive && participationRate >= PeasantMobFlayingWinningRate) {
+        if (
+          mobFlayingActive &&
+          participationRate >= MobFlayingSuccessThreadshold
+        ) {
           //If poll succeeded within voting ending time.
-          triggerPollEarly(client, messageToEdit);
+          ceaseMobFlaying(client, messageToEdit);
           return;
         } else {
           const editedContent =
             initContent +
-            `\n@${pollInitiatorUsername} initiated a poll. Join poll to downgrade ${pollTargetName}. (Joined ${pollParticipants.size} / ${roleMembersSize}.)`;
+            `\n@${mobFlayingInitiatorUsername} initiated a mob flaying. Join to downgrade ${mobFlayingTargetName}. (Joined ${mobFlayingParticipants.size} / ${peasantsSize}.)`;
 
           await messageToEdit.edit({ content: editedContent });
         }
@@ -352,110 +290,82 @@ async function setupPeasantBotEvents(client, lastMessageId) {
       }
     }
   });
-  if (!eventListenersSetUp) {
-    eventEmitter.on(
-      "MobFlayingComplete",
-      async (targetName, initiatorUsername) => {
-        try {
-          const message =
-            "Mob flaying successful! " +
-            targetName +
-            " has become a poop by " +
-            initiatorUsername +
-            ".";
-          sendMessage(message);
-        } catch (err) {
-          throw err;
-        }
-      }
-    );
-
-    eventEmitter.on(
-      "MobFlayingFailed",
-      async (targetName, initiatorUsername) => {
-        try {
-          const message =
-            "Mob flaying on " +
-            targetName +
-            " initiated by " +
-            initiatorUsername +
-            " has been failed.";
-
-          sendMessage(message);
-        } catch (err) {
-          throw err;
-        }
-      }
-    );
-
-    client.on("MobFlayingInitiatorRoleChanged", async (username) => {
-      try {
-        const message =
-          "The initiator " + username + " is no longer a peasant.";
-        sendMessage(message);
-      } catch (err) {
-        throw err;
-      }
-    });
-
-    client.on("MobFlayingTargetRoleChanged", async (username) => {
-      try {
-        const message = "The role of the target " + username + " has changed.";
-        sendMessage(message);
-      } catch (err) {
-        throw err;
-      }
-    });
-
-    eventListenersSetUp = true; // Set the flag to true
-  }
+  eventEmitter.on("NotifyPeasantChannel", async (msg) => {
+    try {
+      let channel = await client.channels.fetch(process.env.CHANNELIDPEASANT);
+      const message = await channel.send({
+        content: msg,
+      });
+      setTimeout(async () => {
+        await message.delete().catch(console.error);
+      }, RoleChangeMessageDisplayTime);
+    } catch (err) {
+      throw err;
+    }
+  });
 }
 
-async function startPoll(client, messageToEdit, timeout) {
-  pollTimeout = setTimeout(async () => {
-    await handlePollEnd(client, messageToEdit);
+async function startMobFlaying(client, messageToEdit, timeout) {
+  mobFlayingTimeout = setTimeout(async () => {
+    await handleMobFlayingEnd(client, messageToEdit);
   }, timeout);
 }
 
-async function handlePollEnd(client, messageToEdit) {
-  const participationRate = pollParticipants.size / roleMembersSize;
-  if (pollActive && participationRate >= PeasantMobFlayingWinningRate) {
+async function handleMobFlayingEnd(client, messageToEdit) {
+  const participationRate = mobFlayingParticipants.size / peasantsSize;
+  if (mobFlayingActive && participationRate >= MobFlayingSuccessThreadshold) {
     // If Timed poll is sucessful
-    const member = selectedMembers[pollInitiatorId];
-    if (member)
-      eventEmitter.emit("changeRole", selectedMembers[pollInitiatorId], "Poop");
-    eventEmitter.emit(
-      "MobFlayingComplete",
-      pollTargetName,
-      pollInitiatorUsername
-    );
-    await resetPoll(client, messageToEdit);
+    const target = selectedTargets[mobFlayingInitiatorId];
+    if (target) eventEmitter.emit("changeRole", target, "Poop");
+    const msg = `Mob flaying successful! @${mobFlayingTargetName} has become a poop by @${mobFlayingInitiatorUsername}.`;
+    eventEmitter.emit("NotifyPeasantChannel", msg);
   } else {
-    eventEmitter.emit(
-      "MobFlayingFailed",
-      pollTargetName,
-      pollInitiatorUsername
+    const msg = `Mob flaying on @${mobFlayingTargetName} initiated by @${mobFlayingInitiatorUsername} has been failed.`;
+    eventEmitter.emit("NotifyPeasantChannel", msg);
+  }
+  await resetComponents(client, messageToEdit);
+}
+
+async function ceaseMobFlaying(client, messageToEdit) {
+  if (mobFlayingTimeout) {
+    clearTimeout(mobFlayingTimeout); // Clear the original timeout
+    await handleMobFlayingEnd(client, messageToEdit); // Manually trigger poll logic
+  }
+}
+
+async function updateSelectMenu(client, lastMessageId) {
+  try {
+    const channel = await client.channels.fetch(process.env.CHANNELIDPEASANT);
+    const messageToEdit = await channel.messages.fetch(lastMessageId);
+    const selectMenu = await buildSelectMenu(
+      client,
+      ["peasant", "subhuman"],
+      "TargetsSelectMenu"
     );
-    await resetPoll(client, messageToEdit);
-  }
-}
+    if (mobFlayingActive)
+      selectMenu.setDisabled(true).setPlaceholder(mobFlayingTargetName);
+    const actionRow_0 = new ActionRowBuilder().addComponents(selectMenu);
 
-// Function to trigger the poll early
-async function triggerPollEarly(client, messageToEdit) {
-  if (pollTimeout) {
-    clearTimeout(pollTimeout); // Clear the original timeout
-    await handlePollEnd(client, messageToEdit); // Manually trigger poll logic
-  }
-}
+    const existingComponents = messageToEdit.components.map((component) =>
+      ActionRowBuilder.from(component.toJSON())
+    );
+    existingComponents[0] = actionRow_0;
 
-async function sendMessage(message) {
-  for (const interaction of interactions) {
-    if (!interaction) continue;
-    if (!interaction.replied && !interaction.deferred) {
-      await interaction.reply({ content: message, ephemeral: true });
-    } else {
-      await interaction.followUp({ content: message, ephemeral: true });
+    if (!mobFlayingActive) {
+      const buttonRow = new ActionRowBuilder().addComponents(
+        new ButtonBuilder()
+          .setCustomId("MobFlaying")
+          .setLabel("Mob Flaying")
+          .setStyle(ButtonStyle.Danger)
+      );
+      existingComponents[1] = buttonRow;
     }
+
+    await messageToEdit.edit({
+      components: existingComponents,
+    });
+  } catch (err) {
+    showErrorMsg(err);
   }
 }
 
@@ -472,14 +382,14 @@ async function messagePeasantCommands(client) {
     const selectMenuSubhumanPeasants = await buildSelectMenu(
       client,
       ["peasant", "subhuman"],
-      "MembersSelectMenu"
+      "TargetsSelectMenu"
     );
     const row_subhuman_peasant_select = new ActionRowBuilder().addComponents(
       selectMenuSubhumanPeasants
     );
     const buttonRow = new ActionRowBuilder().addComponents(
       new ButtonBuilder()
-        .setCustomId("TimedPoll")
+        .setCustomId("MobFlaying")
         .setLabel("Mob Flaying")
         .setStyle(ButtonStyle.Danger)
     );
@@ -494,34 +404,34 @@ async function messagePeasantCommands(client) {
   }
 }
 
-async function resetPoll(client, messageToEdit) {
+async function resetComponents(client, messageToEdit) {
   try {
-    pollActive = false;
-    pollInitiatorUsername = null;
-    pollTargetName = null;
-    pollTargetId = null;
-    selectedMembers = {};
-    pollInitiatorId = null;
-    pollParticipants.clear();
-    roleMembersSize = 1;
-    roleMembers = [];
+    mobFlayingActive = false;
+    mobFlayingInitiatorUsername = null;
+    mobFlayingInitiatorId = null;
+    mobFlayingTargetName = null;
+    mobFlayingTargetId = null;
+    selectedTargets = {};
+    mobFlayingParticipants.clear();
+    peasantsSize = 1;
+    peasants = [];
 
     const actionRow_0 = ActionRowBuilder.from(
       messageToEdit.components[0].toJSON()
     );
 
-    const memberSelectMenu = await buildSelectMenu(
+    const targetsSelectMenu = await buildSelectMenu(
       client,
       ["peasant", "subhuman"],
-      "MembersSelectMenu"
+      "TargetsSelectMenu"
     );
 
-    actionRow_0.components[0] = memberSelectMenu;
+    actionRow_0.components[0] = targetsSelectMenu;
 
     // Reset poll button
     const buttonRow = new ActionRowBuilder().addComponents(
       new ButtonBuilder()
-        .setCustomId("TimedPoll")
+        .setCustomId("MobFlaying")
         .setLabel("Mob Flaying")
         .setStyle(ButtonStyle.Danger)
     );

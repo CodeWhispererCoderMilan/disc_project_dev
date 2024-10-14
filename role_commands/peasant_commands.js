@@ -55,68 +55,65 @@ async function setupPeasantBotEvents(client, lastMessageId) {
 			process.env.ROLEID_PEASANT
 		);
 
-   if (mobFlayingActive && hadRoleBeforePeasant && !hasRoleNowPeasant) {
+   if (mobFlayingActive && hadRoleBeforePeasant ) {
       if (mobFlayingParticipants.has(newMember.id)) {
         try {
           selectedTargets[newMember.id] = null;
           mobFlayingParticipants.delete(newMember.id);
-          const channel = await client.channels.fetch(
-            process.env.CHANNELIDPEASANT
+	  peasants = guild.members.cache.filter((member) =>
+            member.roles.cache.has(process.env.ROLEID_PEASANT)
           );
-          const messageToEdit = await channel.messages.fetch(lastMessageId);
+          peasantsSize = peasants.size;
 
+          const participationRate = mobFlayingParticipants.size / peasantsSize;
+
+	  
           if (newMember.id === mobFlayingInitiatorId) {
             // If the initiator lost the role, reset the poll
             const msg = `The initiator ${mobFlayingInitiatorUsername} is no longer a peasant.`;
             eventEmitter.emit("NotifyPeasantChannel", msg);
             mobFlayingActive = false;
-            await ceaseMobFlaying(client, messageToEdit);
+            await ceaseMobFlaying(client, lastMessageId);
             return;
-          }
+          }else if(participationRate >= MobFlayingSuccessThreadshold){
+		await ceaseMobFlaying(client,lastMessageId);
+	  }else{
+		await updateMessage(client,lastMessageId);
+	  }
         } catch (err) {
           showErrorMsg(err);
         }
       }
     }
-    if (hadRoleBeforePeasant || hasRoleNowPeasant) {
+    if (mobFlayingActive && hasRoleNowPeasant) {
       try {
         if (mobFlayingActive) {
-          const guild = await client.guilds.fetch(process.env.GUILDID);
-          await guild.members.fetch();
           peasants = guild.members.cache.filter((member) =>
             member.roles.cache.has(process.env.ROLEID_PEASANT)
           );
           peasantsSize = peasants.size;
 
-          const channel = await client.channels.fetch(
-            process.env.CHANNELIDPEASANT
-          );
-          const messageToEdit = await channel.messages.fetch(lastMessageId);
-          const content =
-            initContent +
-            `\n@${mobFlayingInitiatorUsername} initiated mob flaying. Join to downgrade ${mobFlayingTargetName}. (Joined ${mobFlayingParticipants.size} / ${peasantsSize}.)`;
           const participationRate = mobFlayingParticipants.size / peasantsSize;
           if (participationRate >= MobFlayingSuccessThreadshold) {
-            ceaseMobFlaying(client, messageToEdit);
+            ceaseMobFlaying(client, lastMessageId);
             return;
-          }
-          await messageToEdit.edit({
-            content,
-          });
+          }else{
+	await updateMessage();
+	}
         }
       } catch (err) {
         showErrorMsg(err);
       }
     }
     if (
-      hadRoleBeforePeasant ||
+      (hadRoleBeforePeasant ||
       hasRoleNowPeasant ||
       hadRoleBeforeSubHuman ||
-      hasRoleNowSubhuman
+      hasRoleNowSubhuman) && !mobFlayingActive
     ) {
       if (lastMessageId) {
         try {
-          await updateSelectMenu(client, lastMessageId);
+          await updateMessage(client, lastMessageId);
         } catch (err) {
           showErrorMsg(err);
         }
@@ -175,46 +172,12 @@ async function setupPeasantBotEvents(client, lastMessageId) {
       mobFlayingTargetName = selectedTargets[userId].user.username;
       mobFlayingTargetId = selectedTargets[userId].user.id;
 
-      const channel = await client.channels.fetch(process.env.CHANNELIDPEASANT);
       if (lastMessageId) {
         try {
           // Set cooldown
           await CacheSetCooldown("MobFlaying", userId, MobFlayingCoolDown);
-
-          const messageToEdit = await channel.messages.fetch(lastMessageId);
-          const actionRow_0 = ActionRowBuilder.from(
-            messageToEdit.components[0].toJSON()
-          );
-          const targetsSelectMenu = StringSelectMenuBuilder.from(
-            actionRow_0.components[0].toJSON()
-          )
-            .setDisabled(true)
-            .setPlaceholder(selectedTargets[userId].user.username);
-          actionRow_0.components[0] = targetsSelectMenu;
-
-          const actionRow_1 = ActionRowBuilder.from(
-            messageToEdit.components[1].toJSON()
-          );
-          const mobFlayingButton = ButtonBuilder.from(
-            actionRow_1.components[0].toJSON()
-          );
-          mobFlayingButton.setDisabled(true);
-          const joinMobFlayingButton = new ButtonBuilder()
-            .setCustomId("JoinMobFlaying")
-            .setLabel("Join Mob Flaying")
-            .setStyle(ButtonStyle.Primary);
-          actionRow_1.components[0] = mobFlayingButton;
-          actionRow_1.components[1] = joinMobFlayingButton;
-
-          const content =
-            initContent +
-            `\n@${mobFlayingInitiatorUsername} initiated mob flaying. Join to downgrade ${mobFlayingTargetName}. (Joined ${mobFlayingParticipants.size} / ${peasantsSize}.)`;
-          await messageToEdit.edit({
-            content,
-            components: [actionRow_0, actionRow_1],
-          });
-
-          await startMobFlaying(client, messageToEdit, MobFlayingTime);
+	await updateMessage(client, lastMessageId);
+          await startMobFlaying(client, lastMessageId, MobFlayingTime);
 
           await sendInteractionReply(
             interaction,
@@ -267,24 +230,16 @@ async function setupPeasantBotEvents(client, lastMessageId) {
         await sendInteractionReply(interaction, "You have joind mob flaying.");
 
         const participationRate = mobFlayingParticipants.size / peasantsSize;
-        const channel = await client.channels.fetch(
-          process.env.CHANNELIDPEASANT
-        );
-        const messageToEdit = await channel.messages.fetch(lastMessageId);
         if (
           mobFlayingActive &&
           participationRate >= MobFlayingSuccessThreadshold
         ) {
           //If poll succeeded within voting ending time.
-          ceaseMobFlaying(client, messageToEdit);
+          ceaseMobFlaying(client, lastMessageId);
           return;
         } else {
-          const editedContent =
-            initContent +
-            `\n@${mobFlayingInitiatorUsername} initiated a mob flaying. Join to downgrade ${mobFlayingTargetName}. (Joined ${mobFlayingParticipants.size} / ${peasantsSize}.)`;
-
-          await messageToEdit.edit({ content: editedContent });
-        }
+        	updateMessage(client, lastMessageId);
+	}
       } catch (err) {
         throw err;
       }
@@ -305,13 +260,13 @@ async function setupPeasantBotEvents(client, lastMessageId) {
   });
 }
 
-async function startMobFlaying(client, messageToEdit, timeout) {
+async function startMobFlaying(client, lastMessageId, timeout) {
   mobFlayingTimeout = setTimeout(async () => {
-    await handleMobFlayingEnd(client, messageToEdit);
+    await handleMobFlayingEnd(client, lastMessageId);
   }, timeout);
 }
 
-async function handleMobFlayingEnd(client, messageToEdit) {
+async function handleMobFlayingEnd(client, lastMessageId) {
   const participationRate = mobFlayingParticipants.size / peasantsSize;
   if (mobFlayingActive && participationRate >= MobFlayingSuccessThreadshold) {
     // If Timed poll is sucessful
@@ -323,49 +278,68 @@ async function handleMobFlayingEnd(client, messageToEdit) {
     const msg = `Mob flaying on @${mobFlayingTargetName} initiated by @${mobFlayingInitiatorUsername} has been failed.`;
     eventEmitter.emit("NotifyPeasantChannel", msg);
   }
-  await resetComponents(client, messageToEdit);
+  await resetComponents(client, lastMessageId);
 }
 
-async function ceaseMobFlaying(client, messageToEdit) {
+async function ceaseMobFlaying(client, lastMessageId) {
   if (mobFlayingTimeout) {
-    clearTimeout(mobFlayingTimeout); // Clear the original timeout
-    await handleMobFlayingEnd(client, messageToEdit); // Manually trigger poll logic
+    clearTimeout(mobFlayingTimeout); 
+    await handleMobFlayingEnd(client, lastMessageId);
   }
 }
 
-async function updateSelectMenu(client, lastMessageId) {
+async function updateMessage(client, lastMessageId) {
   try {
     const channel = await client.channels.fetch(process.env.CHANNELIDPEASANT);
     const messageToEdit = await channel.messages.fetch(lastMessageId);
-    const selectMenu = await buildSelectMenu(
-      client,
-      ["peasant", "subhuman"],
-      "TargetsSelectMenu"
-    );
-    if (mobFlayingActive)
-      selectMenu.setDisabled(true).setPlaceholder(mobFlayingTargetName);
-    const actionRow_0 = new ActionRowBuilder().addComponents(selectMenu);
 
-    const existingComponents = messageToEdit.components.map((component) =>
-      ActionRowBuilder.from(component.toJSON())
-    );
-    existingComponents[0] = actionRow_0;
+	  if(!mobFlayingActive){
+		  const selectMenuSubhumanPeasants = await buildSelectMenu(
+			  client,
+			  ["peasant", "subhuman"],
+			  "TargetsSelectMenu"
+		  );
+		  const row_subhuman_peasant_select = new ActionRowBuilder().addComponents(
+			  selectMenuSubhumanPeasants
+		  );
+		  const buttonRow = new ActionRowBuilder().addComponents(
+			  new ButtonBuilder()
+			  .setCustomId("MobFlaying")
+			  .setLabel("Mob Flaying")
+			  .setStyle(ButtonStyle.Danger)
+		  );
 
-    if (!mobFlayingActive) {
-      const buttonRow = new ActionRowBuilder().addComponents(
-        new ButtonBuilder()
-          .setCustomId("MobFlaying")
-          .setLabel("Mob Flaying")
-          .setStyle(ButtonStyle.Danger)
-      );
-      existingComponents[1] = buttonRow;
-    }
+		  await messageToEdit.send({
+			  content: initContent,
+			  components: [row_subhuman_peasant_select, buttonRow],
+		  });
+	  }else{
+		  const actionRow_0 = ActionRowBuilder.from(
+				messageToEdit.components[0].toJSON()
+			);
+		const mobFlayingSelectMenu = StringSelectMenuBuilder.from(
+				actionRow_0.components[0].toJSON()
+			)
+				.setDisabled(true)
+				.setPlaceholder(mobFlayingTargetName);
+		actionRow_0.components[0] = mobFlayingSelectMenu;
 
-    await messageToEdit.edit({
-      components: existingComponents,
-    });
-  } catch (err) {
-    showErrorMsg(err);
+		  const buttonRow = new ActionRowBuilder().addComponents(
+			  new ButtonBuilder()
+			  	.setCustomId("JoinMobFlaying")
+        	    		.setLabel("Join Mob Flaying")
+				.setStyle(ButtonStyle.Primary)
+
+		  );
+
+		  await messageToEdit.edit({
+			  content: initContent + `\n@${mobFlayingInitiatorUsername} initiated a mob flaying. Join to downgrade ${mobFlayingTargetName}. (Joined ${mobFlayingParticipants.size} / ${peasantsSize}.)`,
+			  components: [actionRow_0, buttonRow],
+		  });
+
+	  }  
+  	} catch (err) {
+	  showErrorMsg(err);
   }
 }
 
@@ -378,21 +352,21 @@ async function messagePeasantCommands(client) {
 		return;
 	}
 
-  try {
-    const selectMenuSubhumanPeasants = await buildSelectMenu(
-      client,
-      ["peasant", "subhuman"],
-      "TargetsSelectMenu"
-    );
-    const row_subhuman_peasant_select = new ActionRowBuilder().addComponents(
-      selectMenuSubhumanPeasants
-    );
-    const buttonRow = new ActionRowBuilder().addComponents(
-      new ButtonBuilder()
-        .setCustomId("MobFlaying")
-        .setLabel("Mob Flaying")
-        .setStyle(ButtonStyle.Danger)
-    );
+	try {
+		const selectMenuSubhumanPeasants = await buildSelectMenu(
+			client,
+			["peasant", "subhuman"],
+			"TargetsSelectMenu"
+		);
+		const row_subhuman_peasant_select = new ActionRowBuilder().addComponents(
+			selectMenuSubhumanPeasants
+		);
+		const buttonRow = new ActionRowBuilder().addComponents(
+			new ButtonBuilder()
+			.setCustomId("MobFlaying")
+			.setLabel("Mob Flaying")
+			.setStyle(ButtonStyle.Danger)
+		);
 
 		const message = await channel.send({
 			content: initContent,
@@ -404,42 +378,19 @@ async function messagePeasantCommands(client) {
 	}
 }
 
-async function resetComponents(client, messageToEdit) {
-  try {
-    mobFlayingActive = false;
-    mobFlayingInitiatorUsername = null;
-    mobFlayingInitiatorId = null;
-    mobFlayingTargetName = null;
-    mobFlayingTargetId = null;
-    selectedTargets = {};
-    mobFlayingParticipants.clear();
-    peasantsSize = 1;
-    peasants = [];
 
-		const actionRow_0 = ActionRowBuilder.from(
-			messageToEdit.components[0].toJSON()
-		);
-
-    const targetsSelectMenu = await buildSelectMenu(
-      client,
-      ["peasant", "subhuman"],
-      "TargetsSelectMenu"
-    );
-
-    actionRow_0.components[0] = targetsSelectMenu;
-
-    // Reset poll button
-    const buttonRow = new ActionRowBuilder().addComponents(
-      new ButtonBuilder()
-        .setCustomId("MobFlaying")
-        .setLabel("Mob Flaying")
-        .setStyle(ButtonStyle.Danger)
-    );
-
-		await messageToEdit.edit({
-			content: initContent,
-			components: [actionRow_0, buttonRow],
-		});
+async function resetComponents(client, lastMessageId) {
+	try {
+		mobFlayingActive = false;
+		mobFlayingInitiatorUsername = null;
+		mobFlayingInitiatorId = null;
+		mobFlayingTargetName = null;
+		mobFlayingTargetId = null;
+		selectedTargets = {};
+		mobFlayingParticipants.clear();
+		peasantsSize = 1;
+		peasants = [];
+		await updateMessage(client,lastMessageId);
 	} catch (err) {
 		throw err;
 	}

@@ -13,13 +13,14 @@ const {
   NibbleCost,
   NibbleCooldown,
   PlagueCooldown,
-  PlagueFirstPollTimeLimit,
-  PlagueSecondPollTimeLimit,
+  PlagueFirstPhaseTime,
+  PlagueSecondPhaseTime,
   PlagueKillSubhuman,
   PlagueKillPeasant,
   PlagueKillScholar,
   PlagueKillMerchant,
   PlagueKillKnight,
+  RoleChangeMessageDisplayTime,
 } = require("../game_config.json");
 const { DBUpdateXP } = require("../apis/firebase/querys");
 
@@ -34,57 +35,84 @@ function showErrorMsg(err) {
 }
 
 // Change threadshold
-const THREADSHOLD = 10;
+const PLAGUETHREADSHOLD = 1;
 
 let selectedTargets = {};
 let plagueParticipants = {};
 let selectedPlagueTargets = {};
-let plagueInitiator = "";
-let pollTimeout;
-let pollActive = false;
+let plagueInitiator = null;
+let plagueTimeout;
+let plagueActive = false;
 let secondPhase = false;
+let rats = [];
+let ratsSize = 0;
 
 async function setupRatBotEvents(client, lastMessageId) {
   client.on("guildMemberUpdate", async (oldMember, newMember) => {
     const hadRoleBeforeRat = oldMember.roles.cache.has(process.env.ROLEID_RAT);
-    const hasRoleNowRat = newMember.roles.cache.has(process.env.ROLEID_PEASANT);
-    if (pollActive && hadRoleBeforeRat && !hasRoleNowRat) {
+    const hadRoleBeforeMaggot = oldMember.roles.cache.has(
+      process.env.ROLEID_MAGGOT
+    );
+    const hadRoleBeforeCockroach = oldMember.roles.cache.has(
+      process.env.ROLEID_COCKROACH
+    );
+    const hadRoleBeforeSubhuman = oldMember.roles.cache.has(
+      process.env.ROLEID_SUBHUMAN
+    );
+    const hadRoleBeforePeasant = oldMember.roles.cache.has(
+      process.env.ROLEID_PEASANT
+    );
+    const hadRoleBeforeMerchant = oldMember.roles.cache.has(
+      process.env.ROLEID_MERCHANT
+    );
+    const hadRoleBeforeScholar = oldMember.roles.cache.has(
+      process.env.ROLEID_SCHOLAR
+    );
+    const hadRoleBeforeKnight = oldMember.roles.cache.has(
+      process.env.ROLEID_KNIGHT
+    );
+    const hasRoleNowRat = newMember.roles.cache.has(process.env.ROLEID_RAT);
+    const hasRoleNowMaggot = newMember.roles.cache.has(
+      process.env.ROLEID_MAGGOT
+    );
+    const hasRoleNowCockroach = newMember.roles.cache.has(
+      process.env.ROLEID_COCKROACH
+    );
+    const hasRoleNowSubhuman = newMember.roles.cache.has(
+      process.env.ROLEID_SUBHUMAN
+    );
+    const hasRoleNowPeasant = newMember.roles.cache.has(
+      process.env.ROLEID_PEASANT
+    );
+    const hasRoleNowMerchant = newMember.roles.cache.has(
+      process.env.ROLEID_MERCHANT
+    );
+    const hasRoleNowScholar = newMember.roles.cache.has(
+      process.env.ROLEID_SCHOLAR
+    );
+    const hasRoleNowKnight = newMember.roles.cache.has(
+      process.env.ROLEID_KNIGHT
+    );
+
+    if (plagueActive && hadRoleBeforeRat) {
       if (
         Object.keys(plagueParticipants).findIndex(
           (key) => key === newMember.id
         ) > -1
       ) {
         delete plagueParticipants[newMember.id];
-
-        const channel = await client.channels.fetch(process.env.CHANNELIDRAT);
-        const messageToEdit = await channel.messages.fetch(lastMessageId);
-        let content =
-          initContent +
-          `\n\n@${plagueInitiator} initiated a plague. Join plague with selected target. (Joined ${
-            Object.keys(plagueParticipants).length
-          } rats.)`;
-
         if (secondPhase) {
-          if (Object.keys(plagueParticipants).length <= THREADSHOLD) {
-            triggerPollEarly(client, messageToEdit);
+          if (Object.keys(plagueParticipants).length <= PLAGUETHREADSHOLD) {
+            ceasePlague(client, lastMessageId);
             return;
           }
-          content =
-            initContent +
-            `\n\nPlague initiated by @${plagueInitiator} is in the next phase. Join plague with selected target. (Joined ${
-              Object.keys(plagueParticipants).length
-            } rats.)`;
         }
-        await messageToEdit.edit({
-          content,
-        });
+
+        await updateMessage(client, lastMessageId);
       }
     }
 
-    if (
-      oldMember.roles.cache.has(process.env.ROLEID_MAGGOT) ||
-      oldMember.roles.cache.has(process.env.ROLEID_COCKROACH)
-    ) {
+    if (hadRoleBeforeMaggot || hadRoleBeforeCockroach) {
       for (let userId in selectedTargets) {
         if (
           selectedTargets[userId] &&
@@ -97,23 +125,35 @@ async function setupRatBotEvents(client, lastMessageId) {
         }
       }
     }
+    if (hadRoleBeforeRat || hasRoleNowRat) {
+      if (plagueActive) {
+        const guild = await client.guilds.fetch(process.env.GUILDID);
+        await guild.members.fetch();
+        rats = guild.members.cache.filter((member) =>
+          member.roles.cache.has(process.env.ROLEID_RAT)
+        );
+        ratsSize = rats.size;
+
+        await updateMessage(client, lastMessageId);
+      }
+    }
     if (
-      oldMember.roles.cache.has(process.env.ROLEID_COCKROACH) ||
-      oldMember.roles.cache.has(process.env.ROLEID_MAGGOT) ||
-      oldMember.roles.cache.has(process.env.ROLEID_SUBHUMAN) ||
-      oldMember.roles.cache.has(process.env.ROLEID_PEASANT) ||
-      oldMember.roles.cache.has(process.env.ROLEID_MERCHANT) ||
-      oldMember.roles.cache.has(process.env.ROLEID_SCHOLAR) ||
-      oldMember.roles.cache.has(process.env.ROLEID_KNIGHT) ||
-      newMember.roles.cache.has(process.env.ROLEID_COCKROACH) ||
-      newMember.roles.cache.has(process.env.ROLEID_MAGGOT) ||
-      newMember.roles.cache.has(process.env.ROLEID_SUBHUMAN) ||
-      newMember.roles.cache.has(process.env.ROLEID_PEASANT) ||
-      newMember.roles.cache.has(process.env.ROLEID_MERCHANT) ||
-      newMember.roles.cache.has(process.env.ROLEID_SCHOLAR) ||
-      newMember.roles.cache.has(process.env.ROLEID_KNIGHT)
+      hadRoleBeforeCockroach ||
+      hadRoleBeforeMaggot ||
+      hadRoleBeforeSubhuman ||
+      hadRoleBeforePeasant ||
+      hadRoleBeforeMerchant ||
+      hadRoleBeforeScholar ||
+      hadRoleBeforeKnight ||
+      hasRoleNowCockroach ||
+      hasRoleNowMaggot ||
+      hasRoleNowSubhuman ||
+      hasRoleNowPeasant ||
+      hasRoleNowMerchant ||
+      hasRoleNowScholar ||
+      hasRoleNowKnight
     ) {
-      await updateSelectMenu(client, lastMessageId);
+      await updateMessage(client, lastMessageId);
     }
   });
 
@@ -132,7 +172,7 @@ async function setupRatBotEvents(client, lastMessageId) {
       }
     }
 
-    if (interaction.customId === "SelectPlagueUser") {
+    if (interaction.customId === "SelectPlagueTarget") {
       const userId = interaction.user.id;
       let selectedTargetId = interaction.values[0];
       try {
@@ -219,43 +259,25 @@ async function setupRatBotEvents(client, lastMessageId) {
           // Set cooldown
           await CacheSetCooldown("Plague", userId, PlagueCooldown);
 
-          const channel = await client.channels.fetch(process.env.CHANNELIDRAT);
-          const messageToEdit = await channel.messages.fetch(lastMessageId);
-          const actionRow_0 = ActionRowBuilder.from(
-            messageToEdit.components[0].toJSON()
+          const guild = await client.guilds.fetch(process.env.GUILDID);
+          await guild.members.fetch();
+          rats = guild.members.cache.filter((member) =>
+            member.roles.cache.has(process.env.ROLEID_RAT)
           );
-          const actionRow_1 = ActionRowBuilder.from(
-            messageToEdit.components[1].toJSON()
-          );
-          const btnRow = ActionRowBuilder.from(
-            messageToEdit.components[2].toJSON()
-          );
-          const plagueBtn = ButtonBuilder.from(btnRow.components[1].toJSON());
-          plagueBtn.setDisabled(true);
-          const joinPlagueButton = new ButtonBuilder()
-            .setCustomId("JoinPlague")
-            .setLabel("Join plage with selected target")
-            .setStyle(ButtonStyle.Danger);
-          btnRow.components[1] = plagueBtn;
-          btnRow.components[2] = joinPlagueButton;
-
+          ratsSize = rats.size;
           plagueInitiator = interaction.user.username;
 
-          const content =
-            initContent +
-            `\n\n@${plagueInitiator} initiated a plague. Join plague with selected target. (Joined ${
-              Object.keys(plagueParticipants).length
-            } rats.)`;
-          await messageToEdit.edit({
-            content,
-            components: [actionRow_0, actionRow_1, btnRow],
-          });
+          await startFirstPhasePlague(
+            client,
+            lastMessageId,
+            PlagueFirstPhaseTime
+          );
 
-          startFirstPoll(client, messageToEdit, PlagueFirstPollTimeLimit);
+          await updateMessage(client, lastMessageId);
 
           await sendInteractionReply(
             interaction,
-            "You have successfully initiated plague. Wait for the rats to join."
+            `You have successfully initiated plague with target @${target.user.username}. Wait for the rats to join.`
           );
         } catch (err) {
           showErrorMsg(err);
@@ -286,78 +308,58 @@ async function setupRatBotEvents(client, lastMessageId) {
         roles: target.roles.cache,
       };
 
-      const channel = await client.channels.fetch(process.env.CHANNELIDRAT);
-      const messageToEdit = await channel.messages.fetch(lastMessageId);
-      let content =
-        initContent +
-        `\n\n@${plagueInitiator} initiated a plague. Join plague with selected target. (Joined ${
-          Object.keys(plagueParticipants).length
-        } rats.)`;
-      if (secondPhase)
-        content =
-          initContent +
-          `\n\nPlague initiated by @${plagueInitiator} is in the next phase. Join plague with selected target. (Joined ${
-            Object.keys(plagueParticipants).length
-          } rats.)`;
+      await updateMessage(client, lastMessageId);
 
-      await messageToEdit.edit({
-        content,
-      });
-
-      await sendInteractionReply(interaction, "You have joined the plague.");
+      await sendInteractionReply(
+        interaction,
+        `You have joined the plague with target @${target.user.username}.`
+      );
     }
   });
 
-  eventEmitter.on("notifyChannel", async (message) => {
+  eventEmitter.on("NotifyRatChannel", async (msg) => {
     try {
-      const channel = await client.channels.fetch(process.env.CHANNELIDRAT);
-      const tempMessage = await channel.send(message);
-
-      // Delete the message after 30 seconds
-      setTimeout(() => {
-        tempMessage.delete().catch(console.error);
-      }, 30000);
+      let channel = await client.channels.fetch(process.env.CHANNELIDRAT);
+      const message = await channel.send({
+        content: msg,
+      });
+      setTimeout(async () => {
+        await message.delete().catch(console.error);
+      }, RoleChangeMessageDisplayTime);
     } catch (err) {
       throw err;
     }
   });
 }
 
-async function startFirstPoll(client, messageToEdit, timeout) {
-  pollActive = true;
+async function startFirstPhasePlague(client, lastMessageId, timeout) {
+  plagueActive = true;
   setTimeout(async () => {
-    await handleFirstPollEnd(client, messageToEdit);
+    await handleFirstPhasePlagueEnd(client, lastMessageId);
   }, timeout);
 }
 
-async function handleFirstPollEnd(client, messageToEdit) {
-  if (Object.keys(plagueParticipants).length > THREADSHOLD) {
+async function handleFirstPhasePlagueEnd(client, lastMessageId) {
+  if (Object.keys(plagueParticipants).length > PLAGUETHREADSHOLD) {
     const msg = `The initial phase of plague initiated by @${plagueInitiator} is succeeded, moving to the next phase`;
-    eventEmitter.emit("notifyChannel", msg);
-    startSecondPoll(client, messageToEdit, PlagueSecondPollTimeLimit);
+    eventEmitter.emit("NotifyRatChannel", msg);
+    await startSecondPhasePlauge(client, lastMessageId, PlagueSecondPhaseTime);
   } else {
     const msg = `The plague initiated by @${plagueInitiator} is failed, resetting the poll.`;
-    eventEmitter.emit("notifyChannel", msg);
-    await resetComponents(client, messageToEdit);
+    eventEmitter.emit("NotifyRatChannel", msg);
+    await resetComponents(client, lastMessageId);
   }
 }
 
-async function startSecondPoll(client, messageToEdit, timeout) {
+async function startSecondPhasePlauge(client, lastMessageId, timeout) {
   secondPhase = true;
-  const content =
-    initContent +
-    `\n\nPlague initiated by @${plagueInitiator} is in the next phase. Join plague with selected target. (Joined ${
-      Object.keys(plagueParticipants).length
-    } rats.)`;
-  await messageToEdit.edit({
-    content,
-  });
-  pollTimeout = setTimeout(async () => {
-    await handleSecondPollEnd(client, messageToEdit);
+
+  plagueTimeout = setTimeout(async () => {
+    await handleSecondPhasePlagueEnd(client, lastMessageId);
   }, timeout);
 }
 
-async function handleSecondPollEnd(client, messageToEdit) {
+async function handleSecondPhasePlagueEnd(client, lastMessageId) {
   const refinedTargets = {};
   Object.keys(plagueParticipants).forEach((userId) => {
     const targetId = plagueParticipants[userId].targetId;
@@ -400,61 +402,109 @@ async function handleSecondPollEnd(client, messageToEdit) {
     )
       killTarget = true;
 
-    console.log("REFINED", refinedTargets);
-    console.log("KillTARGET", killTarget);
-
     if (killTarget) {
       const guild = await client.guilds.fetch(process.env.GUILDID);
       const target = await guild.members.fetch(targetId);
       eventEmitter.emit("changeRole", target, "Poop");
       eventEmitter.emit(
-        "notifyChannel",
+        "NotifyRatChannel",
         `@${target.user.username} has been killed of plague.`
       );
     }
   });
-  resetComponents(client, messageToEdit);
+  eventEmitter.emit("NotifyRatChannel", `Plague finished.`);
+  await resetComponents(client, lastMessageId);
 }
 
-// Function to trigger the poll early
-async function triggerPollEarly(client, messageToEdit) {
-  if (pollTimeout) {
-    clearTimeout(pollTimeout); // Clear the original timeout
+async function ceasePlague(client, lastMessageId) {
+  if (plagueTimeout) {
+    clearTimeout(plagueTimeout);
     eventEmitter.emit(
-      "notifyChannel",
+      "NotifyRatChannel",
       "Plague failed because of insufficient number of rats."
     );
-    await resetComponents(client, messageToEdit);
+    await resetComponents(client, lastMessageId);
   }
 }
 
-async function updateSelectMenu(client, lastMessageId) {
+async function updateMessage(client, lastMessageId) {
   try {
     const channel = await client.channels.fetch(process.env.CHANNELIDRAT);
     const messageToEdit = await channel.messages.fetch(lastMessageId);
-    const selectMenu = await buildSelectMenu(
-      client,
-      ["maggot", "cockroach"],
-      "SelectNibbleUser"
-    );
-    const actionRow_0 = new ActionRowBuilder().addComponents(selectMenu);
-    const actionRow_1 = new ActionRowBuilder().addComponents(
-      await buildSelectMenu(
-        client,
-        ["subhuman", "peasant", "scholar", "merchant", "knight"],
-        "SelectPlagueUser"
-      )
-    );
-    const existingComponents = messageToEdit.components.map((component) =>
-      ActionRowBuilder.from(component.toJSON())
-    );
-    existingComponents[0] = actionRow_0;
-    existingComponents[1] = actionRow_1;
 
-    await messageToEdit.edit({
-      content: messageToEdit.content,
-      components: existingComponents,
-    });
+    if (plagueActive) {
+      const actionRow_0 = new ActionRowBuilder().addComponents(
+        await buildSelectMenu(
+          client,
+          ["maggot", "cockroach"],
+          "SelectNibbleUser"
+        )
+      );
+      const actionRow_1 = new ActionRowBuilder().addComponents(
+        await buildSelectMenu(
+          client,
+          ["subhuman", "peasant", "scholar", "merchant", "knight"],
+          "SelectPlagueTarget"
+        )
+      );
+      const btnRow = new ActionRowBuilder().addComponents(
+        new ButtonBuilder()
+          .setCustomId("Nibble")
+          .setLabel("Nibble")
+          .setStyle(ButtonStyle.Primary),
+        new ButtonBuilder()
+          .setCustomId("JoinPlague")
+          .setLabel("Join plage with selected target")
+          .setStyle(ButtonStyle.Danger)
+      );
+
+      let content =
+        initContent +
+        `\n\n@${plagueInitiator} initiated a plague. Join plague with selected target. (Joined ${
+          Object.keys(plagueParticipants).length
+        } / ${ratsSize} rats.)`;
+      if (secondPhase)
+        content =
+          initContent +
+          `\n\nPlague initiated by @${plagueInitiator} is in the next phase. Join plague with selected target. (Joined ${
+            Object.keys(plagueParticipants).length
+          } / ${ratsSize} rats.)`;
+
+      await messageToEdit.edit({
+        content,
+        components: [actionRow_0, actionRow_1, btnRow],
+      });
+    } else {
+      const actionRow_0 = new ActionRowBuilder().addComponents(
+        await buildSelectMenu(
+          client,
+          ["maggot", "cockroach"],
+          "SelectNibbleUser"
+        )
+      );
+      const actionRow_1 = new ActionRowBuilder().addComponents(
+        await buildSelectMenu(
+          client,
+          ["subhuman", "peasant", "scholar", "merchant", "knight"],
+          "SelectPlagueTarget"
+        )
+      );
+      const btnRow = new ActionRowBuilder().addComponents(
+        new ButtonBuilder()
+          .setCustomId("Nibble")
+          .setLabel("Nibble")
+          .setStyle(ButtonStyle.Primary),
+        new ButtonBuilder()
+          .setCustomId("Plague")
+          .setLabel("Plague")
+          .setStyle(ButtonStyle.Danger)
+      );
+
+      await messageToEdit.edit({
+        content: initContent,
+        components: [actionRow_0, actionRow_1, btnRow],
+      });
+    }
   } catch (err) {
     showErrorMsg(err);
   }
@@ -472,7 +522,7 @@ async function messageRatCommands(client) {
       await buildSelectMenu(
         client,
         ["subhuman", "peasant", "scholar", "merchant", "knight"],
-        "SelectPlagueUser"
+        "SelectPlagueTarget"
       )
     );
 
@@ -496,37 +546,15 @@ async function messageRatCommands(client) {
   }
 }
 
-async function resetComponents(client, messageToEdit) {
+async function resetComponents(client, lastMessageId) {
   try {
     selectedTargets = {};
     plagueParticipants = {};
     selectedPlagueTargets = {};
-    plagueInitiator = "";
-    pollActive = false;
+    plagueInitiator = null;
+    plagueActive = false;
     secondPhase = false;
-
-    const actionRow_0 = ActionRowBuilder.from(
-      messageToEdit.components[0].toJSON()
-    );
-    const actionRow_1 = ActionRowBuilder.from(
-      messageToEdit.components[1].toJSON()
-    );
-
-    const btnRow = new ActionRowBuilder().addComponents(
-      new ButtonBuilder()
-        .setCustomId("Nibble")
-        .setLabel("Nibble")
-        .setStyle(ButtonStyle.Primary),
-      new ButtonBuilder()
-        .setCustomId("Plague")
-        .setLabel("Plague")
-        .setStyle(ButtonStyle.Danger)
-    );
-
-    await messageToEdit.edit({
-      content: initContent,
-      components: [actionRow_0, actionRow_1, btnRow],
-    });
+    await updateMessage(client, lastMessageId);
   } catch (err) {
     throw err;
   }

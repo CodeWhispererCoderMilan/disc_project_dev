@@ -455,7 +455,7 @@ async function CacheCheckAndUpdateUserWrits(userId) {
           (writData.writerId === userId ||
             writData.knightId === userId ||
             writData.targetId === userId) &&
-          writData.writStatus !== 3
+          writData.writStatus == 0
         ) {
           writData.writStatus = 3;
           updatedMulti.set(allKeys[index], JSON.stringify(writData));

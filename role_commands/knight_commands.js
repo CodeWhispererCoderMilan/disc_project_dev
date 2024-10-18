@@ -149,12 +149,14 @@ async function setupKnightBotEvents(client, lastMessageId) {
       hadRoleBeforeLord ||
       hadRoleBeforeKing ||
       hadRoleBeforeEmperor ||
+      hadRoleBeforeKnight ||
       hasRoleNowPeasant ||
       hasRoleNowScholar ||
       hasRoleNowMerchant ||
       hasRoleNowNoble ||
       hasRoleNowLord ||
       hasRoleNowKing ||
+      hasRoleNowKnight ||
       hasRoleNowEmperor
     ) {
       await updateMessage(client, lastMessageId);

@@ -125,8 +125,7 @@ async function setupRatBotEvents(client, lastMessageId) {
         }
       }
     }
-    if (hadRoleBeforeRat || hasRoleNowRat) {
-      if (plagueActive) {
+    if (plagueActive && hasRoleNowRat) {
         const guild = await client.guilds.fetch(process.env.GUILDID);
         await guild.members.fetch();
         rats = guild.members.cache.filter((member) =>
@@ -135,7 +134,6 @@ async function setupRatBotEvents(client, lastMessageId) {
         ratsSize = rats.size;
 
         await updateMessage(client, lastMessageId);
-      }
     }
     if (
       hadRoleBeforeCockroach ||

@@ -293,7 +293,8 @@ async function setupKnightBotEvents(client, lastMessageId) {
           else if (
             hasWrit2 &&
             !targetRoles.has(process.env.ROLEID_LORD) &&
-            !targetRoles.has(process.env.ROLEID_KING)
+            !targetRoles.has(process.env.ROLEID_KING) &&
+            !targetRoles.has(process.env.ROLEID_KNIGHT) 
           )
             validWrit = 2;
 
@@ -715,12 +716,29 @@ async function executeCutDown(interaction, userId, targetId, userXP, client) {
 
   const newXP = parseInt(userXP) + totalXpReward;
   const writDetails = relevantWrits
-    .map((writ) => `type ${writ.writType}`)
+    .map((writ) => `${getWritType(writ.writType)}`)
     .join(", ");
   await sendInteractionReply(
     interaction,
     `(${newXP} XP) Cut Down successful. Executed ${relevantWrits.length} writ(s): ${writDetails}. Total reward: ${totalXpReward} XP`
   );
+}
+
+function getWritType(type){
+    switch (type) {
+      case 1:
+        return "High Writ";
+      case 2:
+        return "Eminent Writ";
+      case 3:
+        return "Royal Writ";
+      case 4:
+        return "Imperial Writ";
+      default:
+        showErrorMsg("Writ type incorrect");
+	return;
+    }
+	
 }
 
 async function performCutDown(interaction, targetId) {
@@ -905,13 +923,20 @@ async function updateMessage(client, lastMessageId) {
     const messageToEdit = await channel.messages.fetch(lastMessageId);
 
     if (siegeActive) {
-      const actionRow_0 = ActionRowBuilder.from(
-        messageToEdit.components[0].toJSON()
-      );
-      const actionRow_1 = ActionRowBuilder.from(
-        messageToEdit.components[1].toJSON()
-      );
-      const btnRow_1 = new ActionRowBuilder().addComponents(
+    const actionRow_0 = new ActionRowBuilder().addComponents(
+      await buildSelectMenu(
+        client,
+        ["peasant", "scholar", "merchant", "noble", "lord", "king","knight"],
+        "SelectCutDown"
+      )
+    );
+     const actionRow_1 = new ActionRowBuilder().addComponents(
+      await buildSelectMenu(
+        client,
+        ["noble", "lord", "king", "emperor"],
+        "SelectCoupTarget"
+      )
+    );      const btnRow_1 = new ActionRowBuilder().addComponents(
         new ButtonBuilder()
           .setCustomId("CutDown")
           .setLabel("Cut Down")
@@ -935,9 +960,13 @@ async function updateMessage(client, lastMessageId) {
 
     if (coupActive) {
       if (!emperorElectionActive) {
-        const actionRow_0 = ActionRowBuilder.from(
-          messageToEdit.components[0].toJSON()
-        );
+    const actionRow_0 = new ActionRowBuilder().addComponents(
+      await buildSelectMenu(
+        client,
+        ["peasant", "scholar", "merchant", "noble", "lord", "king","knight"],
+        "SelectCutDown"
+      )
+    );
         const actionRow_1 = new ActionRowBuilder().addComponents(
           await buildSelectMenu(
             client,
@@ -977,9 +1006,13 @@ async function updateMessage(client, lastMessageId) {
         });
       } else {
         if (reelectionActive) {
-          const actionRow_0 = ActionRowBuilder.from(
-            messageToEdit.components[0].toJSON()
-          );
+    const actionRow_0 = new ActionRowBuilder().addComponents(
+      await buildSelectMenu(
+        client,
+        ["peasant", "scholar", "merchant", "noble", "lord", "king","knight"],
+        "SelectCutDown"
+      )
+    );
           const actionRow_1 = new ActionRowBuilder().addComponents(
             new StringSelectMenuBuilder()
               .setCustomId("SelectEmperorUser")
@@ -1009,9 +1042,13 @@ async function updateMessage(client, lastMessageId) {
             components: [actionRow_0, actionRow_1, btnRow_1, btnRow_2],
           });
         } else {
-          const actionRow_0 = ActionRowBuilder.from(
-            messageToEdit.components[0].toJSON()
-          );
+    const actionRow_0 = new ActionRowBuilder().addComponents(
+      await buildSelectMenu(
+        client,
+        ["peasant", "scholar", "merchant", "noble", "lord", "king","knight"],
+        "SelectCutDown"
+      )
+    );
           const actionRow_1 = new ActionRowBuilder().addComponents(
             await buildSelectMenu(
               client,
@@ -1049,7 +1086,7 @@ async function updateMessage(client, lastMessageId) {
       const cutDownSelectMenu = new ActionRowBuilder().addComponents(
         await buildSelectMenu(
           client,
-          ["peasant", "scholar", "merchant", "noble", "lord", "king"],
+          ["peasant", "scholar", "merchant", "noble", "lord", "king","knight"],
           "SelectCutDown"
         )
       );
@@ -1094,7 +1131,7 @@ async function messageKnightCommands(client) {
     const cutDownSelectMenu = new ActionRowBuilder().addComponents(
       await buildSelectMenu(
         client,
-        ["peasant", "scholar", "merchant", "noble", "lord", "king"],
+        ["peasant", "scholar", "merchant", "noble", "lord", "king","knight"],
         "SelectCutDown"
       )
     );

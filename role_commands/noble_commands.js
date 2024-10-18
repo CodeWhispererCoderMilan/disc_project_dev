@@ -8,21 +8,21 @@ const {
 	TextInputStyle
 } = require("discord.js");
 const {
-  buildSelectMenu,
-  sendInteractionReply,
+	buildSelectMenu,
+	sendInteractionReply,
 } = require("../functions/botActions");
 const {
-  CacheGetCooldown,
-  CacheSetCooldown,
+	CacheGetCooldown,
+	CacheSetCooldown,
 	CacheGetUserXP,
 	CacheGetWriterWrits,
 	CacheSetWrit
 } = require("../apis/redis/redisCache");
 const {
-  AssassinationTime,
-  AssassinationThreadshold,
-  GlobalCoolDown,
-  RoleChangeMessageDisplayTime,
+	AssassinationTime,
+	AssassinationThreadshold,
+	GlobalCoolDown,
+	RoleChangeMessageDisplayTime,
 	HighWritCost,
 	HighWritCooldown
 } = require("../game_config.json");
@@ -43,112 +43,110 @@ const selectedHumans = {};
 const selectedKnights = {};
 
 const initContent =
-  "Nobles can assassin a target of their role by selecting Knight, Noble or Lord in a menu and clicking a button. If over 3 of participants join before the timer ends, the target's role is changed to POOP; otherwise, the attempt fails. A global cooldown is activated after each use.\n\n" +
-  "**Abilities:**\n" +
-  "- **Assassination**: With more than 3 of Nobles, you can make one knight, noble or lord to poop.";
+	"Nobles can assassin a target of their role by selecting Knight, Noble or Lord in a menu and clicking a button. If over 3 of participants join before the timer ends, the target's role is changed to POOP; otherwise, the attempt fails. A global cooldown is activated after each use.\n\n" +
+	"**Abilities:**\n" +
+	"- **Assassination**: With more than 3 of Nobles, you can make one knight, noble or lord to poop.";
 
 function showErrorMsg(err) {
-  console.error("ERROR: noble_commands.js", err);
+	console.error("ERROR: noble_commands.js", err);
 }
 
 async function setupNobleBotEvents(client, lastMessageId) {
-  client.on("guildMemberUpdate", async (oldMember, newMember) => {
-    const hadRoleBeforeNoble = oldMember.roles.cache.has(
-      process.env.ROLEID_NOBLE
-    );
-    const hasRoleNowNoble = newMember.roles.cache.has(process.env.ROLEID_NOBLE);
-    const hadRoleBeforeKnight = oldMember.roles.cache.has(
-      process.env.ROLEID_KNIGHT
-    );
-    const hasRoleNowKnight = newMember.roles.cache.has(
-      process.env.ROLEID_KNIGHT
-    );
-	  const hadRoleBeforeLord = oldMember.roles.cache.has(
-		  process.env.ROLEID_LORD
-	  );
-	  const hasRoleNowLord = newMember.roles.cache.has(process.env.ROLEID_LORD);
-	  if (oldMember.roles.cache.has(process.env.ROLEID_PEASANT) ||
-		  oldMember.roles.cache.has(process.env.ROLEID_SCHOLAR) ||
-		  oldMember.roles.cache.has(process.env.ROLEID_MERCHANT) ||
-		  oldMember.roles.cache.has(process.env.ROLEID_KNIGHT) ||
-		  newMember.roles.cache.has(process.env.ROLEID_PEASANT) ||
-		  newMember.roles.cache.has(process.env.ROLEID_SCHOLAR) ||
-		  newMember.roles.cache.has(process.env.ROLEID_MERCHANT) ||
-		  newMember.roles.cache.has(process.env.ROLEID_KNIGHT)) {
-		  await updateMessage(client, lastMessageId);
-		  for(let userId in selectedHumans){
-			  if(selectedHumans[userId] && selectedHumans[userId].id === oldMember.id){
-				  selectedHumans[userId] = null;
-			  }
-		  }
-		  for(let userId in selectedKnights){
-			  if(selectedKnights[userId] && selectedKnights[userId].id === oldMember.id){
-				  selectedHumans[userId] = null;
-			  }
-		  }
-	  }
-	  if (assassinationActive && hadRoleBeforeNoble) {
-		  if (assassinationParticipants.has(newMember.id)) {
-			  try {
-				  selectedTargets[newMember.id] = null;
-				  assassinationParticipants.delete(newMember.id);
-				  const guild = await client.guilds.fetch(process.env.GUILDID);
-				  // await guild.members.fetch();
-				  nobles = guild.members.cache.filter((member) =>
-					  member.roles.cache.has(process.env.ROLEID_NOBLE)
-				  );
-				  noblesSize = nobles.size;
+	client.on("guildMemberUpdate", async (oldMember, newMember) => {
+		const hadRoleBeforeNoble = oldMember.roles.cache.has(
+			process.env.ROLEID_NOBLE
+		);
+		const hasRoleNowNoble = newMember.roles.cache.has(process.env.ROLEID_NOBLE);
+		const hadRoleBeforeKnight = oldMember.roles.cache.has(
+			process.env.ROLEID_KNIGHT
+		);
+		const hadRoleBeforeLord = oldMember.roles.cache.has(
+			process.env.ROLEID_LORD
+		);
+		const hasRoleNowLord = newMember.roles.cache.has(process.env.ROLEID_LORD);
+		if (oldMember.roles.cache.has(process.env.ROLEID_PEASANT) ||
+			oldMember.roles.cache.has(process.env.ROLEID_SCHOLAR) ||
+			oldMember.roles.cache.has(process.env.ROLEID_MERCHANT) ||
+			oldMember.roles.cache.has(process.env.ROLEID_KNIGHT) ||
+			newMember.roles.cache.has(process.env.ROLEID_PEASANT) ||
+			newMember.roles.cache.has(process.env.ROLEID_SCHOLAR) ||
+			newMember.roles.cache.has(process.env.ROLEID_MERCHANT) ||
+			newMember.roles.cache.has(process.env.ROLEID_KNIGHT)) {
+			await updateMessage(client, lastMessageId);
+			for(let userId in selectedHumans){
+				if(selectedHumans[userId] && selectedHumans[userId].id === oldMember.id){
+					selectedHumans[userId] = null;
+				}
+			}
+			for(let userId in selectedKnights){
+				if(selectedKnights[userId] && selectedKnights[userId].id === oldMember.id){
+					selectedKnights[userId] = null;
+				}
+			}
+		}
+		if (assassinationActive && hadRoleBeforeNoble) {
+			if (assassinationParticipants.has(newMember.id)) {
+				try {
+					selectedTargets[newMember.id] = null;
+					assassinationParticipants.delete(newMember.id);
+					const guild = await client.guilds.fetch(process.env.GUILDID);
+					// await guild.members.fetch();
+					nobles = guild.members.cache.filter((member) =>
+						member.roles.cache.has(process.env.ROLEID_NOBLE)
+					);
+					noblesSize = nobles.size;
 
-				  if (newMember.id === assassinationInitiatorId) {
-					  const msg = `The initiator @${assassinationInitiator} is no longer a noble.`;
-					  eventEmitter.emit("NotifyNobleChannel", msg);
-					  assassinationActive = false;
-					  await ceaseAssassination(client, lastMessageId);
-					  return;
-				  } else updateMessage(client, lastMessageId);
-			  } catch (err) {
-				  showErrorMsg(err);
-			  }
-		  }
-	  }
-	  if (
-		  assassinationActive &&
-		  (hadRoleBeforeKnight || hadRoleBeforeNoble || hadRoleBeforeLord)
-	  ) {
-		  if (newMember.id === assassinationTargetId) {
-			  try {
-				  const msg = `The role of the target @${assassinationTarget} has been changed.`;
-				  eventEmitter.emit("NotifyNobleChannel", msg);
-				  assassinationActive = false;
-				  await ceaseAssassination(client, lastMessageId);
-				  return;
-			  } catch (e) {
-				  showErrorMsg(e);
-			  }
-		  }
-	  }
-	  if (
-		  hadRoleBeforeKnight ||
-		  hasRoleNowKnight ||
-		  hadRoleBeforeNoble ||
-		  hasRoleNowNoble ||
-		  hadRoleBeforeLord ||
-		  hasRoleNowLord
-	  ) {
-		  if (lastMessageId) {
-			  try {
-				  const guild = await client.guilds.fetch(process.env.GUILDID);
-				  nobles = guild.members.cache.filter((member) =>
-					  member.roles.cache.has(process.env.ROLEID_NOBLE)
-				  );
-				  noblesSize = nobles.size;
-				  await updateMessage(client, lastMessageId);
-			  } catch (err) {
-				  showErrorMsg(err);
-			  }
-		  }
-	  }
-  });
+					if (newMember.id === assassinationInitiatorId) {
+						const msg = `The initiator @${assassinationInitiator} is no longer a noble.`;
+						eventEmitter.emit("NotifyNobleChannel", msg);
+						assassinationActive = false;
+						await ceaseAssassination(client, lastMessageId);
+						return;
+					} else updateMessage(client, lastMessageId);
+				} catch (err) {
+					showErrorMsg(err);
+				}
+			}
+		}
+		if (
+			assassinationActive &&
+			(hadRoleBeforeKnight || hadRoleBeforeNoble || hadRoleBeforeLord)
+		) {
+			if (newMember.id === assassinationTargetId) {
+				try {
+					const msg = `The role of the target @${assassinationTarget} has been changed.`;
+					eventEmitter.emit("NotifyNobleChannel", msg);
+					assassinationActive = false;
+					await ceaseAssassination(client, lastMessageId);
+					return;
+				} catch (e) {
+					showErrorMsg(e);
+				}
+			}
+		}
+		if(assassinationActive && hasRoleNowNoble){
+					const guild = await client.guilds.fetch(process.env.GUILDID);
+					nobles = guild.members.cache.filter((member) =>
+						member.roles.cache.has(process.env.ROLEID_NOBLE)
+					);
+					noblesSize = nobles.size;
+					await updateMessage(client, lastMessageId);
+		}
+		if (
+			hadRoleBeforeNoble ||
+			hasRoleNowNoble ||
+			hadRoleBeforeLord ||
+			hasRoleNowLord && !assassinationActive
+		) {
+			if (lastMessageId) {
+				try {
+					await updateMessage(client, lastMessageId);
+				} catch (err) {
+					showErrorMsg(err);
+				}
+			}
+		}
+	});
 
 	client.on("interactionCreate", async (interaction) => {
 		if (!interaction.isStringSelectMenu() && !interaction.isButton() && !interaction.isModalSubmit()) return;
@@ -209,7 +207,6 @@ async function setupNobleBotEvents(client, lastMessageId) {
 			}
 		}
 		if (interaction.customId === "ShowWrits") {
-			await interaction.deferUpdate();
 			await handleShowWrits(interaction);
 		}
 
@@ -468,7 +465,7 @@ async function updateMessage(client, lastMessageId) {
 				.setCustomId("ShowWrits")
 				.setLabel("Show Writs")
 				.setStyle(ButtonStyle.Secondary)
-			)
+			);
 
 
 			await messageToEdit.edit({
@@ -509,7 +506,7 @@ async function updateMessage(client, lastMessageId) {
 				.setCustomId("ShowWrits")
 				.setLabel("Show Writs")
 				.setStyle(ButtonStyle.Secondary)
-			)
+			);
 			await messageToEdit.edit({
 				content:
 				initContent +
@@ -564,7 +561,7 @@ async function messageNobleCommands(client) {
 			.setCustomId("ShowWrits")
 			.setLabel("Show Writs")
 			.setStyle(ButtonStyle.Secondary)
-		)
+		);
 		const message = await channel.send({
 			content: initContent,
 			components: [actionRow_0, actionRow_1, actionRow_2, buttonRow, infoBtnRow],

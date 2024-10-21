@@ -296,7 +296,7 @@ async function setupKnightBotEvents(client, lastMessageId) {
             hasWrit2 &&
             !targetRoles.has(process.env.ROLEID_LORD) &&
             !targetRoles.has(process.env.ROLEID_KING) &&
-            !targetRoles.has(process.env.ROLEID_KNIGHT) 
+            !targetRoles.has(process.env.ROLEID_KNIGHT)
           )
             validWrit = 2;
 
@@ -618,7 +618,7 @@ async function handleShowWrits(interaction) {
 function getWritType(writType) {
   switch (writType) {
     case 1:
-    return "High";
+      return "High";
     case 2:
       return "Eminent";
     case 3:
@@ -726,21 +726,20 @@ async function executeCutDown(interaction, userId, targetId, userXP, client) {
   );
 }
 
-function getWritType(type){
-    switch (type) {
-      case 1:
-        return "High Writ";
-      case 2:
-        return "Eminent Writ";
-      case 3:
-        return "Royal Writ";
-      case 4:
-        return "Imperial Writ";
-      default:
-        showErrorMsg("Writ type incorrect");
-	return;
-    }
-	
+function getWritType(type) {
+  switch (type) {
+    case 1:
+      return "High Writ";
+    case 2:
+      return "Eminent Writ";
+    case 3:
+      return "Royal Writ";
+    case 4:
+      return "Imperial Writ";
+    default:
+      showErrorMsg("Writ type incorrect");
+      return;
+  }
 }
 
 async function performCutDown(interaction, targetId) {
@@ -925,20 +924,21 @@ async function updateMessage(client, lastMessageId) {
     const messageToEdit = await channel.messages.fetch(lastMessageId);
 
     if (siegeActive) {
-    const actionRow_0 = new ActionRowBuilder().addComponents(
-      await buildSelectMenu(
-        client,
-        ["peasant", "scholar", "merchant", "noble", "lord", "king","knight"],
-        "SelectCutDown"
-      )
-    );
-     const actionRow_1 = new ActionRowBuilder().addComponents(
-      await buildSelectMenu(
-        client,
-        ["noble", "lord", "king", "emperor"],
-        "SelectCoupTarget"
-      )
-    );      const btnRow_1 = new ActionRowBuilder().addComponents(
+      const actionRow_0 = new ActionRowBuilder().addComponents(
+        await buildSelectMenu(
+          client,
+          ["peasant", "scholar", "merchant", "noble", "lord", "king", "knight"],
+          "SelectCutDown"
+        )
+      );
+      const actionRow_1 = new ActionRowBuilder().addComponents(
+        await buildSelectMenu(
+          client,
+          ["noble", "lord", "king", "emperor"],
+          "SelectCoupTarget"
+        )
+      );
+      const btnRow_1 = new ActionRowBuilder().addComponents(
         new ButtonBuilder()
           .setCustomId("CutDown")
           .setLabel("Cut Down")
@@ -962,13 +962,21 @@ async function updateMessage(client, lastMessageId) {
 
     if (coupActive) {
       if (!emperorElectionActive) {
-    const actionRow_0 = new ActionRowBuilder().addComponents(
-      await buildSelectMenu(
-        client,
-        ["peasant", "scholar", "merchant", "noble", "lord", "king","knight"],
-        "SelectCutDown"
-      )
-    );
+        const actionRow_0 = new ActionRowBuilder().addComponents(
+          await buildSelectMenu(
+            client,
+            [
+              "peasant",
+              "scholar",
+              "merchant",
+              "noble",
+              "lord",
+              "king",
+              "knight",
+            ],
+            "SelectCutDown"
+          )
+        );
         const actionRow_1 = new ActionRowBuilder().addComponents(
           await buildSelectMenu(
             client,
@@ -1008,13 +1016,21 @@ async function updateMessage(client, lastMessageId) {
         });
       } else {
         if (reelectionActive) {
-    const actionRow_0 = new ActionRowBuilder().addComponents(
-      await buildSelectMenu(
-        client,
-        ["peasant", "scholar", "merchant", "noble", "lord", "king","knight"],
-        "SelectCutDown"
-      )
-    );
+          const actionRow_0 = new ActionRowBuilder().addComponents(
+            await buildSelectMenu(
+              client,
+              [
+                "peasant",
+                "scholar",
+                "merchant",
+                "noble",
+                "lord",
+                "king",
+                "knight",
+              ],
+              "SelectCutDown"
+            )
+          );
           const actionRow_1 = new ActionRowBuilder().addComponents(
             new StringSelectMenuBuilder()
               .setCustomId("SelectEmperorUser")
@@ -1044,13 +1060,21 @@ async function updateMessage(client, lastMessageId) {
             components: [actionRow_0, actionRow_1, btnRow_1, btnRow_2],
           });
         } else {
-    const actionRow_0 = new ActionRowBuilder().addComponents(
-      await buildSelectMenu(
-        client,
-        ["peasant", "scholar", "merchant", "noble", "lord", "king","knight"],
-        "SelectCutDown"
-      )
-    );
+          const actionRow_0 = new ActionRowBuilder().addComponents(
+            await buildSelectMenu(
+              client,
+              [
+                "peasant",
+                "scholar",
+                "merchant",
+                "noble",
+                "lord",
+                "king",
+                "knight",
+              ],
+              "SelectCutDown"
+            )
+          );
           const actionRow_1 = new ActionRowBuilder().addComponents(
             await buildSelectMenu(
               client,
@@ -1088,7 +1112,7 @@ async function updateMessage(client, lastMessageId) {
       const cutDownSelectMenu = new ActionRowBuilder().addComponents(
         await buildSelectMenu(
           client,
-          ["peasant", "scholar", "merchant", "noble", "lord", "king","knight"],
+          ["peasant", "scholar", "merchant", "noble", "lord", "king", "knight"],
           "SelectCutDown"
         )
       );
@@ -1133,7 +1157,7 @@ async function messageKnightCommands(client) {
     const cutDownSelectMenu = new ActionRowBuilder().addComponents(
       await buildSelectMenu(
         client,
-        ["peasant", "scholar", "merchant", "noble", "lord", "king","knight"],
+        ["peasant", "scholar", "merchant", "noble", "lord", "king", "knight"],
         "SelectCutDown"
       )
     );

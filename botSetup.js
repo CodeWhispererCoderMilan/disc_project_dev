@@ -66,7 +66,35 @@ const {
   CacheIsPoopBeingFestered,
   CacheGetFesteringTarget,
 } = require("./apis/redis/redisCache.js");
+const {
+  RevolutionFirstPhaseTime,
+  RevolutionSecondPhaseTime,
+  RevolutionKillKnight,
+  RevolutionKillNoble,
+  RevolutionKillLord,
+  RevolutionKillKing,
+  RevolutionKillEmperor,
+  RevolutionEmperorElectionTime,
+  RevolutionEmperorElectionKnightWeight,
+} = require("./game_config.json");
 const { eventEmitter } = require("./functions/eventEmitter.js");
+
+let revolutionarySize = 0;
+let peopleSize = 0;
+let peasantSize = 0;
+let scholarSize = 0;
+let merchantSize = 0;
+let knightSize = 0;
+let peasantParticipants = 0;
+let scholarParticipants = 0;
+let merchantParticipants = 0;
+let knightParticipants = 0;
+let revolutionTimeout;
+let revolutionSecondPhase = false;
+let emperorElectionActive = false;
+
+const REVOLUTIONTHREADSHOLD = 0.5;
+const REVOLUTIONTHREADSHOLD2 = 0.5;
 
 function createConsoleBot(token) {
   const client = new Client({
@@ -187,8 +215,300 @@ function createConsoleBot(token) {
     }
   });
 
+  eventEmitter.on("StartRevolution", async () => {
+    try {
+      eventEmitter.emit("RevolutionStarted");
+      setTimeout(async () => {
+        await handleFirstPhaseRevolutionEnd();
+      }, RevolutionFirstPhaseTime);
+    } catch (err) {
+      throw err;
+    }
+  });
+
+  eventEmitter.on(
+    "SendRevolutionStatus",
+    async (hierachy, participants, groupSize) => {
+      try {
+        switch (hierachy) {
+          case "Peasant":
+            peasantParticipants = participants;
+            peasantSize = groupSize;
+            break;
+          case "Merchant":
+            merchantParticipants = participants;
+            merchantSize = groupSize;
+            break;
+          case "Scholar":
+            scholarParticipants = participants;
+            scholarSize = groupSize;
+            break;
+          case "Knight":
+            knightParticipants = participants;
+            knightSize = groupSize;
+            break;
+        }
+        revolutionarySize =
+          Object.keys(peasantParticipants).length +
+          Object.keys(scholarParticipants).length +
+          Object.keys(merchantParticipants).length +
+          Object.keys(knightParticipants).length;
+        peopleSize = peasantSize + merchantSize + scholarSize + knightSize;
+
+        if (revolutionSecondPhase && !emperorElectionActive) {
+          const success =
+            revolutionarySize / peopleSize > REVOLUTIONTHREADSHOLD2;
+          if (!success) {
+            clearTimeout(revolutionTimeout);
+            notifyRevolutionResult(
+              "Revolution failed because of insufficient number of participants."
+            );
+            await resetRevolution();
+            eventEmitter.emit("RevolutionFinished");
+            return;
+          }
+        }
+        eventEmitter.emit(
+          "UpdateRevolutionStatus",
+          revolutionarySize,
+          peopleSize
+        );
+      } catch (err) {
+        throw err;
+      }
+    }
+  );
+
   client.login(token);
   return client;
+}
+
+async function handleFirstPhaseRevolutionEnd() {
+  const success = revolutionarySize / peopleSize > REVOLUTIONTHREADSHOLD;
+  if (success) {
+    notifyRevolutionResult("Revolution moved in the second phase.");
+    revolutionSecondPhase = true;
+    eventEmitter.emit("RevolutionMovedInSecondPhase");
+    revolutionTimeout = setTimeout(async () => {
+      await handleSecondPhaseRevolutionEnd();
+    }, RevolutionSecondPhaseTime);
+  } else {
+    notifyRevolutionResult("Revolution Failed.");
+    eventEmitter.emit("RevolutionFinished");
+  }
+}
+
+async function resetRevolution() {
+  revolutionarySize = 0;
+  peopleSize = 0;
+  peasantSize = 0;
+  scholarSize = 0;
+  merchantSize = 0;
+  knightSize = 0;
+  peasantParticipants = 0;
+  scholarParticipants = 0;
+  merchantParticipants = 0;
+  knightParticipants = 0;
+  revolutionSecondPhase = false;
+  emperorElectionActive = false;
+}
+
+async function handleSecondPhaseRevolutionEnd() {
+  const refinedTargets = {};
+  const revolutionParticipants = {
+    ...peasantParticipants,
+    ...knightParticipants,
+    ...scholarParticipants,
+    ...merchantParticipants,
+  };
+  Object.keys(revolutionParticipants).forEach((userId) => {
+    const targetId = revolutionParticipants[userId].user.id;
+    let targetedNumber = 1;
+    Object.keys(revolutionParticipants).forEach((otherUserId) => {
+      const otherTargetId = revolutionParticipants[otherUserId].user.id;
+      if (userId !== otherUserId && targetId === otherTargetId)
+        targetedNumber++;
+    });
+    refinedTargets[targetId] = {
+      targetedNumber,
+      // roles: revolutionParticipants[userId].roles,
+      target: revolutionParticipants[userId],
+    };
+  });
+
+  let isEmperorDead = false;
+  Object.keys(refinedTargets).forEach(async (targetId) => {
+    let killTarget = false;
+    if (
+      refinedTargets[targetId].target.roles.cache.has(
+        process.env.ROLEID_KNIGHT
+      ) &&
+      refinedTargets[targetId].targetedNumber > RevolutionKillKnight
+    )
+      killTarget = true;
+    if (
+      refinedTargets[targetId].target.roles.cache.has(
+        process.env.ROLEID_NOBLE
+      ) &&
+      refinedTargets[targetId].targetedNumber > RevolutionKillNoble
+    )
+      killTarget = true;
+    if (
+      refinedTargets[targetId].target.roles.cache.has(
+        process.env.ROLEID_LORD
+      ) &&
+      refinedTargets[targetId].targetedNumber > RevolutionKillLord
+    )
+      killTarget = true;
+    if (
+      refinedTargets[targetId].target.roles.cache.has(
+        process.env.ROLEID_KING
+      ) &&
+      refinedTargets[targetId].targetedNumber > RevolutionKillKing
+    )
+      killTarget = true;
+    if (
+      refinedTargets[targetId].target.roles.cache.has(
+        process.env.ROLEID_EMPEROR
+      ) &&
+      refinedTargets[targetId].targetedNumber > RevolutionKillEmperor
+    ) {
+      killTarget = true;
+      isEmperorDead = true;
+    }
+
+    if (killTarget) {
+      const target = refinedTargets[targetId].target;
+      eventEmitter.emit("changeRole", target, "Poop");
+      await notifyRevolutionResult(
+        `@${target.user.username} has been killed by Revolution.`
+      );
+    }
+  });
+
+  if (isEmperorDead) {
+    notifyRevolutionResult("The emperor is dead. Let's vote for new emperor.");
+    emperorElectionActive = true;
+    peasantParticipants = {};
+    scholarParticipants = {};
+    merchantParticipants = {};
+    knightParticipants = {};
+    revolutionarySize = 0;
+    peopleSize = 0;
+    peasantSize = 0;
+    scholarSize = 0;
+    merchantSize = 0;
+    knightSize = 0;
+    eventEmitter.emit("RevolutionMovedInEmperorElection");
+    setTimeout(async () => {
+      await handleEmperorElectionEnd();
+    }, RevolutionEmperorElectionTime);
+  } else {
+    eventEmitter.emit("RevolutionFinished");
+    notifyRevolutionResult("Revolution Finished.");
+  }
+}
+
+async function handleEmperorElectionEnd() {
+  const emperorElectionParticipants = {
+    ...peasantParticipants,
+    ...scholarParticipants,
+    ...merchantParticipants,
+    ...knightParticipants,
+  };
+  const civilParticipants = {
+    ...peasantParticipants,
+    ...scholarParticipants,
+    ...merchantParticipants,
+  };
+  const refinedCandidates = {};
+  let maximumVotes = 1;
+  Object.keys(emperorElectionParticipants).forEach((userId) => {
+    const candidateId = emperorElectionParticipants[userId].user.id;
+    let votes = 1;
+    // Object.keys(emperorElectionParticipants).forEach((otherUserId) => {
+    //   const otherCandidateId = emperorElectionParticipants[otherUserId].user.id;
+    //   if (userId !== otherUserId && candidateId === otherCandidateId) votes++;
+    // });
+
+    Object.keys(civilParticipants).forEach((otherUserId) => {
+      const otherCandidateId = emperorElectionParticipants[otherUserId].user.id;
+      if (userId !== otherUserId && candidateId === otherCandidateId) votes++;
+    });
+    Object.keys(knightParticipants).forEach((otherUserId) => {
+      const otherCandidateId = emperorElectionParticipants[otherUserId].user.id;
+      if (userId !== otherUserId && candidateId === otherCandidateId)
+        votes += RevolutionEmperorElectionKnightWeight;
+    });
+
+    refinedCandidates[candidateId] = {
+      votes,
+      candidate: emperorElectionParticipants[userId],
+    };
+    if (votes > maximumVotes) maximumVotes = votes;
+  });
+
+  let maxCandidates = [];
+  Object.keys(refinedCandidates).forEach(async (candidateId) => {
+    if (refinedCandidates[candidateId].votes === maximumVotes)
+      maxCandidates.push(refinedCandidates[candidateId].candidate);
+  });
+
+  if (maxCandidates.length === 1) {
+    const target = maxCandidates[0];
+    eventEmitter.emit("changeRole", target, "Emperor");
+    notifyRevolutionResult(
+      `Congrats! @${target.user.username} has been elected as new emperor.`
+    );
+    eventEmitter.emit("RevolutionFinished");
+    await resetRevolution();
+  } else if (maxCandidates.length > 1) {
+    notifyRevolutionResult(
+      `${maxCandidates.length} candidates have same votes. Starting reelection...`
+    );
+    const candidates = maxCandidates.map((candidate) => ({
+      label: candidate.user.username,
+      value: candidate.id,
+    }));
+    peasantParticipants = {};
+    scholarParticipants = {};
+    merchantParticipants = {};
+    knightParticipants = {};
+    revolutionarySize = 0;
+    peopleSize = 0;
+    peasantSize = 0;
+    scholarSize = 0;
+    merchantSize = 0;
+    knightSize = 0;
+    eventEmitter.emit("RevolutionMovedInEmperorReelection", candidates);
+
+    setTimeout(async () => {
+      await handleEmperorElectionEnd();
+    }, RevolutionEmperorElectionTime);
+  } else {
+    notifyRevolutionResult(`Let's vote a new emperor!`);
+    peasantParticipants = {};
+    scholarParticipants = {};
+    merchantParticipants = {};
+    knightParticipants = {};
+    revolutionarySize = 0;
+    peopleSize = 0;
+    peasantSize = 0;
+    scholarSize = 0;
+    merchantSize = 0;
+    knightSize = 0;
+    eventEmitter.emit("RevolutionMovedInEmperorElection");
+    setTimeout(async () => {
+      await handleEmperorElectionEnd();
+    }, RevolutionEmperorElectionTime);
+  }
+}
+
+async function notifyRevolutionResult(message) {
+  eventEmitter.emit("NotifyPeasantChannel", message);
+  eventEmitter.emit("NotifyKnightChannel", message);
+  eventEmitter.emit("NotifyMerchantChannel", message);
+  eventEmitter.emit("NotifyScholarChannel", message);
 }
 
 function createBot(token, channelId, setupEventsFunction, messageCommands) {
@@ -232,12 +552,12 @@ function createBot(token, channelId, setupEventsFunction, messageCommands) {
     }
     // try {
     //   const sentMessage = await messageCommands(client);
-      
+
     //   if (!sentMessage || !sentMessage.id) {
     //     console.error("Error: sentMessage is undefined or has no id");
     //     return;
     //   }
-    
+
     //   let lastMessageId = sentMessage.id;
     //   await setupEventsFunction(client, lastMessageId);
     // } catch (err) {

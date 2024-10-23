@@ -38,15 +38,17 @@ let revolutionSecondPhase = false;
 let peopleSize = 0;
 let revolutionParticipants = {};
 let emperorElectionActive = false;
-let selectedEmperor = {};
-let emperorElectionParticipants = {};
 let reelectionActive = false;
 let candidates = null;
+let coupActive = false;
 
 const initContent =
   "Peasants can trigger a timed poll to strip a target of their role by selecting SUBHUMAN or PEASANT in a menu and clicking a button. If over 50% of participants join before the timer ends, the target's role is changed to POOP; otherwise, the attempt fails. A global cooldown is activated after each use.\n\n" +
   "**Abilities:**\n" +
-  "- **Mob Flaying**: With more than 50% of peasants, you can make one sub-human or peasant to poop.";
+  "- **Mob Flaying**: With more than 50% of peasants, you can make one sub-human or peasant to poop.\n" +
+  "- **Revolution**: Let's make a new world!\n";
+let mobFlayingStatusMsg = "";
+let revolutionStatusMsg = "";
 
 function showErrorMsg(err) {
   console.error("ERROR: peasant_commands.js", err);
@@ -91,32 +93,37 @@ async function setupPeasantBotEvents(client, lastMessageId) {
       process.env.ROLEID_EMPEROR
     );
 
-    if ((mobFlayingActive || revolutionActive) && hadRoleBeforePeasant) {
+    if (
+      (mobFlayingActive || revolutionActive) &&
+      (hadRoleBeforePeasant || hasRoleNowPeasant)
+    ) {
       const guild = await client.guilds.fetch(process.env.GUILDID);
       peasants = guild.members.cache.filter((member) =>
         member.roles.cache.has(process.env.ROLEID_PEASANT)
       );
       peasantsSize = peasants.size;
-      if (mobFlayingParticipants.has(newMember.id)) {
-        try {
-          selectedMobFlayingTargets[newMember.id] = null;
-          mobFlayingParticipants.delete(newMember.id);
+      if (mobFlayingActive) {
+        if (mobFlayingParticipants.has(newMember.id)) {
+          try {
+            selectedMobFlayingTargets[newMember.id] = null;
+            mobFlayingParticipants.delete(newMember.id);
 
-          const participationRate = mobFlayingParticipants.size / peasantsSize;
+            const participationRate =
+              mobFlayingParticipants.size / peasantsSize;
 
-          if (newMember.id === mobFlayingInitiatorId) {
-            const msg = `The initiator ${mobFlayingInitiator} is no longer a peasant.`;
-            eventEmitter.emit("NotifyPeasantChannel", msg);
-            mobFlayingActive = false;
-            await ceaseMobFlaying(client, lastMessageId);
-            return;
-          } else if (participationRate >= MobFlayingSuccessThreadshold) {
-            await ceaseMobFlaying(client, lastMessageId);
-          } else {
-            await updateMessage(client, lastMessageId);
+            if (newMember.id === mobFlayingInitiatorId) {
+              const msg = `The initiator ${mobFlayingInitiator} is no longer a peasant.`;
+              eventEmitter.emit("NotifyPeasantChannel", msg);
+              await ceaseMobFlaying(client, lastMessageId);
+              return;
+            } else if (participationRate >= MobFlayingSuccessThreadshold) {
+              await ceaseMobFlaying(client, lastMessageId);
+            } else {
+              await updateMessage(client, lastMessageId);
+            }
+          } catch (err) {
+            showErrorMsg(err);
           }
-        } catch (err) {
-          showErrorMsg(err);
         }
       }
       if (revolutionActive) {
@@ -136,25 +143,11 @@ async function setupPeasantBotEvents(client, lastMessageId) {
         );
       }
     }
-    if (revolutionActive && hasRoleNowPeasant) {
-      const guild = await client.guilds.fetch(process.env.GUILDID);
-      peasants = guild.members.cache.filter((member) =>
-        member.roles.cache.has(process.env.ROLEID_PEASANT)
-      );
-      peasantsSize = peasants.size;
-      eventEmitter.emit(
-        "SendRevolutionStatus",
-        "Peasant",
-        revolutionParticipants,
-        peasantsSize
-      );
-    }
     if (mobFlayingActive && (hadRoleBeforePeasant || hadRoleBeforeSubHuman)) {
       if (newMember.id === mobFlayingTargetId) {
         try {
           const msg = `The role of the target @${mobFlayingTarget} has been changed.`;
           eventEmitter.emit("NotifyPeasantChannel", msg);
-          mobFlayingActive = false;
           await ceaseMobFlaying(client, lastMessageId);
         } catch (e) {
           showErrorMsg(e);
@@ -185,11 +178,6 @@ async function setupPeasantBotEvents(client, lastMessageId) {
     ) {
       if (lastMessageId) {
         try {
-          const guild = await client.guilds.fetch(process.env.GUILDID);
-          peasants = guild.members.cache.filter((member) =>
-            member.roles.cache.has(process.env.ROLEID_PEASANT)
-          );
-          peasantsSize = peasants.size;
           await updateMessage(client, lastMessageId);
         } catch (err) {
           showErrorMsg(err);
@@ -276,17 +264,18 @@ async function setupPeasantBotEvents(client, lastMessageId) {
         try {
           // Set cooldown
           await CacheSetCooldown("MobFlaying", userId, MobFlayingCoolDown);
-          await updateMessage(client, lastMessageId);
-          await startMobFlaying(client, lastMessageId, MobFlayingTime);
 
           await sendInteractionReply(
             interaction,
             "Mob flaying initiated, waiting for other peasants to join."
           );
 
+          await startMobFlaying(client, lastMessageId, MobFlayingTime);
+          await updateMessage(client, lastMessageId);
+
           const participationRate = mobFlayingParticipants.size / peasantsSize;
           if (participationRate >= MobFlayingSuccessThreadshold) {
-            ceaseMobFlaying(client, lastMessageId);
+            await ceaseMobFlaying(client, lastMessageId);
             return;
           }
         } catch (err) {
@@ -525,10 +514,25 @@ async function setupPeasantBotEvents(client, lastMessageId) {
       throw err;
     }
   });
+  eventEmitter.on("CoupStarted", async () => {
+    try {
+      coupActive = true;
+      updateMessage(client, lastMessageId);
+    } catch (err) {
+      throw err;
+    }
+  });
+  eventEmitter.on("CoupFinished", async () => {
+    try {
+      coupActive = false;
+      updateMessage(client, lastMessageId);
+    } catch (err) {
+      throw err;
+    }
+  });
   eventEmitter.on("RevolutionFinished", async () => {
     try {
-      revolutionActive = false;
-      await resetComponents(client, lastMessageId);
+      await resetRevolution(client, lastMessageId);
     } catch (err) {
       throw err;
     }
@@ -595,11 +599,11 @@ async function handleMobFlayingEnd(client, lastMessageId) {
     const msg = `Mob flaying on @${mobFlayingTarget} initiated by @${mobFlayingInitiator} has been failed.`;
     eventEmitter.emit("NotifyPeasantChannel", msg);
   }
-  mobFlayingActive = false;
-  await resetComponents(client, lastMessageId);
+  await resetMobFlaying(client, lastMessageId);
 }
 
 async function ceaseMobFlaying(client, lastMessageId) {
+  mobFlayingActive = false;
   if (mobFlayingTimeout) {
     clearTimeout(mobFlayingTimeout);
     await handleMobFlayingEnd(client, lastMessageId);
@@ -611,81 +615,68 @@ async function updateMessage(client, lastMessageId) {
     const channel = await client.channels.fetch(process.env.CHANNELIDPEASANT);
     const messageToEdit = await channel.messages.fetch(lastMessageId);
 
-    if (mobFlayingActive) {
-      const actionRow_0 = ActionRowBuilder.from(
-        messageToEdit.components[0].toJSON()
-      );
-      const actionRow_1 = new ActionRowBuilder().addComponents(
-        await buildSelectMenu(
-          client,
-          ["knight", "noble", "lord", "king", "emperor"],
-          "SelectRevolutionTarget"
-        )
-      );
-      const buttonRow = new ActionRowBuilder().addComponents(
-        new ButtonBuilder()
-          .setCustomId("JoinMobFlaying")
-          .setLabel("Join Mob Flaying")
-          .setStyle(ButtonStyle.Primary),
-        new ButtonBuilder()
-          .setCustomId("Revolution")
-          .setLabel("Revolution")
-          .setStyle(ButtonStyle.Danger)
-      );
-      const content =
-        initContent +
-        `\n@${mobFlayingInitiator} initiated a mob flaying. Join to downgrade ${mobFlayingTarget}. (Joined ${mobFlayingParticipants.size} / ${peasantsSize}.)`;
+    let actionRow_0 = new ActionRowBuilder().addComponents(
+      await buildSelectMenu(
+        client,
+        ["peasant", "subhuman"],
+        "MobFlayingSelectMenu"
+      )
+    );
+    let actionRow_1 = new ActionRowBuilder().addComponents(
+      await buildSelectMenu(
+        client,
+        ["knight", "noble", "lord", "king", "emperor"],
+        "SelectRevolutionTarget"
+      )
+    );
+    let actionRow_2 = new ActionRowBuilder().addComponents(
+      new ButtonBuilder()
+        .setCustomId("MobFlaying")
+        .setLabel("Mob Flaying")
+        .setStyle(ButtonStyle.Danger),
+      new ButtonBuilder()
+        .setCustomId("Revolution")
+        .setLabel("Revolution")
+        .setStyle(ButtonStyle.Danger)
+    );
 
-      await messageToEdit.edit({
-        content,
-        components: [actionRow_0, actionRow_1, buttonRow],
-      });
-    } else if (revolutionActive) {
-      const actionRow_0 = new ActionRowBuilder().addComponents(
-        await buildSelectMenu(
-          client,
-          ["peasant", "subhuman"],
-          "MobFlayingSelectMenu"
-        )
-      );
-      let actionRow_1 = new ActionRowBuilder().addComponents(
-        await buildSelectMenu(
-          client,
-          ["knight", "noble", "lord", "king", "emperor"],
-          "SelectRevolutionTarget"
-        )
-      );
-      let buttonRow = new ActionRowBuilder().addComponents(
-        new ButtonBuilder()
-          .setCustomId("MobFlaying")
-          .setLabel("Mob Flaying")
-          .setStyle(ButtonStyle.Danger),
-        new ButtonBuilder()
-          .setCustomId("JoinRevolution")
-          .setLabel("Join Revolution")
-          .setStyle(ButtonStyle.Danger)
-      );
-      let content =
-        initContent +
-        `\nRevolution started. Join revolution. (Joined ${revolutionarySize} / ${peopleSize}.)`;
+    if (coupActive) {
+      const revolutionBtn = new ButtonBuilder()
+        .setCustomId("Revolution")
+        .setLabel("Revolution")
+        .setDisabled(true)
+        .setStyle(ButtonStyle.Danger);
+      actionRow_2.components[1] = revolutionBtn;
+    }
+
+    if (mobFlayingActive) {
+      const mobFlayingSelectMenu = StringSelectMenuBuilder.from(
+        actionRow_0.components[0].toJSON()
+      )
+        .setDisabled(true)
+        .setPlaceholder(mobFlayingTarget);
+      actionRow_0.components[0] = mobFlayingSelectMenu;
+      const joinMobFlayingBtn = new ButtonBuilder()
+        .setCustomId("JoinMobFlaying")
+        .setLabel("Join Mob Flaying")
+        .setStyle(ButtonStyle.Primary);
+      actionRow_2.components[0] = joinMobFlayingBtn;
+
+      mobFlayingStatusMsg = `\n@${mobFlayingInitiator} initiated a mob flaying. Join to downgrade ${mobFlayingTarget}. (Joined ${mobFlayingParticipants.size} / ${peasantsSize}.)`;
+    }
+    if (revolutionActive) {
+      let revolutionBtn = new ButtonBuilder()
+        .setCustomId("JoinRevolution")
+        .setLabel("Join Revolution")
+        .setStyle(ButtonStyle.Danger);
+      revolutionStatusMsg = `\nRevolution started. Join revolution. (Joined ${revolutionarySize} / ${peopleSize}.)`;
       if (revolutionSecondPhase) {
-        buttonRow = new ActionRowBuilder().addComponents(
-          new ButtonBuilder()
-            .setCustomId("MobFlaying")
-            .setLabel("Mob Flaying")
-            .setStyle(ButtonStyle.Danger),
-          new ButtonBuilder()
-            .setCustomId("JoinRevolution")
-            .setLabel("Join Revolution")
-            .setStyle(ButtonStyle.Danger),
-          new ButtonBuilder()
-            .setCustomId("WithdrawRevolution")
-            .setLabel("Withdraw Revolution")
-            .setStyle(ButtonStyle.Primary)
-        );
-        content =
-          initContent +
-          `\nRevolution moved in the next phase. Join revolution. You can also withdraw. (Joined ${revolutionarySize} / ${peopleSize}.)`;
+        actionRow_2.components[2] = new ButtonBuilder()
+          .setCustomId("WithdrawRevolution")
+          .setLabel("Withdraw Revolution")
+          .setStyle(ButtonStyle.Primary);
+
+        revolutionStatusMsg = `\nRevolution moved in the next phase. Join revolution. You can also withdraw. (Joined ${revolutionarySize} / ${peopleSize}.)`;
         if (emperorElectionActive) {
           actionRow_1 = new ActionRowBuilder().addComponents(
             await buildSelectMenu(
@@ -694,19 +685,12 @@ async function updateMessage(client, lastMessageId) {
               "SelectEmperorCandidate"
             )
           );
-          buttonRow = new ActionRowBuilder().addComponents(
-            new ButtonBuilder()
-              .setCustomId("MobFlaying")
-              .setLabel("Mob Flaying")
-              .setStyle(ButtonStyle.Danger),
-            new ButtonBuilder()
-              .setCustomId("VoteEmperor")
-              .setLabel("Vote")
-              .setStyle(ButtonStyle.Danger)
-          );
-          content =
-            initContent +
-            `\nLet's vote a new emperor.  (Joined ${revolutionarySize} members.)`;
+          revolutionBtn = new ButtonBuilder()
+            .setCustomId("VoteEmperor")
+            .setLabel("Vote")
+            .setStyle(ButtonStyle.Danger);
+          if (actionRow_2.components[2]) actionRow_2.components.splice(2, 1);
+          revolutionStatusMsg = `\nLet's vote a new emperor.  (Joined ${revolutionarySize} members.)`;
         }
         if (reelectionActive) {
           actionRow_1 = new ActionRowBuilder().addComponents(
@@ -716,47 +700,17 @@ async function updateMessage(client, lastMessageId) {
               .addOptions(candidates)
           );
 
-          content =
-            initContent +
-            `\nEmperor must be only one. Let's reelect an emperor. (Joined ${revolutionarySize} members.)`;
+          revolutionStatusMsg = `\nEmperor must be only one. Let's reelect an emperor. (Joined ${revolutionarySize} members.)`;
         }
       }
 
-      await messageToEdit.edit({
-        content,
-        components: [actionRow_0, actionRow_1, buttonRow],
-      });
-    } else {
-      const actionRow_0 = new ActionRowBuilder().addComponents(
-        await buildSelectMenu(
-          client,
-          ["peasant", "subhuman"],
-          "MobFlayingSelectMenu"
-        )
-      );
-      const actionRow_1 = new ActionRowBuilder().addComponents(
-        await buildSelectMenu(
-          client,
-          ["knight", "noble", "lord", "king", "emperor"],
-          "SelectRevolutionTarget"
-        )
-      );
-      const buttonRow = new ActionRowBuilder().addComponents(
-        new ButtonBuilder()
-          .setCustomId("MobFlaying")
-          .setLabel("Mob Flaying")
-          .setStyle(ButtonStyle.Danger),
-        new ButtonBuilder()
-          .setCustomId("Revolution")
-          .setLabel("Revolution")
-          .setStyle(ButtonStyle.Danger)
-      );
-
-      await messageToEdit.edit({
-        content: initContent,
-        components: [actionRow_0, actionRow_1, buttonRow],
-      });
+      actionRow_2.components[1] = revolutionBtn;
     }
+
+    await messageToEdit.edit({
+      content: initContent + mobFlayingStatusMsg + revolutionStatusMsg,
+      components: [actionRow_0, actionRow_1, actionRow_2],
+    });
   } catch (err) {
     showErrorMsg(err);
   }
@@ -786,7 +740,7 @@ async function messagePeasantCommands(client) {
         "SelectRevolutionTarget"
       )
     );
-    const buttonRow = new ActionRowBuilder().addComponents(
+    const actionRow_2 = new ActionRowBuilder().addComponents(
       new ButtonBuilder()
         .setCustomId("MobFlaying")
         .setLabel("Mob Flaying")
@@ -799,7 +753,7 @@ async function messagePeasantCommands(client) {
 
     const message = await channel.send({
       content: initContent,
-      components: [actionRow_0, actionRow_1, buttonRow],
+      components: [actionRow_0, actionRow_1, actionRow_2],
     });
     return message;
   } catch (err) {
@@ -807,7 +761,7 @@ async function messagePeasantCommands(client) {
   }
 }
 
-async function resetComponents(client, lastMessageId) {
+async function resetMobFlaying(client, lastMessageId) {
   try {
     selectedMobFlayingTargets = {};
     peasants = [];
@@ -818,6 +772,15 @@ async function resetComponents(client, lastMessageId) {
     mobFlayingTarget = null;
     mobFlayingActive = false;
     mobFlayingParticipants = new Set();
+    mobFlayingStatusMsg = "";
+    await updateMessage(client, lastMessageId);
+  } catch (err) {
+    throw err;
+  }
+}
+
+async function resetRevolution(client, lastMessageId) {
+  try {
     selectedRevolutionTargets = {};
     revolutionActive = false;
     revolutionSecondPhase = false;
@@ -827,10 +790,10 @@ async function resetComponents(client, lastMessageId) {
     emperorElectionActive = false;
     reelectionActive = false;
     candidates = null;
+    revolutionStatusMsg = "";
     await updateMessage(client, lastMessageId);
   } catch (err) {
     throw err;
   }
 }
-
 module.exports = { setupPeasantBotEvents, messagePeasantCommands };

@@ -75,7 +75,11 @@ const {
   RevolutionKillKing,
   RevolutionKillEmperor,
   RevolutionEmperorElectionTime,
-  RevolutionEmperorElectionKnightWeight,
+  RevolutionKnightWeight,
+  CoupKillNoble,
+  CoupKillLord,
+  CoupKillKing,
+  CoupKillEmperor,
 } = require("./game_config.json");
 const { eventEmitter } = require("./functions/eventEmitter.js");
 
@@ -92,9 +96,14 @@ let knightParticipants = 0;
 let revolutionTimeout;
 let revolutionSecondPhase = false;
 let emperorElectionActive = false;
+let botCallCounts = 0;
+let coupActive = false;
+
+let struggleMethod = "Revolution";
 
 const REVOLUTIONTHREADSHOLD = 0.5;
 const REVOLUTIONTHREADSHOLD2 = 0.5;
+const COUPTHREADSHOLD = 0.5;
 
 function createConsoleBot(token) {
   const client = new Client({
@@ -226,6 +235,19 @@ function createConsoleBot(token) {
     }
   });
 
+  eventEmitter.on("StartCoup", async () => {
+    try {
+      coupActive = true;
+      struggleMethod = "Coup";
+      eventEmitter.emit("CoupStarted");
+      setTimeout(async () => {
+        await handleFirstPhaseRevolutionEnd();
+      }, RevolutionFirstPhaseTime);
+    } catch (err) {
+      throw err;
+    }
+  });
+
   eventEmitter.on(
     "SendRevolutionStatus",
     async (hierachy, participants, groupSize) => {
@@ -234,45 +256,55 @@ function createConsoleBot(token) {
           case "Peasant":
             peasantParticipants = participants;
             peasantSize = groupSize;
+            botCallCounts++;
             break;
           case "Merchant":
             merchantParticipants = participants;
             merchantSize = groupSize;
+            botCallCounts++;
             break;
           case "Scholar":
             scholarParticipants = participants;
             scholarSize = groupSize;
+            botCallCounts++;
             break;
           case "Knight":
             knightParticipants = participants;
             knightSize = groupSize;
+            botCallCounts++;
             break;
         }
-        revolutionarySize =
-          Object.keys(peasantParticipants).length +
-          Object.keys(scholarParticipants).length +
-          Object.keys(merchantParticipants).length +
-          Object.keys(knightParticipants).length;
-        peopleSize = peasantSize + merchantSize + scholarSize + knightSize;
 
-        if (revolutionSecondPhase && !emperorElectionActive) {
-          const success =
-            revolutionarySize / peopleSize > REVOLUTIONTHREADSHOLD2;
-          if (!success) {
-            clearTimeout(revolutionTimeout);
-            notifyRevolutionResult(
-              "Revolution failed because of insufficient number of participants."
-            );
-            await resetRevolution();
-            eventEmitter.emit("RevolutionFinished");
-            return;
+        if (coupActive || botCallCounts >= 4) {
+          revolutionarySize =
+            Object.keys(peasantParticipants).length +
+            Object.keys(scholarParticipants).length +
+            Object.keys(merchantParticipants).length +
+            Object.keys(knightParticipants).length;
+          peopleSize = peasantSize + merchantSize + scholarSize + knightSize;
+
+          if (revolutionSecondPhase && !emperorElectionActive) {
+            let success =
+              revolutionarySize / peopleSize > REVOLUTIONTHREADSHOLD2;
+            if (coupActive)
+              success = revolutionarySize / peopleSize > COUPTHREADSHOLD;
+
+            if (!success) {
+              clearTimeout(revolutionTimeout);
+              notifyRevolutionResult(
+                `${struggleMethod} failed because of insufficient number of participants.`
+              );
+              await resetRevolution();
+              eventEmitter.emit(`${struggleMethod}Finished`);
+              return;
+            }
           }
+          eventEmitter.emit(
+            "UpdateRevolutionStatus",
+            revolutionarySize,
+            peopleSize
+          );
         }
-        eventEmitter.emit(
-          "UpdateRevolutionStatus",
-          revolutionarySize,
-          peopleSize
-        );
       } catch (err) {
         throw err;
       }
@@ -284,17 +316,19 @@ function createConsoleBot(token) {
 }
 
 async function handleFirstPhaseRevolutionEnd() {
-  const success = revolutionarySize / peopleSize > REVOLUTIONTHREADSHOLD;
+  let success = revolutionarySize / peopleSize > REVOLUTIONTHREADSHOLD;
+  if (coupActive) success = revolutionarySize / peopleSize > COUPTHREADSHOLD;
   if (success) {
-    notifyRevolutionResult("Revolution moved in the second phase.");
+    notifyRevolutionResult(`${struggleMethod} moved in the second phase.`);
     revolutionSecondPhase = true;
     eventEmitter.emit("RevolutionMovedInSecondPhase");
     revolutionTimeout = setTimeout(async () => {
       await handleSecondPhaseRevolutionEnd();
     }, RevolutionSecondPhaseTime);
   } else {
-    notifyRevolutionResult("Revolution Failed.");
-    eventEmitter.emit("RevolutionFinished");
+    notifyRevolutionResult(`${struggleMethod} Failed.`);
+    eventEmitter.emit(`${struggleMethod}Finished`);
+    resetRevolution();
   }
 }
 
@@ -311,6 +345,9 @@ async function resetRevolution() {
   knightParticipants = 0;
   revolutionSecondPhase = false;
   emperorElectionActive = false;
+  botCallCounts = 0;
+  coupActive = false;
+  struggleMethod = "Revolution";
 }
 
 async function handleSecondPhaseRevolutionEnd() {
@@ -321,14 +358,27 @@ async function handleSecondPhaseRevolutionEnd() {
     ...scholarParticipants,
     ...merchantParticipants,
   };
+  const civilParticipants = {
+    ...peasantParticipants,
+    ...scholarParticipants,
+    ...merchantParticipants,
+  };
   Object.keys(revolutionParticipants).forEach((userId) => {
     const targetId = revolutionParticipants[userId].user.id;
     let targetedNumber = 1;
-    Object.keys(revolutionParticipants).forEach((otherUserId) => {
+    Object.keys(civilParticipants).forEach((otherUserId) => {
       const otherTargetId = revolutionParticipants[otherUserId].user.id;
       if (userId !== otherUserId && targetId === otherTargetId)
         targetedNumber++;
     });
+    Object.keys(knightParticipants).forEach((otherUserId) => {
+      const otherTargetId = revolutionParticipants[otherUserId].user.id;
+      if (userId !== otherUserId && targetId === otherTargetId) {
+        if (coupActive) targetedNumber++;
+        else targetedNumber += RevolutionKnightWeight;
+      }
+    });
+
     refinedTargets[targetId] = {
       targetedNumber,
       // roles: revolutionParticipants[userId].roles,
@@ -339,49 +389,82 @@ async function handleSecondPhaseRevolutionEnd() {
   let isEmperorDead = false;
   Object.keys(refinedTargets).forEach(async (targetId) => {
     let killTarget = false;
-    if (
-      refinedTargets[targetId].target.roles.cache.has(
-        process.env.ROLEID_KNIGHT
-      ) &&
-      refinedTargets[targetId].targetedNumber > RevolutionKillKnight
-    )
-      killTarget = true;
-    if (
-      refinedTargets[targetId].target.roles.cache.has(
-        process.env.ROLEID_NOBLE
-      ) &&
-      refinedTargets[targetId].targetedNumber > RevolutionKillNoble
-    )
-      killTarget = true;
-    if (
-      refinedTargets[targetId].target.roles.cache.has(
-        process.env.ROLEID_LORD
-      ) &&
-      refinedTargets[targetId].targetedNumber > RevolutionKillLord
-    )
-      killTarget = true;
-    if (
-      refinedTargets[targetId].target.roles.cache.has(
-        process.env.ROLEID_KING
-      ) &&
-      refinedTargets[targetId].targetedNumber > RevolutionKillKing
-    )
-      killTarget = true;
-    if (
-      refinedTargets[targetId].target.roles.cache.has(
-        process.env.ROLEID_EMPEROR
-      ) &&
-      refinedTargets[targetId].targetedNumber > RevolutionKillEmperor
-    ) {
-      killTarget = true;
-      isEmperorDead = true;
+    if (coupActive) {
+      if (
+        refinedTargets[targetId].target.roles.cache.has(
+          process.env.ROLEID_NOBLE
+        ) &&
+        refinedTargets[targetId].targetedNumber > CoupKillNoble
+      )
+        killTarget = true;
+      if (
+        refinedTargets[targetId].target.roles.cache.has(
+          process.env.ROLEID_LORD
+        ) &&
+        refinedTargets[targetId].targetedNumber > CoupKillLord
+      )
+        killTarget = true;
+      if (
+        refinedTargets[targetId].target.roles.cache.has(
+          process.env.ROLEID_KING
+        ) &&
+        refinedTargets[targetId].targetedNumber > CoupKillKing
+      )
+        killTarget = true;
+      if (
+        refinedTargets[targetId].target.roles.cache.has(
+          process.env.ROLEID_EMPEROR
+        ) &&
+        refinedTargets[targetId].targetedNumber > CoupKillEmperor
+      ) {
+        killTarget = true;
+        isEmperorDead = true;
+      }
+    } else {
+      if (
+        refinedTargets[targetId].target.roles.cache.has(
+          process.env.ROLEID_KNIGHT
+        ) &&
+        refinedTargets[targetId].targetedNumber > RevolutionKillKnight
+      )
+        killTarget = true;
+      if (
+        refinedTargets[targetId].target.roles.cache.has(
+          process.env.ROLEID_NOBLE
+        ) &&
+        refinedTargets[targetId].targetedNumber > RevolutionKillNoble
+      )
+        killTarget = true;
+      if (
+        refinedTargets[targetId].target.roles.cache.has(
+          process.env.ROLEID_LORD
+        ) &&
+        refinedTargets[targetId].targetedNumber > RevolutionKillLord
+      )
+        killTarget = true;
+      if (
+        refinedTargets[targetId].target.roles.cache.has(
+          process.env.ROLEID_KING
+        ) &&
+        refinedTargets[targetId].targetedNumber > RevolutionKillKing
+      )
+        killTarget = true;
+      if (
+        refinedTargets[targetId].target.roles.cache.has(
+          process.env.ROLEID_EMPEROR
+        ) &&
+        refinedTargets[targetId].targetedNumber > RevolutionKillEmperor
+      ) {
+        killTarget = true;
+        isEmperorDead = true;
+      }
     }
 
     if (killTarget) {
       const target = refinedTargets[targetId].target;
       eventEmitter.emit("changeRole", target, "Poop");
       await notifyRevolutionResult(
-        `@${target.user.username} has been killed by Revolution.`
+        `@${target.user.username} has been killed by ${struggleMethod}.`
       );
     }
   });
@@ -404,8 +487,9 @@ async function handleSecondPhaseRevolutionEnd() {
       await handleEmperorElectionEnd();
     }, RevolutionEmperorElectionTime);
   } else {
-    eventEmitter.emit("RevolutionFinished");
-    notifyRevolutionResult("Revolution Finished.");
+    eventEmitter.emit(`${struggleMethod}Finished`);
+    notifyRevolutionResult(`${struggleMethod} Finished.`);
+    resetRevolution();
   }
 }
 
@@ -438,7 +522,7 @@ async function handleEmperorElectionEnd() {
     Object.keys(knightParticipants).forEach((otherUserId) => {
       const otherCandidateId = emperorElectionParticipants[otherUserId].user.id;
       if (userId !== otherUserId && candidateId === otherCandidateId)
-        votes += RevolutionEmperorElectionKnightWeight;
+        votes += RevolutionKnightWeight;
     });
 
     refinedCandidates[candidateId] = {
@@ -460,7 +544,7 @@ async function handleEmperorElectionEnd() {
     notifyRevolutionResult(
       `Congrats! @${target.user.username} has been elected as new emperor.`
     );
-    eventEmitter.emit("RevolutionFinished");
+    eventEmitter.emit(`${struggleMethod}Finished`);
     await resetRevolution();
   } else if (maxCandidates.length > 1) {
     notifyRevolutionResult(

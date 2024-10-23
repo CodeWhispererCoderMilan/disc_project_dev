@@ -126,14 +126,14 @@ async function setupRatBotEvents(client, lastMessageId) {
       }
     }
     if (plagueActive && hasRoleNowRat) {
-        const guild = await client.guilds.fetch(process.env.GUILDID);
-        await guild.members.fetch();
-        rats = guild.members.cache.filter((member) =>
-          member.roles.cache.has(process.env.ROLEID_RAT)
-        );
-        ratsSize = rats.size;
+      const guild = await client.guilds.fetch(process.env.GUILDID);
+      await guild.members.fetch();
+      rats = guild.members.cache.filter((member) =>
+        member.roles.cache.has(process.env.ROLEID_RAT)
+      );
+      ratsSize = rats.size;
 
-        await updateMessage(client, lastMessageId);
+      await updateMessage(client, lastMessageId);
     }
     if (
       hadRoleBeforeCockroach ||
@@ -271,12 +271,12 @@ async function setupRatBotEvents(client, lastMessageId) {
             PlagueFirstPhaseTime
           );
 
-          await updateMessage(client, lastMessageId);
-
           await sendInteractionReply(
             interaction,
             `You have successfully initiated plague with target @${target.user.username}. Wait for the rats to join.`
           );
+
+          await updateMessage(client, lastMessageId);
         } catch (err) {
           showErrorMsg(err);
         }
@@ -306,12 +306,12 @@ async function setupRatBotEvents(client, lastMessageId) {
         roles: target.roles.cache,
       };
 
-      await updateMessage(client, lastMessageId);
-
       await sendInteractionReply(
         interaction,
         `You have joined the plague with target @${target.user.username}.`
       );
+
+      await updateMessage(client, lastMessageId);
     }
   });
 

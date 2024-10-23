@@ -1,4 +1,9 @@
-const { eventEmitter } = require("../functions/eventEmitter.js");
+const {
+  StringSelectMenuBuilder,
+  ActionRowBuilder,
+  ButtonBuilder,
+  ButtonStyle,
+} = require("discord.js");
 const {
   buildSelectMenu,
   sendInteractionReply,
@@ -12,13 +17,6 @@ const {
   CacheUpdateWritStatus,
   CacheCheckAndUpdateUserWrits,
 } = require("../apis/redis/redisCache");
-const { DBUpdateXP } = require("../apis/firebase/querys.js");
-const {
-  StringSelectMenuBuilder,
-  ActionRowBuilder,
-  ButtonBuilder,
-  ButtonStyle,
-} = require("discord.js");
 const {
   CutDownCost,
   CutDownCooldown,
@@ -27,38 +25,33 @@ const {
   RoyalWritReward,
   ImperialWritReward,
   SiegeTime,
+  RevolutionCoolDown,
+  CoupCoolDown,
   RoleChangeMessageDisplayTime,
-  CoupCooldown,
-  CoupFirstPhaseTime,
-  CoupSecondPhaseTime,
-  CoupKillNoble,
-  CoupKillLord,
-  CoupKillKing,
-  CoupKillEmperor,
-  EmperorElectionTime,
 } = require("../game_config.json");
+const { DBUpdateXP } = require("../apis/firebase/querys.js");
+const { eventEmitter } = require("../functions/eventEmitter.js");
 
 let selectedTargets = {};
 let knights = [];
 let knightsSize = 0;
 let kingsSize = 1;
-let siegeInitiatorUsername = null;
-let siegeTargetName = null;
+let siegeInitiator = null;
+let siegeTarget = null;
 let siegeActive = false;
 let siegeParticipants = new Set();
 let siegeTimeout;
-let coupParticipants = {};
-let selectedCoupTargets = {};
-let coupInitiatorId = null;
-let coupInitiator = null;
-let coupTimeout;
-let coupActive = false;
-let coupSecondPhase = false;
+let selectedRevolutionTargets = {};
+let revolutionarySize = 0;
+let revolutionActive = false;
+let revolutionSecondPhase = false;
+let peopleSize = 0;
+let revolutionParticipants = {};
 let emperorElectionActive = false;
-let selectedEmperor = {};
-let emperorElectionParticipants = {};
 let reelectionActive = false;
 let candidates = null;
+let coupActive = false;
+let selectedCoupTargets = {};
 
 const initContent =
   "Test message to Knight.\n" +
@@ -66,10 +59,11 @@ const initContent =
   "- **Cut down**: Description goes here.\n" +
   "- **Writ**: Description goes here.\n" +
   "- **Join Siege**: Siege a king to make him a poop.\n" +
+  "- **Revolution**: Let's make a new world!\n" +
   "- **Coup**: Choose Noble, Lord, King or Emperor.";
-
-// Change threadshold
-const COUPTHREADSHOLD = 0.4;
+let siegeStatusMsg = "";
+let coupStatusMsg = "";
+let revolutionStatusMsg = "";
 
 function showErrorMsg(err) {
   console.error("ERROR: knight_commands.js", err);
@@ -162,7 +156,10 @@ async function setupKnightBotEvents(client, lastMessageId) {
       await updateMessage(client, lastMessageId);
     }
 
-    if (hadRoleBeforeKnight) {
+    if (
+      (siegeActive || revolutionActive) &&
+      (hadRoleBeforeKnight || hasRoleNowKnight)
+    ) {
       if (siegeActive) {
         if (siegeParticipants.has(newMember.id)) {
           try {
@@ -172,22 +169,30 @@ async function setupKnightBotEvents(client, lastMessageId) {
           }
         }
       }
-      if (coupActive) {
+      if (revolutionActive) {
         if (
-          Object.keys(coupParticipants).findIndex(
+          Object.keys(revolutionParticipants).findIndex(
             (key) => key === newMember.id
           ) > -1
         ) {
-          delete coupParticipants[newMember.id];
+          delete revolutionParticipants[newMember.id];
+          delete selectedRevolutionTargets[newMember.id];
         }
+        eventEmitter.emit(
+          "SendRevolutionStatus",
+          "Knight",
+          revolutionParticipants,
+          knightsSize
+        );
       }
     }
 
     if (
-      hadRoleBeforeKnight ||
-      hasRoleNowKnight ||
-      hadRoleBeforeKing ||
-      hasRoleNowKing
+      siegeActive &&
+      (hadRoleBeforeKnight ||
+        hasRoleNowKnight ||
+        hadRoleBeforeKing ||
+        hasRoleNowKing)
     ) {
       if (lastMessageId) {
         try {
@@ -201,21 +206,15 @@ async function setupKnightBotEvents(client, lastMessageId) {
           );
           kingsSize = kings.size;
 
-          const siegeSuccess =
-            siegeParticipants.size >= knightsSize / kingsSize;
-          if (siegeActive && siegeSuccess) {
-            siegeActive = false;
-            ceaseSiege(client, lastMessageId);
-            return;
-          } else if (coupActive && coupSecondPhase) {
-            if (
-              Object.keys(coupParticipants).length / knightsSize <=
-              COUPTHREADSHOLD
-            ) {
-              ceaseCoup(client, lastMessageId);
+          if (siegeActive) {
+            const siegeSuccess =
+              siegeParticipants.size >= knightsSize / kingsSize;
+            if (siegeSuccess) {
+              await ceaseSiege(client, lastMessageId);
+              return;
+            } else {
+              await updateMessage(client, lastMessageId);
             }
-          } else {
-            await updateMessage(client, lastMessageId);
           }
         } catch (err) {
           showErrorMsg(err);
@@ -226,8 +225,8 @@ async function setupKnightBotEvents(client, lastMessageId) {
   client.on("interactionCreate", async (interaction) => {
     if (!interaction.isStringSelectMenu() && !interaction.isButton()) return;
 
-    const userId = interaction.user.id;
     if (interaction.customId === "SelectCutDown") {
+      const userId = interaction.user.id;
       let selectedTargetId = interaction.values[0];
       try {
         selectedTargets[userId] = await interaction.guild.members.cache.get(
@@ -239,11 +238,24 @@ async function setupKnightBotEvents(client, lastMessageId) {
       }
     }
 
+    if (interaction.customId === "SelectRevolutionTarget") {
+      const userId = interaction.user.id;
+      let targetId = interaction.values[0];
+      try {
+        selectedRevolutionTargets[userId] =
+          await interaction.guild.members.cache.get(targetId);
+        await interaction.deferUpdate();
+      } catch (err) {
+        showErrorMsg(err);
+      }
+    }
+
     if (interaction.customId === "SelectCoupTarget") {
-      let selectedTargetId = interaction.values[0];
+      const userId = interaction.user.id;
+      let targetId = interaction.values[0];
       try {
         selectedCoupTargets[userId] = await interaction.guild.members.cache.get(
-          selectedTargetId
+          targetId
         );
         await interaction.deferUpdate();
       } catch (err) {
@@ -255,9 +267,8 @@ async function setupKnightBotEvents(client, lastMessageId) {
       const userId = interaction.user.id;
       let selectedCandidateId = interaction.values[0];
       try {
-        selectedEmperor[userId] = await interaction.guild.members.cache.get(
-          selectedCandidateId
-        );
+        selectedRevolutionTargets[userId] =
+          await interaction.guild.members.cache.get(selectedCandidateId);
         await interaction.deferUpdate();
       } catch (err) {
         showErrorMsg(err);
@@ -265,6 +276,8 @@ async function setupKnightBotEvents(client, lastMessageId) {
     }
 
     if (interaction.customId === "CutDown") {
+      const userId = interaction.user.id;
+
       try {
         if (!selectedTargets[userId]) {
           await sendInteractionReply(interaction, `No scoundrel selected...`);
@@ -352,6 +365,7 @@ async function setupKnightBotEvents(client, lastMessageId) {
         showErrorMsg(err);
       }
     }
+
     if (interaction.customId === "ShowWrits") {
       await handleShowWrits(interaction);
     }
@@ -367,7 +381,6 @@ async function setupKnightBotEvents(client, lastMessageId) {
         }
 
         const userId = interaction.user.id;
-
         if (siegeParticipants.has(userId)) {
           await sendInteractionReply(
             interaction,
@@ -379,27 +392,159 @@ async function setupKnightBotEvents(client, lastMessageId) {
         siegeParticipants.add(userId);
         await sendInteractionReply(interaction, "You have joind the siege.");
 
-        const success = siegeParticipants.size >= knightsSize / kingsSize;
-        if (siegeActive && success) {
-          siegeActive = false;
-          ceaseSiege(client, lastMessageId);
+        const siegeSuccess = siegeParticipants.size >= knightsSize / kingsSize;
+        if (siegeSuccess) {
+          await ceaseSiege(client, lastMessageId);
           return;
         } else {
-          await updateMessage(client, lastMessageId);
           eventEmitter.emit(
             "KnightParticipatedOnSiege",
             siegeParticipants.size,
             knightsSize
           );
+          await updateMessage(client, lastMessageId);
         }
       } catch (err) {
         throw err;
       }
     }
 
-    if (interaction.customId === "Coup") {
+    if (interaction.customId === "Revolution") {
+      const userId = interaction.user.id;
+      const target = selectedRevolutionTargets[userId];
+
+      if (!target) {
+        await sendInteractionReply(interaction, "No member selected");
+        return;
+      }
+
+      let cooldown;
+      try {
+        cooldown = await CacheGetCooldown("Revolution", userId);
+      } catch (err) {
+        showErrorMsg(err);
+      }
+      if (cooldown) {
+        await sendInteractionReply(interaction, "Revolution is on cooldown");
+        return;
+      }
+
+      if (target.user.id === userId) {
+        await sendInteractionReply(interaction, "You cannot target yourself.");
+        return;
+      }
+
+      await CacheSetCooldown("Revolution", userId, RevolutionCoolDown);
+
+      try {
+        revolutionParticipants[userId] = target;
+
+        eventEmitter.emit("StartRevolution");
+        await sendInteractionReply(
+          interaction,
+          "Revolution started, waiting for others to join."
+        );
+      } catch (err) {
+        showErrorMsg(err);
+      }
+    }
+    if (interaction.customId === "JoinRevolution") {
+      const userId = interaction.user.id;
+      if (!selectedRevolutionTargets[userId]) {
+        await sendInteractionReply(interaction, "No member selected");
+        return;
+      }
+
+      if (
+        Object.keys(revolutionParticipants).findIndex((key) => key === userId) >
+        -1
+      ) {
+        await sendInteractionReply(
+          interaction,
+          "You've already joined revolution."
+        );
+        return;
+      }
+
+      const target = selectedRevolutionTargets[userId];
+      revolutionParticipants[userId] = target;
+
+      eventEmitter.emit(
+        "SendRevolutionStatus",
+        "Knight",
+        revolutionParticipants,
+        knightsSize
+      );
+
+      await sendInteractionReply(
+        interaction,
+        `You have joined the revolution with target @${target.user.username}.`
+      );
+    }
+    if (interaction.customId === "JoinCoup") {
       const userId = interaction.user.id;
       if (!selectedCoupTargets[userId]) {
+        await sendInteractionReply(interaction, "No member selected");
+        return;
+      }
+
+      if (
+        Object.keys(revolutionParticipants).findIndex((key) => key === userId) >
+        -1
+      ) {
+        await sendInteractionReply(interaction, "You've already joined coup.");
+        return;
+      }
+
+      const target = selectedCoupTargets[userId];
+      revolutionParticipants[userId] = target;
+
+      eventEmitter.emit(
+        "SendRevolutionStatus",
+        "Knight",
+        revolutionParticipants,
+        knightsSize
+      );
+
+      await sendInteractionReply(
+        interaction,
+        `You have joined the revolution with target @${target.user.username}.`
+      );
+    }
+    if (interaction.customId === "WithdrawRevolution") {
+      const userId = interaction.user.id;
+      if (
+        Object.keys(revolutionParticipants).findIndex((key) => key === userId) <
+        0
+      ) {
+        await sendInteractionReply(
+          interaction,
+          "You've not joined revolution."
+        );
+        return;
+      }
+
+      delete revolutionParticipants[userId];
+      if (coupActive) delete selectedCoupTargets[userId];
+      else delete selectedRevolutionTargets[userId];
+
+      eventEmitter.emit(
+        "SendRevolutionStatus",
+        "Knight",
+        revolutionParticipants,
+        knightsSize
+      );
+
+      await sendInteractionReply(
+        interaction,
+        `You have withdrawn the revolution`
+      );
+    }
+    if (interaction.customId === "Coup") {
+      const userId = interaction.user.id;
+      const target = selectedCoupTargets[userId];
+
+      if (!target) {
         await sendInteractionReply(interaction, "No member selected");
         return;
       }
@@ -415,67 +560,20 @@ async function setupKnightBotEvents(client, lastMessageId) {
         return;
       }
 
-      if (lastMessageId) {
-        try {
-          const target = selectedCoupTargets[userId];
-          coupParticipants[userId] = {
-            targetId: target.user.id,
-            roles: target.roles.cache,
-          };
+      await CacheSetCooldown("Coup", userId, CoupCoolDown);
 
-          // Set cooldown
-          await CacheSetCooldown("Coup", userId, CoupCooldown);
+      try {
+        revolutionParticipants[userId] = target;
 
-          coupInitiatorId = userId;
-          coupInitiator = interaction.user.username;
-
-          const guild = await client.guilds.fetch(process.env.GUILDID);
-          knights = guild.members.cache.filter((member) =>
-            member.roles.cache.has(process.env.ROLEID_KNIGHT)
-          );
-          knightsSize = knights.size;
-
-          await startFirstPhaseCoup(client, lastMessageId, CoupFirstPhaseTime);
-
-          await updateMessage(client, lastMessageId);
-
-          await sendInteractionReply(
-            interaction,
-            `You have successfully initiated coup with target @${target.user.username}. Wait for the knights to join.`
-          );
-        } catch (err) {
-          showErrorMsg(err);
-        }
+        eventEmitter.emit("StartCoup");
+        await sendInteractionReply(
+          interaction,
+          "Coup started, waiting for others to join."
+        );
+      } catch (err) {
+        showErrorMsg(err);
       }
     }
-
-    if (interaction.customId === "JoinCoup") {
-      if (!selectedCoupTargets[userId]) {
-        await sendInteractionReply(interaction, "No member selected");
-        return;
-      }
-
-      if (
-        Object.keys(coupParticipants).findIndex((key) => key === userId) > -1
-      ) {
-        await sendInteractionReply(interaction, "You've already joined coup.");
-        return;
-      }
-
-      const target = selectedCoupTargets[userId];
-      coupParticipants[userId] = {
-        targetId: target.user.id,
-        roles: target.roles.cache,
-      };
-
-      await updateMessage(client, lastMessageId);
-
-      await sendInteractionReply(
-        interaction,
-        `You have joined the coup with target @${target.user.username}.`
-      );
-    }
-
     if (interaction.customId === "VoteEmperor") {
       try {
         if (!emperorElectionActive) {
@@ -487,13 +585,13 @@ async function setupKnightBotEvents(client, lastMessageId) {
         }
 
         const userId = interaction.user.id;
-        if (!selectedEmperor[userId]) {
+        if (!selectedRevolutionTargets[userId]) {
           await sendInteractionReply(interaction, "No member selected");
           return;
         }
 
         if (
-          Object.keys(emperorElectionParticipants).findIndex(
+          Object.keys(revolutionParticipants).findIndex(
             (key) => key === userId
           ) > -1
         ) {
@@ -504,8 +602,15 @@ async function setupKnightBotEvents(client, lastMessageId) {
           return;
         }
 
-        const candidate = selectedEmperor[userId];
-        emperorElectionParticipants[userId] = candidate.user.id;
+        const candidate = selectedRevolutionTargets[userId];
+        revolutionParticipants[userId] = candidate;
+
+        eventEmitter.emit(
+          "SendRevolutionStatus",
+          "Knight",
+          revolutionParticipants,
+          knightsSize
+        );
 
         await sendInteractionReply(
           interaction,
@@ -517,7 +622,7 @@ async function setupKnightBotEvents(client, lastMessageId) {
     }
   });
 
-  eventEmitter.on("siegeStarted", async (initiatorUsername, targetName) => {
+  eventEmitter.on("siegeStarted", async (initiator, target) => {
     try {
       if (lastMessageId) {
         const guild = await client.guilds.fetch(process.env.GUILDID);
@@ -529,12 +634,11 @@ async function setupKnightBotEvents(client, lastMessageId) {
         );
         knightsSize = knights.size;
         kingsSize = kings.size;
-        siegeActive = true;
-        siegeInitiatorUsername = initiatorUsername;
-        siegeTargetName = targetName;
+        siegeInitiator = initiator;
+        siegeTarget = target;
 
-        startSiege(client, lastMessageId, SiegeTime);
-        updateMessage(client, lastMessageId);
+        await startSiege(client, lastMessageId, SiegeTime);
+        await updateMessage(client, lastMessageId);
       }
     } catch (err) {
       showErrorMsg(err);
@@ -543,7 +647,7 @@ async function setupKnightBotEvents(client, lastMessageId) {
   eventEmitter.on("siegeResult", async (message, status) => {
     try {
       if (status === "early") {
-        ceaseSiege(client, lastMessageId);
+        await ceaseSiege(client, lastMessageId);
       }
       eventEmitter.emit("NotifyKnightChannel", message);
     } catch (err) {
@@ -563,22 +667,118 @@ async function setupKnightBotEvents(client, lastMessageId) {
       showErrorMsg(err);
     }
   });
+  eventEmitter.on("RevolutionStarted", async () => {
+    try {
+      const guild = await client.guilds.fetch(process.env.GUILDID);
+      knights = guild.members.cache.filter((member) =>
+        member.roles.cache.has(process.env.ROLEID_KNIGHT)
+      );
+      knightsSize = knights.size;
+      revolutionActive = true;
+
+      eventEmitter.emit(
+        "SendRevolutionStatus",
+        "Knight",
+        revolutionParticipants,
+        knightsSize
+      );
+    } catch (err) {
+      throw err;
+    }
+  });
+  eventEmitter.on("CoupStarted", async () => {
+    try {
+      const guild = await client.guilds.fetch(process.env.GUILDID);
+      knights = guild.members.cache.filter((member) =>
+        member.roles.cache.has(process.env.ROLEID_KNIGHT)
+      );
+      knightsSize = knights.size;
+      coupActive = true;
+
+      eventEmitter.emit(
+        "SendRevolutionStatus",
+        "Knight",
+        revolutionParticipants,
+        knightsSize
+      );
+    } catch (err) {
+      throw err;
+    }
+  });
+  eventEmitter.on("CoupFinished", async () => {
+    try {
+      await resetRevolution(client, lastMessageId);
+    } catch (err) {
+      throw err;
+    }
+  });
+  eventEmitter.on("RevolutionFinished", async () => {
+    try {
+      await resetRevolution(client, lastMessageId);
+    } catch (err) {
+      throw err;
+    }
+  });
+  eventEmitter.on("RevolutionMovedInSecondPhase", async () => {
+    try {
+      revolutionSecondPhase = true;
+      await updateMessage(client, lastMessageId);
+    } catch (err) {
+      throw err;
+    }
+  });
+  eventEmitter.on("RevolutionMovedInEmperorElection", async () => {
+    try {
+      emperorElectionActive = true;
+      revolutionParticipants = {};
+      selectedRevolutionTargets = {};
+      revolutionarySize = 0;
+      await updateMessage(client, lastMessageId);
+    } catch (err) {
+      throw err;
+    }
+  });
+  eventEmitter.on("RevolutionMovedInEmperorReelection", async (members) => {
+    try {
+      reelectionActive = true;
+      candidates = members;
+      revolutionParticipants = {};
+      selectedRevolutionTargets = {};
+      revolutionarySize = 0;
+      await updateMessage(client, lastMessageId);
+    } catch (err) {
+      throw err;
+    }
+  });
+  eventEmitter.on(
+    "UpdateRevolutionStatus",
+    async (participantsSize, totalSize) => {
+      try {
+        revolutionarySize = participantsSize;
+        peopleSize = totalSize;
+        await updateMessage(client, lastMessageId);
+      } catch (err) {
+        throw err;
+      }
+    }
+  );
 }
 
 async function startSiege(client, lastMessageId, timeout) {
+  siegeActive = true;
   siegeTimeout = setTimeout(async () => {
     await handleSiegeEnd(client, lastMessageId);
   }, timeout);
 }
 
 async function handleSiegeEnd(client, lastMessageId) {
-  siegeActive = false;
   eventEmitter.emit("SiegeFinished", siegeParticipants.size, knightsSize);
   eventEmitter.emit("NotifyKnightChannel", "Siege finished.");
-  await resetComponents(client, lastMessageId);
+  await resetSiege(client, lastMessageId);
 }
 
 async function ceaseSiege(client, lastMessageId) {
+  siegeActive = false;
   if (siegeTimeout) {
     clearTimeout(siegeTimeout);
     await handleSiegeEnd(client, lastMessageId);
@@ -752,399 +952,193 @@ async function performCutDown(interaction, targetId) {
   );
 }
 
-async function startFirstPhaseCoup(client, lastMessageId, timeout) {
-  coupActive = true;
-  setTimeout(async () => {
-    await handleFirstPhaseCoupEnd(client, lastMessageId);
-  }, timeout);
-}
-
-async function handleFirstPhaseCoupEnd(client, lastMessageId) {
-  const success =
-    Object.keys(coupParticipants).length / knightsSize > COUPTHREADSHOLD;
-  if (success) {
-    const msg = `The initial phase of coup initiated by @${coupInitiator} is succeeded, moving to the next phase`;
-    eventEmitter.emit("NotifyKnightChannel", msg);
-    startSecondPhaseCoup(client, lastMessageId, CoupSecondPhaseTime);
-  } else {
-    const msg = `The coup initiated by @${coupInitiator} is failed, resetting the poll.`;
-    eventEmitter.emit("NotifyKnightChannel", msg);
-    await resetComponents(client, lastMessageId);
-  }
-}
-
-async function startSecondPhaseCoup(client, lastMessageId, timeout) {
-  coupSecondPhase = true;
-  await updateMessage(client, lastMessageId);
-  coupTimeout = setTimeout(async () => {
-    await handleSecondPhaseCoupEnd(client, lastMessageId);
-  }, timeout);
-}
-
-async function handleSecondPhaseCoupEnd(client, lastMessageId) {
-  const refinedTargets = {};
-  Object.keys(coupParticipants).forEach((userId) => {
-    const targetId = coupParticipants[userId].targetId;
-    let targetedNumber = 1;
-    Object.keys(coupParticipants).forEach((otherUserId) => {
-      const otherTargetId = coupParticipants[otherUserId].targetId;
-      if (userId !== otherUserId && targetId === otherTargetId)
-        targetedNumber++;
-    });
-    refinedTargets[targetId] = {
-      targetedNumber,
-      roles: coupParticipants[userId].roles,
-    };
-  });
-
-  let isEmperorDead = false;
-  Object.keys(refinedTargets).forEach(async (targetId) => {
-    let killTarget = false;
-    if (
-      refinedTargets[targetId].roles.has(process.env.ROLEID_NOBLE) &&
-      refinedTargets[targetId].targetedNumber > CoupKillNoble
-    )
-      killTarget = true;
-    if (
-      refinedTargets[targetId].roles.has(process.env.ROLEID_LORD) &&
-      refinedTargets[targetId].targetedNumber > CoupKillLord
-    )
-      killTarget = true;
-    if (
-      refinedTargets[targetId].roles.has(process.env.ROLEID_KING) &&
-      refinedTargets[targetId].targetedNumber > CoupKillKing
-    )
-      killTarget = true;
-    if (
-      refinedTargets[targetId].roles.has(process.env.ROLEID_EMPEROR) &&
-      refinedTargets[targetId].targetedNumber > CoupKillEmperor
-    ) {
-      killTarget = true;
-      isEmperorDead = true;
-    }
-
-    if (killTarget) {
-      const guild = await client.guilds.fetch(process.env.GUILDID);
-      const target = await guild.members.fetch(targetId);
-      eventEmitter.emit("changeRole", target, "Poop");
-      eventEmitter.emit(
-        "NotifyKnightChannel",
-        `@${target.user.username} has been killed by coup.`
-      );
-    }
-  });
-
-  if (isEmperorDead) {
-    eventEmitter.emit(
-      "NotifyKnightChannel",
-      `The emperor is dead. Let's vote for new emperor.`
-    );
-    startEmperorElection(client, lastMessageId, EmperorElectionTime);
-  } else {
-    eventEmitter.emit("NotifyKnightChannel", `Coup finished.`);
-    resetComponents(client, lastMessageId);
-  }
-}
-
-async function ceaseCoup(client, lastMessageId) {
-  if (coupTimeout) {
-    clearTimeout(coupTimeout);
-    eventEmitter.emit(
-      "NotifyKnightChannel",
-      "Coup failed because of insufficient number of knights."
-    );
-    await resetComponents(client, lastMessageId);
-  }
-}
-
-async function startEmperorElection(client, lastMessageId, timeout) {
-  emperorElectionActive = true;
-  await updateMessage(client, lastMessageId);
-
-  setTimeout(async () => {
-    await handleEmperorElectionEnd(client, lastMessageId);
-  }, timeout);
-}
-
-async function handleEmperorElectionEnd(client, lastMessageId) {
-  const refinedCandidates = {};
-  let maximumVotes = 1;
-  Object.keys(emperorElectionParticipants).forEach((userId) => {
-    const candidateId = emperorElectionParticipants[userId];
-    let votes = 1;
-    Object.keys(emperorElectionParticipants).forEach((otherUserId) => {
-      const otherCandidateId = emperorElectionParticipants[otherUserId];
-      if (userId !== otherUserId && candidateId === otherCandidateId) votes++;
-    });
-    refinedCandidates[candidateId] = votes;
-    if (votes > maximumVotes) maximumVotes = votes;
-  });
-
-  let maxCandidates = [];
-  Object.keys(refinedCandidates).forEach(async (candidateId) => {
-    if (refinedCandidates[candidateId] === maximumVotes)
-      maxCandidates.push(candidateId);
-  });
-
-  if (maxCandidates.length === 1) {
-    const guild = await client.guilds.fetch(process.env.GUILDID);
-    const target = await guild.members.fetch(maxCandidates[0]);
-    eventEmitter.emit("changeRole", target, "Emperor");
-    eventEmitter.emit(
-      "NotifyKnightChannel",
-      `Congrats! @${target.user.username} has been elected as new emperor.`
-    );
-    resetComponents(client, lastMessageId);
-  } else {
-    eventEmitter.emit(
-      "NotifyKnightChannel",
-      `${maxCandidates.length} candidates have same votes. Starting reelection...`
-    );
-    reelectionActive = true;
-    const guild = await client.guilds.fetch(process.env.GUILDID);
-    candidates = maxCandidates.map(async (candidateId) => {
-      const candidate = await guild.members.fetch(candidateId);
-      return { label: candidate.user.username, value: candidate.id };
-    });
-
-    await updateMessage(client, lastMessageId);
-
-    emperorElectionParticipants = {};
-    selectedEmperor = {};
-
-    setTimeout(async () => {
-      await handleEmperorElectionEnd(client, lastMessageId);
-    }, EmperorElectionTime);
-  }
-}
-
 async function updateMessage(client, lastMessageId) {
   try {
     const channel = await client.channels.fetch(process.env.CHANNELIDKNIGHT);
     const messageToEdit = await channel.messages.fetch(lastMessageId);
 
-    if (siegeActive) {
-      const actionRow_0 = new ActionRowBuilder().addComponents(
-        await buildSelectMenu(
-          client,
-          ["peasant", "scholar", "merchant", "noble", "lord", "king", "knight"],
-          "SelectCutDown"
-        )
-      );
-      const actionRow_1 = new ActionRowBuilder().addComponents(
-        await buildSelectMenu(
-          client,
-          ["noble", "lord", "king", "emperor"],
-          "SelectCoupTarget"
-        )
-      );
-      const btnRow_1 = new ActionRowBuilder().addComponents(
-        new ButtonBuilder()
-          .setCustomId("CutDown")
-          .setLabel("Cut Down")
-          .setStyle(ButtonStyle.Primary),
-        new ButtonBuilder()
-          .setCustomId("JoinSiege")
-          .setLabel("Join Siege")
-          .setStyle(ButtonStyle.Primary)
-      );
-      const btnRow_2 = ActionRowBuilder.from(
-        messageToEdit.components[3].toJSON()
-      );
+    let actionRow_0 = new ActionRowBuilder().addComponents(
+      await buildSelectMenu(
+        client,
+        ["peasant", "scholar", "merchant", "noble", "lord", "king", "knight"],
+        "SelectCutDown"
+      )
+    );
+    let actionRow_1 = new ActionRowBuilder().addComponents(
+      await buildSelectMenu(
+        client,
+        ["knight", "noble", "lord", "king", "emperor"],
+        "SelectRevolutionTarget"
+      )
+    );
+    let actionRow_2 = new ActionRowBuilder().addComponents(
+      await buildSelectMenu(
+        client,
+        ["noble", "lord", "king", "emperor"],
+        "SelectCoupTarget"
+      )
+    );
+    let actionRow_3 = new ActionRowBuilder().addComponents(
+      new ButtonBuilder()
+        .setCustomId("CutDown")
+        .setLabel("Cut Down")
+        .setStyle(ButtonStyle.Primary),
+      new ButtonBuilder()
+        .setCustomId("ShowWrits")
+        .setLabel("Read yer writs")
+        .setStyle(ButtonStyle.Primary)
+    );
+    let actionRow_4 = new ActionRowBuilder().addComponents(
+      new ButtonBuilder()
+        .setCustomId("Revolution")
+        .setLabel("Revolution")
+        .setStyle(ButtonStyle.Danger),
+      new ButtonBuilder()
+        .setCustomId("Coup")
+        .setLabel("Coup")
+        .setStyle(ButtonStyle.Danger)
+    );
 
-      await messageToEdit.edit({
-        content:
-          initContent +
-          `\nKing @${siegeInitiatorUsername} initiated a siege. Join siege to downgrade ${siegeTargetName}. (Joined ${siegeParticipants.size} / ${knightsSize}.)`,
-        components: [actionRow_0, actionRow_1, btnRow_1, btnRow_2],
-      });
+    if (siegeActive) {
+      const joinSiegeBtn = new ButtonBuilder()
+        .setCustomId("JoinSiege")
+        .setLabel("Join Siege")
+        .setStyle(ButtonStyle.Danger);
+      if (revolutionActive) {
+        if (revolutionSecondPhase && !emperorElectionActive)
+          actionRow_4.components[3] = joinSiegeBtn;
+        else actionRow_4.components[2] = joinSiegeBtn;
+      } else {
+        actionRow_4.components[2] = joinSiegeBtn;
+      }
+
+      siegeStatusMsg = `\nKing @${siegeInitiator} initiated a siege. Join siege to downgrade ${siegeTarget}. (Joined ${siegeParticipants.size} / ${knightsSize}.)`;
     }
 
-    if (coupActive) {
-      if (!emperorElectionActive) {
-        const actionRow_0 = new ActionRowBuilder().addComponents(
-          await buildSelectMenu(
-            client,
-            [
-              "peasant",
-              "scholar",
-              "merchant",
-              "noble",
-              "lord",
-              "king",
-              "knight",
-            ],
-            "SelectCutDown"
-          )
-        );
-        const actionRow_1 = new ActionRowBuilder().addComponents(
-          await buildSelectMenu(
-            client,
-            ["noble", "lord", "king", "emperor"],
-            "SelectCoupTarget"
-          )
-        );
-        const btnRow_1 = ActionRowBuilder.from(
-          messageToEdit.components[2].toJSON()
-        );
-        const btnRow_2 = new ActionRowBuilder().addComponents(
-          new ButtonBuilder()
-            .setCustomId("ShowWrits")
-            .setLabel("Read yer writs")
-            .setStyle(ButtonStyle.Danger),
-          new ButtonBuilder()
-            .setCustomId("JoinCoup")
-            .setLabel("Join Coup")
-            .setStyle(ButtonStyle.Danger)
-        );
+    if (revolutionActive) {
+      let revolutionBtn = new ButtonBuilder()
+        .setCustomId("JoinRevolution")
+        .setLabel("Join Revolution")
+        .setStyle(ButtonStyle.Danger);
+      const coupBtn = new ButtonBuilder()
+        .setCustomId("Coup")
+        .setLabel("Coup")
+        .setDisabled(true)
+        .setStyle(ButtonStyle.Danger);
+      revolutionStatusMsg = `\nRevolution started. Join revolution. (Joined ${revolutionarySize} / ${peopleSize}.)`;
+      if (revolutionSecondPhase) {
+        if (siegeActive)
+          actionRow_4.components[3] = new ButtonBuilder()
+            .setCustomId("WithdrawRevolution")
+            .setLabel("Withdraw Revolution")
+            .setStyle(ButtonStyle.Primary);
+        else
+          actionRow_4.components[2] = new ButtonBuilder()
+            .setCustomId("WithdrawRevolution")
+            .setLabel("Withdraw Revolution")
+            .setStyle(ButtonStyle.Primary);
 
-        let content =
-          initContent +
-          `\n\n@${coupInitiator} initiated a coup. Join coup with selected target. (Joined ${
-            Object.keys(coupParticipants).length
-          } / ${knightsSize} knights.)`;
-        if (coupSecondPhase)
-          content =
-            initContent +
-            `\n\nCoup initiated by @${coupInitiator} is in the next phase. Join coup with selected target. (Joined ${
-              Object.keys(coupParticipants).length
-            } / ${knightsSize} knights.)`;
-
-        await messageToEdit.edit({
-          content,
-          components: [actionRow_0, actionRow_1, btnRow_1, btnRow_2],
-        });
-      } else {
-        if (reelectionActive) {
-          const actionRow_0 = new ActionRowBuilder().addComponents(
+        revolutionStatusMsg = `\nRevolution moved in the next phase. Join revolution. You can also withdraw. (Joined ${revolutionarySize} / ${peopleSize}.)`;
+        if (emperorElectionActive) {
+          actionRow_1 = new ActionRowBuilder().addComponents(
             await buildSelectMenu(
               client,
-              [
-                "peasant",
-                "scholar",
-                "merchant",
-                "noble",
-                "lord",
-                "king",
-                "knight",
-              ],
-              "SelectCutDown"
-            )
-          );
-          const actionRow_1 = new ActionRowBuilder().addComponents(
-            new StringSelectMenuBuilder()
-              .setCustomId("SelectEmperorUser")
-              .setPlaceholder("Choose a candidate")
-              .addOptions(candidates)
-          );
-          const btnRow_1 = ActionRowBuilder.from(
-            messageToEdit.components[2].toJSON()
-          );
-          const btnRow_2 = new ActionRowBuilder().addComponents(
-            new ButtonBuilder()
-              .setCustomId("ShowWrits")
-              .setLabel("Read yer writs")
-              .setStyle(ButtonStyle.Danger),
-            new ButtonBuilder()
-              .setCustomId("VoteEmperor")
-              .setLabel("Vote")
-              .setStyle(ButtonStyle.Danger)
-          );
-
-          const content =
-            initContent +
-            `\n\nEmperor must be only one! Let's reelect an emperor. Select a candidate and vote.`;
-
-          await messageToEdit.edit({
-            content,
-            components: [actionRow_0, actionRow_1, btnRow_1, btnRow_2],
-          });
-        } else {
-          const actionRow_0 = new ActionRowBuilder().addComponents(
-            await buildSelectMenu(
-              client,
-              [
-                "peasant",
-                "scholar",
-                "merchant",
-                "noble",
-                "lord",
-                "king",
-                "knight",
-              ],
-              "SelectCutDown"
-            )
-          );
-          const actionRow_1 = new ActionRowBuilder().addComponents(
-            await buildSelectMenu(
-              client,
-              ["noble", "lord", "king", "knight"],
+              ["knight", "noble", "lord", "king"],
               "SelectEmperorCandidate"
             )
           );
-          const btnRow_1 = ActionRowBuilder.from(
-            messageToEdit.components[2].toJSON()
-          );
-          const btnRow_2 = new ActionRowBuilder().addComponents(
-            new ButtonBuilder()
-              .setCustomId("ShowWrits")
-              .setLabel("Read yer writs")
-              .setStyle(ButtonStyle.Danger),
-            new ButtonBuilder()
-              .setCustomId("VoteEmperor")
-              .setLabel("Vote")
-              .setStyle(ButtonStyle.Danger)
+          revolutionBtn = new ButtonBuilder()
+            .setCustomId("VoteEmperor")
+            .setLabel("Vote")
+            .setStyle(ButtonStyle.Danger);
+          if (siegeActive) {
+            if (actionRow_4.components[3]) actionRow_4.components.splice(3, 1);
+          } else {
+            if (actionRow_4.components[2]) actionRow_4.components.splice(2, 1);
+          }
+          revolutionStatusMsg = `\nLet's vote a new emperor.  (Joined ${revolutionarySize} members.)`;
+        }
+        if (reelectionActive) {
+          actionRow_1 = new ActionRowBuilder().addComponents(
+            new StringSelectMenuBuilder()
+              .setCustomId("SelectEmperorCandidate")
+              .setPlaceholder("Choose a candidate")
+              .addOptions(candidates)
           );
 
-          const content =
-            initContent +
-            `\n\nThe emperor is dead as a result of coup. Elect new emperor.`;
-
-          await messageToEdit.edit({
-            content,
-            components: [actionRow_0, actionRow_1, btnRow_1, btnRow_2],
-          });
+          revolutionStatusMsg = `\nEmperor must be only one. Let's reelect an emperor. (Joined ${revolutionarySize} members.)`;
         }
       }
+      actionRow_4.components[0] = revolutionBtn;
+      actionRow_4.components[1] = coupBtn;
+    } else if (coupActive) {
+      const revolutionBtn = new ButtonBuilder()
+        .setCustomId("Revolution")
+        .setLabel("Revolution")
+        .setDisabled(true)
+        .setStyle(ButtonStyle.Danger);
+      let coupBtn = new ButtonBuilder()
+        .setCustomId("JoinCoup")
+        .setLabel("Join Coup")
+        .setStyle(ButtonStyle.Danger);
+      revolutionStatusMsg = `\nCoup started. Join coup. (Joined ${revolutionarySize} / ${peopleSize}.)`;
+      if (revolutionSecondPhase) {
+        if (siegeActive)
+          actionRow_4.components[3] = new ButtonBuilder()
+            .setCustomId("WithdrawRevolution")
+            .setLabel("Withdraw Revolution")
+            .setStyle(ButtonStyle.Primary);
+        else
+          actionRow_4.components[2] = new ButtonBuilder()
+            .setCustomId("WithdrawRevolution")
+            .setLabel("Withdraw Revolution")
+            .setStyle(ButtonStyle.Primary);
+
+        revolutionStatusMsg = `\nCoup moved in the next phase. Join coup. You can also withdraw. (Joined ${revolutionarySize} / ${peopleSize}.)`;
+        if (emperorElectionActive) {
+          actionRow_2 = new ActionRowBuilder().addComponents(
+            await buildSelectMenu(
+              client,
+              ["knight", "noble", "lord", "king"],
+              "SelectEmperorCandidate"
+            )
+          );
+          coupBtn = new ButtonBuilder()
+            .setCustomId("VoteEmperor")
+            .setLabel("Vote")
+            .setStyle(ButtonStyle.Danger);
+          if (siegeActive) {
+            if (actionRow_4.components[3]) actionRow_4.components.splice(3, 1);
+          } else {
+            if (actionRow_4.components[2]) actionRow_4.components.splice(2, 1);
+          }
+          revolutionStatusMsg = `\nLet's vote a new emperor.  (Joined ${revolutionarySize} members.)`;
+        }
+        if (reelectionActive) {
+          actionRow_2 = new ActionRowBuilder().addComponents(
+            new StringSelectMenuBuilder()
+              .setCustomId("SelectEmperorCandidate")
+              .setPlaceholder("Choose a candidate")
+              .addOptions(candidates)
+          );
+
+          revolutionStatusMsg = `\nEmperor must be only one. Let's reelect an emperor. (Joined ${revolutionarySize} members.)`;
+        }
+      }
+      actionRow_4.components[0] = revolutionBtn;
+      actionRow_4.components[1] = coupBtn;
     }
 
-    if (!coupActive && !siegeActive) {
-      const cutDownSelectMenu = new ActionRowBuilder().addComponents(
-        await buildSelectMenu(
-          client,
-          ["peasant", "scholar", "merchant", "noble", "lord", "king", "knight"],
-          "SelectCutDown"
-        )
-      );
-      const coupSelectMenu = new ActionRowBuilder().addComponents(
-        await buildSelectMenu(
-          client,
-          ["noble", "lord", "king", "emperor"],
-          "SelectCoupTarget"
-        )
-      );
-      const btnRow = new ActionRowBuilder().addComponents(
-        new ButtonBuilder()
-          .setCustomId("CutDown")
-          .setLabel("Cut Down")
-          .setStyle(ButtonStyle.Primary)
-      );
-      const infoBtnRow = new ActionRowBuilder().addComponents(
-        new ButtonBuilder()
-          .setCustomId("ShowWrits")
-          .setLabel("Read yer writs")
-          .setStyle(ButtonStyle.Danger),
-        new ButtonBuilder()
-          .setCustomId("Coup")
-          .setLabel("Coup")
-          .setStyle(ButtonStyle.Danger)
-      );
-
-      await messageToEdit.edit({
-        content: initContent,
-        components: [cutDownSelectMenu, coupSelectMenu, btnRow, infoBtnRow],
-      });
-    }
+    await messageToEdit.edit({
+      content: initContent + siegeStatusMsg + revolutionStatusMsg,
+      components: [
+        actionRow_0,
+        actionRow_1,
+        actionRow_2,
+        actionRow_3,
+        actionRow_4,
+      ],
+    });
   } catch (err) {
     showErrorMsg(err);
   }
@@ -1154,30 +1148,41 @@ async function messageKnightCommands(client) {
   let channel = null;
   try {
     channel = await client.channels.fetch(process.env.CHANNELIDKNIGHT);
-    const cutDownSelectMenu = new ActionRowBuilder().addComponents(
+    const actionRow_0 = new ActionRowBuilder().addComponents(
       await buildSelectMenu(
         client,
         ["peasant", "scholar", "merchant", "noble", "lord", "king", "knight"],
         "SelectCutDown"
       )
     );
-    const coupSelectMenu = new ActionRowBuilder().addComponents(
+    const actionRow_1 = new ActionRowBuilder().addComponents(
+      await buildSelectMenu(
+        client,
+        ["knight", "noble", "lord", "king", "emperor"],
+        "SelectRevolutionTarget"
+      )
+    );
+    const actionRow_2 = new ActionRowBuilder().addComponents(
       await buildSelectMenu(
         client,
         ["noble", "lord", "king", "emperor"],
         "SelectCoupTarget"
       )
     );
-    const btnRow = new ActionRowBuilder().addComponents(
+    const actionRow_3 = new ActionRowBuilder().addComponents(
       new ButtonBuilder()
         .setCustomId("CutDown")
         .setLabel("Cut Down")
-        .setStyle(ButtonStyle.Primary)
-    );
-    const infoBtnRow = new ActionRowBuilder().addComponents(
+        .setStyle(ButtonStyle.Primary),
       new ButtonBuilder()
         .setCustomId("ShowWrits")
         .setLabel("Read yer writs")
+        .setStyle(ButtonStyle.Primary)
+    );
+    const actionRow_4 = new ActionRowBuilder().addComponents(
+      new ButtonBuilder()
+        .setCustomId("Revolution")
+        .setLabel("Revolution")
         .setStyle(ButtonStyle.Danger),
       new ButtonBuilder()
         .setCustomId("Coup")
@@ -1187,7 +1192,13 @@ async function messageKnightCommands(client) {
 
     const message = await channel.send({
       content: initContent,
-      components: [cutDownSelectMenu, coupSelectMenu, btnRow, infoBtnRow],
+      components: [
+        actionRow_0,
+        actionRow_1,
+        actionRow_2,
+        actionRow_3,
+        actionRow_4,
+      ],
     });
     return message;
   } catch (err) {
@@ -1196,27 +1207,38 @@ async function messageKnightCommands(client) {
   }
 }
 
-async function resetComponents(client, lastMessageId) {
+async function resetSiege(client, lastMessageId) {
   try {
     siegeActive = false;
-    siegeInitiatorUsername = "";
-    siegeTargetName = "";
+    siegeInitiator = "";
+    siegeTarget = "";
     siegeParticipants.clear();
     knightsSize = 1;
     knights = [];
-    selectedTargets = {};
-    coupParticipants = {};
-    selectedCoupTargets = {};
-    coupInitiator = "";
-    coupActive = false;
-    coupSecondPhase = false;
-    emperorElectionActive = false;
-    reelectionActive = false;
-    candidates = null;
+    siegeStatusMsg = "";
     await updateMessage(client, lastMessageId);
   } catch (err) {
     throw err;
   }
 }
 
+async function resetRevolution(client, lastMessageId) {
+  try {
+    selectedRevolutionTargets = {};
+    revolutionActive = false;
+    revolutionSecondPhase = false;
+    revolutionarySize = 0;
+    peopleSize = 0;
+    revolutionParticipants = {};
+    emperorElectionActive = false;
+    reelectionActive = false;
+    candidates = null;
+    revolutionStatusMsg = "";
+    selectedCoupTargets = {};
+    coupActive = false;
+    await updateMessage(client, lastMessageId);
+  } catch (err) {
+    throw err;
+  }
+}
 module.exports = { setupKnightBotEvents, messageKnightCommands };

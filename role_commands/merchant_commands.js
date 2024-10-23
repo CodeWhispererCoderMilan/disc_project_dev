@@ -1,4 +1,5 @@
 const {
+  StringSelectMenuBuilder,
   ActionRowBuilder,
   ButtonBuilder,
   ButtonStyle,
@@ -16,65 +17,192 @@ const {
   CacheSetCooldown,
 } = require("../apis/redis/redisCache");
 const { DBUpdateXP } = require("../apis/firebase/querys");
+const {
+  BribeCoolDown,
+  RevolutionCoolDown,
+  RoleChangeMessageDisplayTime,
+} = require("../game_config.json");
 const { eventEmitter } = require("../functions/eventEmitter.js");
-const { MerchantCoolDown } = require("../game_config.json");
 
-let selectedMembers = {};
-let selectedMemberId = "";
+let selectedBribeTargets = {};
+let bribeTargetId = null;
+let merchants = [];
+let merchantsSize = 1;
+let selectedRevolutionTargets = {};
+let revolutionarySize = 0;
+let revolutionActive = false;
+let revolutionSecondPhase = false;
+let peopleSize = 0;
+let revolutionParticipants = {};
+let emperorElectionActive = false;
+let reelectionActive = false;
+let candidates = null;
 
 const initContent =
   "Merchants can trigger bride to give xp to a target by selecting Peasant,Merchant,Knight, Noble, Lord or King in a menu and clicking a button. There will be displayed a modal and should enter xp and message(optional) to give.\n\n" +
   "**Abilities:**\n" +
-  "- **Bribe**: Enter xp and message to give to a target.";
+  "- **Bribe**: Enter xp and message to give to a target.\n" +
+  "- **Revolution**: Let's make a new world!\n";
+let revolutionStatusMsg = "";
 
 function showErrorMsg(err) {
-  console.error("ERROR: noble_commands.js", err);
+  console.error("ERROR: merchant_commands.js", err);
 }
 
 async function setupMerchantBotEvents(client, lastMessageId) {
   client.on("guildMemberUpdate", async (oldMember, newMember) => {
-    if (oldMember.roles.cache.has(process.env.ROLEID_PEASANT) ||
-			oldMember.roles.cache.has(process.env.ROLEID_SCHOLAR) ||
-			oldMember.roles.cache.has(process.env.ROLEID_MERCHANT) ||
-			oldMember.roles.cache.has(process.env.ROLEID_KNIGHT) ||
-			oldMember.roles.cache.has(process.env.ROLEID_NOBLE) ||
-			oldMember.roles.cache.has(process.env.ROLEID_LORD) ||
-			oldMember.roles.cache.has(process.env.ROLEID_KING) ||
-			newMember.roles.cache.has(process.env.ROLEID_PEASANT) ||
-			newMember.roles.cache.has(process.env.ROLEID_SCHOLAR) ||
-			newMember.roles.cache.has(process.env.ROLEID_MERCHANT) ||
-			newMember.roles.cache.has(process.env.ROLEID_KNIGHT) ||
-			newMember.roles.cache.has(process.env.ROLEID_NOBLE) ||
-			newMember.roles.cache.has(process.env.ROLEID_LORD) ||
-			newMember.roles.cache.has(process.env.ROLEID_KING)) {
-      await updateSelectMenu(client, lastMessageId);
+    const hadRoleBeforeMerchant = oldMember.roles.cache.has(
+      process.env.ROLEID_MERCHANT
+    );
+    const hasRoleNowMerchant = newMember.roles.cache.has(
+      process.env.ROLEID_MERCHANT
+    );
+    const hadRoleBeforePeasant = oldMember.roles.cache.has(
+      process.env.ROLEID_PEASANT
+    );
+    const hasRoleNowPeasant = newMember.roles.cache.has(
+      process.env.ROLEID_PEASANT
+    );
+    const hadRoleBeforeScholar = oldMember.roles.cache.has(
+      process.env.ROLEID_SCHOLAR
+    );
+    const hasRoleNowScholar = newMember.roles.cache.has(
+      process.env.ROLEID_SCHOLAR
+    );
+    const hadRoleBeforeKnight = oldMember.roles.cache.has(
+      process.env.ROLEID_KNIGHT
+    );
+    const hasRoleNowKnight = newMember.roles.cache.has(
+      process.env.ROLEID_KNIGHT
+    );
+    const hadRoleBeforeNoble = oldMember.roles.cache.has(
+      process.env.ROLEID_NOBLE
+    );
+    const hasRoleNowNoble = newMember.roles.cache.has(process.env.ROLEID_NOBLE);
+    const hadRoleBeforeLord = oldMember.roles.cache.has(
+      process.env.ROLEID_LORD
+    );
+    const hasRoleNowLord = newMember.roles.cache.has(process.env.ROLEID_LORD);
+    const hadRoleBeforeKing = oldMember.roles.cache.has(
+      process.env.ROLEID_KING
+    );
+    const hasRoleNowKing = newMember.roles.cache.has(process.env.ROLEID_KING);
+    const hadRoleBeforeEmperor = oldMember.roles.cache.has(
+      process.env.ROLEID_EMPEROR
+    );
+    const hasRoleNowEmperor = newMember.roles.cache.has(
+      process.env.ROLEID_EMPEROR
+    );
+
+    if (revolutionActive && (hadRoleBeforeMerchant || hasRoleNowMerchant)) {
+      const guild = await client.guilds.fetch(process.env.GUILDID);
+      merchants = guild.members.cache.filter((member) =>
+        member.roles.cache.has(process.env.ROLEID_MERCHANT)
+      );
+      merchantsSize = merchants.size;
+      if (
+        Object.keys(revolutionParticipants).findIndex(
+          (key) => key === newMember.id
+        ) > -1
+      ) {
+        delete revolutionParticipants[newMember.id];
+        delete selectedRevolutionTargets[newMember.id];
+      }
+      eventEmitter.emit(
+        "SendRevolutionStatus",
+        "Merchant",
+        revolutionParticipants,
+        merchantsSize
+      );
+    }
+    if (
+      hadRoleBeforePeasant ||
+      hadRoleBeforeScholar ||
+      hadRoleBeforeMerchant ||
+      hadRoleBeforeKnight ||
+      hadRoleBeforeNoble ||
+      hadRoleBeforeLord ||
+      hadRoleBeforeKing ||
+      hadRoleBeforeEmperor ||
+      hasRoleNowPeasant ||
+      hasRoleNowScholar ||
+      hasRoleNowMerchant ||
+      hasRoleNowKnight ||
+      hasRoleNowNoble ||
+      hasRoleNowLord ||
+      hasRoleNowKing ||
+      hasRoleNowEmperor
+    ) {
+      await updateMessage(client, lastMessageId);
     }
   });
 
   client.on("interactionCreate", async (interaction) => {
-    const userId = interaction.user.id;
-
     if (
       interaction.isStringSelectMenu() &&
-      interaction.customId === "MembersSelectMenu"
+      interaction.customId === "BribeSelectMenu"
     ) {
-      selectedMemberId = interaction.values[0];
+      const userId = interaction.user.id;
+
+      bribeTargetId = interaction.values[0];
       try {
-        selectedMembers[selectedMemberId] =
-          await interaction.guild.members.cache.get(selectedMemberId);
+        selectedBribeTargets[userId] =
+          await interaction.guild.members.cache.get(bribeTargetId);
         await interaction.deferUpdate();
       } catch (err) {
         showErrorMsg(err);
       }
     }
 
-    if (interaction.isButton() && interaction.customId === "Bribe") {
-      if (!selectedMembers[selectedMemberId]) {
-        await sendInteractionReply(interaction, "Choose a member");
-      } else {
+    if (
+      interaction.isStringSelectMenu() &&
+      interaction.customId === "SelectRevolutionTarget"
+    ) {
+      const userId = interaction.user.id;
+      let targetId = interaction.values[0];
+      try {
+        selectedRevolutionTargets[userId] =
+          await interaction.guild.members.cache.get(targetId);
+        await interaction.deferUpdate();
+      } catch (err) {
+        showErrorMsg(err);
+      }
+    }
+
+    if (
+      interaction.isStringSelectMenu() &&
+      interaction.customId === "SelectEmperorCandidate"
+    ) {
+      const userId = interaction.user.id;
+      let selectedCandidateId = interaction.values[0];
+      try {
+        selectedRevolutionTargets[userId] =
+          await interaction.guild.members.cache.get(selectedCandidateId);
+        await interaction.deferUpdate();
+      } catch (err) {
+        showErrorMsg(err);
+      }
+    }
+
+    if (interaction.isButton()) {
+      if (interaction.customId === "Bribe") {
+        const userId = interaction.user.id;
+        if (!selectedBribeTargets[userId]) {
+          await sendInteractionReply(interaction, "Choose a member");
+          return;
+        }
+        bribeTargetId = selectedBribeTargets[userId].user.id;
+        if (bribeTargetId === userId) {
+          await sendInteractionReply(
+            interaction,
+            "You cannot target yourself!"
+          );
+          return;
+        }
+
         let cooldown;
         try {
-          cooldown = await CacheGetCooldown("MerchantCooldown", userId);
+          cooldown = await CacheGetCooldown("Bribe", userId);
         } catch (err) {
           showErrorMsg(err);
         }
@@ -82,6 +210,7 @@ async function setupMerchantBotEvents(client, lastMessageId) {
           sendInteractionReply(interaction, "Bribe is on cooldown");
           return;
         }
+
         // Display the modal
         const modal = new ModalBuilder()
           .setCustomId("xpModal")
@@ -110,10 +239,162 @@ async function setupMerchantBotEvents(client, lastMessageId) {
 
         await interaction.showModal(modal);
       }
+      if (interaction.customId === "Revolution") {
+        const userId = interaction.user.id;
+        const target = selectedRevolutionTargets[userId];
+
+        if (!target) {
+          await sendInteractionReply(interaction, "No member selected");
+          return;
+        }
+
+        let cooldown;
+        try {
+          cooldown = await CacheGetCooldown("Revolution", userId);
+        } catch (err) {
+          showErrorMsg(err);
+        }
+        if (cooldown) {
+          await sendInteractionReply(interaction, "Revolution is on cooldown");
+          return;
+        }
+
+        if (target.user.id === userId) {
+          await sendInteractionReply(
+            interaction,
+            "You cannot target yourself."
+          );
+          return;
+        }
+
+        await CacheSetCooldown("Revolution", userId, RevolutionCoolDown);
+
+        try {
+          revolutionParticipants[userId] = target;
+
+          eventEmitter.emit("StartRevolution");
+          await sendInteractionReply(
+            interaction,
+            "Revolution started, waiting for others to join."
+          );
+        } catch (err) {
+          showErrorMsg(err);
+        }
+      }
+      if (interaction.customId === "JoinRevolution") {
+        const userId = interaction.user.id;
+        if (!selectedRevolutionTargets[userId]) {
+          await sendInteractionReply(interaction, "No member selected");
+          return;
+        }
+
+        if (
+          Object.keys(revolutionParticipants).findIndex(
+            (key) => key === userId
+          ) > -1
+        ) {
+          await sendInteractionReply(
+            interaction,
+            "You've already joined revolution."
+          );
+          return;
+        }
+
+        const target = selectedRevolutionTargets[userId];
+        revolutionParticipants[userId] = target;
+
+        eventEmitter.emit(
+          "SendRevolutionStatus",
+          "Merchant",
+          revolutionParticipants,
+          merchantsSize
+        );
+
+        await sendInteractionReply(
+          interaction,
+          `You have joined the revolution with target @${target.user.username}.`
+        );
+      }
+      if (interaction.customId === "WithdrawRevolution") {
+        const userId = interaction.user.id;
+        if (
+          Object.keys(revolutionParticipants).findIndex(
+            (key) => key === userId
+          ) < 0
+        ) {
+          await sendInteractionReply(
+            interaction,
+            "You've not joined revolution."
+          );
+          return;
+        }
+
+        delete revolutionParticipants[userId];
+        delete selectedRevolutionTargets[userId];
+
+        eventEmitter.emit(
+          "SendRevolutionStatus",
+          "Merchant",
+          revolutionParticipants,
+          merchantsSize
+        );
+
+        await sendInteractionReply(
+          interaction,
+          `You have withdrawn the revolution`
+        );
+      }
+      if (interaction.customId === "VoteEmperor") {
+        try {
+          if (!emperorElectionActive) {
+            await sendInteractionReply(
+              interaction,
+              "There is no active election to vote."
+            );
+            return;
+          }
+
+          const userId = interaction.user.id;
+          if (!selectedRevolutionTargets[userId]) {
+            await sendInteractionReply(interaction, "No member selected");
+            return;
+          }
+
+          if (
+            Object.keys(revolutionParticipants).findIndex(
+              (key) => key === userId
+            ) > -1
+          ) {
+            await sendInteractionReply(
+              interaction,
+              "You've already joined the election."
+            );
+            return;
+          }
+
+          const candidate = selectedRevolutionTargets[userId];
+          revolutionParticipants[userId] = candidate;
+
+          eventEmitter.emit(
+            "SendRevolutionStatus",
+            "Merchant",
+            revolutionParticipants,
+            merchantsSize
+          );
+
+          await sendInteractionReply(
+            interaction,
+            "You have joined the election."
+          );
+        } catch (err) {
+          throw err;
+        }
+      }
     }
 
     // Handle modal submission
     if (interaction.isModalSubmit() && interaction.customId === "xpModal") {
+      const userId = interaction.user.id;
       const xpAmount = Number(interaction.fields.getTextInputValue("xpAmount"));
       const optionalMessage =
         interaction.fields.getTextInputValue("optionalMessage") ||
@@ -134,26 +415,221 @@ async function setupMerchantBotEvents(client, lastMessageId) {
         await DBUpdateXP(interaction.user.id, -xpAmount, client);
 
         // Give XP to the target member
-        const targetMember = selectedMembers[selectedMemberId];
+        const targetMember = selectedBribeTargets[userId];
         await DBUpdateXP(targetMember.user.id, xpAmount, client);
         await interaction.reply({
           content: `Successfully granted ${xpAmount} XP to ${targetMember.user.username}. Message: ${optionalMessage}`,
           ephemeral: true,
         });
-        await CacheSetCooldown("MerchantCooldown", userId, MerchantCoolDown);
-	eventEmitter.emit("BribeComplete", targetMember.user.id);
+        await CacheSetCooldown("Bribe", userId, BribeCoolDown);
+        eventEmitter.emit("BribeComplete", targetMember.user.id);
       } catch (err) {
         showErrorMsg(err);
       }
     }
   });
+  eventEmitter.on("NotifyMerchantChannel", async (msg) => {
+    try {
+      let channel = await client.channels.fetch(process.env.CHANNELIDMERCHANT);
+      const message = await channel.send({
+        content: msg,
+      });
+      setTimeout(async () => {
+        await message.delete().catch(console.error);
+      }, RoleChangeMessageDisplayTime);
+    } catch (err) {
+      throw err;
+    }
+  });
+  eventEmitter.on("RevolutionStarted", async () => {
+    try {
+      const guild = await client.guilds.fetch(process.env.GUILDID);
+      merchants = guild.members.cache.filter((member) =>
+        member.roles.cache.has(process.env.ROLEID_MERCHANT)
+      );
+      merchantsSize = merchants.size;
+      revolutionActive = true;
+      eventEmitter.emit(
+        "SendRevolutionStatus",
+        "Merchant",
+        revolutionParticipants,
+        merchantsSize
+      );
+    } catch (err) {
+      throw err;
+    }
+  });
+  eventEmitter.on("CoupStarted", async () => {
+    try {
+      coupActive = true;
+      updateMessage(client, lastMessageId);
+    } catch (err) {
+      throw err;
+    }
+  });
+  eventEmitter.on("CoupFinished", async () => {
+    try {
+      coupActive = false;
+      updateMessage(client, lastMessageId);
+    } catch (err) {
+      throw err;
+    }
+  });
+  eventEmitter.on("RevolutionFinished", async () => {
+    try {
+      await resetRevolution(client, lastMessageId);
+    } catch (err) {
+      throw err;
+    }
+  });
+  eventEmitter.on("RevolutionMovedInSecondPhase", async () => {
+    try {
+      revolutionSecondPhase = true;
+      await updateMessage(client, lastMessageId);
+    } catch (err) {
+      throw err;
+    }
+  });
+  eventEmitter.on("RevolutionMovedInEmperorElection", async () => {
+    try {
+      emperorElectionActive = true;
+      revolutionParticipants = {};
+      selectedRevolutionTargets = {};
+      revolutionarySize = 0;
+      await updateMessage(client, lastMessageId);
+    } catch (err) {
+      throw err;
+    }
+  });
+  eventEmitter.on("RevolutionMovedInEmperorReelection", async (members) => {
+    try {
+      reelectionActive = true;
+      candidates = members;
+      revolutionParticipants = {};
+      selectedRevolutionTargets = {};
+      revolutionarySize = 0;
+      await updateMessage(client, lastMessageId);
+    } catch (err) {
+      throw err;
+    }
+  });
+  eventEmitter.on(
+    "UpdateRevolutionStatus",
+    async (participantsSize, totalSize) => {
+      try {
+        revolutionarySize = participantsSize;
+        peopleSize = totalSize;
+        await updateMessage(client, lastMessageId);
+      } catch (err) {
+        throw err;
+      }
+    }
+  );
 }
 
-
-async function updateSelectMenu(client, lastMessageId) {
+async function updateMessage(client, lastMessageId) {
   try {
     const channel = await client.channels.fetch(process.env.CHANNELIDMERCHANT);
     const messageToEdit = await channel.messages.fetch(lastMessageId);
+
+    let actionRow_0 = new ActionRowBuilder().addComponents(
+      await buildSelectMenu(
+        client,
+        [
+          "peasant",
+          "scholar",
+          "merchant",
+          "knight",
+          "noble",
+          "lord",
+          "king",
+          "emperor",
+        ],
+        "BribeSelectMenu"
+      )
+    );
+    let actionRow_1 = new ActionRowBuilder().addComponents(
+      await buildSelectMenu(
+        client,
+        ["knight", "noble", "lord", "king", "emperor"],
+        "SelectRevolutionTarget"
+      )
+    );
+    let actionRow_2 = new ActionRowBuilder().addComponents(
+      new ButtonBuilder()
+        .setCustomId("Bribe")
+        .setLabel("Bribe")
+        .setStyle(ButtonStyle.Danger),
+      new ButtonBuilder()
+        .setCustomId("Revolution")
+        .setLabel("Revolution")
+        .setStyle(ButtonStyle.Danger)
+    );
+
+    if (coupActive) {
+      const revolutionBtn = new ButtonBuilder()
+        .setCustomId("Revolution")
+        .setLabel("Revolution")
+        .setDisabled(true)
+        .setStyle(ButtonStyle.Danger);
+      actionRow_2.components[1] = revolutionBtn;
+    }
+
+    if (revolutionActive) {
+      let revolutionBtn = new ButtonBuilder()
+        .setCustomId("JoinRevolution")
+        .setLabel("Join Revolution")
+        .setStyle(ButtonStyle.Danger);
+      revolutionStatusMsg = `\nRevolution started. Join revolution. (Joined ${revolutionarySize} / ${peopleSize}.)`;
+      if (revolutionSecondPhase) {
+        actionRow_2.components[2] = new ButtonBuilder()
+          .setCustomId("WithdrawRevolution")
+          .setLabel("Withdraw Revolution")
+          .setStyle(ButtonStyle.Primary);
+
+        revolutionStatusMsg = `\nRevolution moved in the next phase. Join revolution. You can also withdraw. (Joined ${revolutionarySize} / ${peopleSize}.)`;
+        if (emperorElectionActive) {
+          actionRow_1 = new ActionRowBuilder().addComponents(
+            await buildSelectMenu(
+              client,
+              ["knight", "noble", "lord", "king"],
+              "SelectEmperorCandidate"
+            )
+          );
+          revolutionBtn = new ButtonBuilder()
+            .setCustomId("VoteEmperor")
+            .setLabel("Vote")
+            .setStyle(ButtonStyle.Danger);
+          if (actionRow_2.components[2]) actionRow_2.components.splice(2, 1);
+          revolutionStatusMsg = `\nLet's vote a new emperor.  (Joined ${revolutionarySize} members.)`;
+        }
+        if (reelectionActive) {
+          actionRow_1 = new ActionRowBuilder().addComponents(
+            new StringSelectMenuBuilder()
+              .setCustomId("SelectEmperorCandidate")
+              .setPlaceholder("Choose a candidate")
+              .addOptions(candidates)
+          );
+
+          revolutionStatusMsg = `\nEmperor must be only one. Let's reelect an emperor. (Joined ${revolutionarySize} members.)`;
+        }
+      }
+
+      actionRow_2.components[1] = revolutionBtn;
+    }
+
+    await messageToEdit.edit({
+      content: initContent + revolutionStatusMsg,
+      components: [actionRow_0, actionRow_1, actionRow_2],
+    });
+  } catch (err) {
+    showErrorMsg(err);
+  }
+}
+
+async function messageMerchantCommands(client) {
+  try {
+    const channel = await client.channels.fetch(process.env.CHANNELIDMERCHANT);
     const actionRow_0 = new ActionRowBuilder().addComponents(
       await buildSelectMenu(
         client,
@@ -167,59 +643,52 @@ async function updateSelectMenu(client, lastMessageId) {
           "king",
           "emperor",
         ],
-        "MembersSelectMenu"
+        "BribeSelectMenu"
       )
     );
-
-    const existingComponents = messageToEdit.components.map((component) =>
-      ActionRowBuilder.from(component.toJSON())
-    );
-    existingComponents[0] = actionRow_0;
-
-    await messageToEdit.edit({
-      content: initContent,
-      components: existingComponents,
-    });
-  } catch (err) {
-    showErrorMsg(err);
-  }
-}
-
-async function messageMerchantCommands(client) {
-  try {
-    const channel = await client.channels.fetch(process.env.CHANNELIDMERCHANT);
-    const roleMemberSelectMenu = new ActionRowBuilder().addComponents(
+    const actionRow_1 = new ActionRowBuilder().addComponents(
       await buildSelectMenu(
         client,
-        [
-          "peasant",
-          "scholar",
-          "merchant",
-          "knight",
-          "noble",
-          "lord",
-          "king",
-          "emperor",
-        ],
-        "MembersSelectMenu"
+        ["knight", "noble", "lord", "king", "emperor"],
+        "SelectRevolutionTarget"
       )
     );
-    const btnRow = new ActionRowBuilder().addComponents(
+    const actionRow_2 = new ActionRowBuilder().addComponents(
       new ButtonBuilder()
         .setCustomId("Bribe")
         .setLabel("Bribe")
+        .setStyle(ButtonStyle.Danger),
+      new ButtonBuilder()
+        .setCustomId("Revolution")
+        .setLabel("Revolution")
         .setStyle(ButtonStyle.Danger)
     );
 
     return await channel.send({
       content: initContent,
-      components: [roleMemberSelectMenu, btnRow],
+      components: [actionRow_0, actionRow_1, actionRow_2],
     });
   } catch (err) {
     showErrorMsg(err);
   }
 }
 
-
+async function resetRevolution(client, lastMessageId) {
+  try {
+    selectedRevolutionTargets = {};
+    revolutionActive = false;
+    revolutionSecondPhase = false;
+    revolutionarySize = 0;
+    peopleSize = 0;
+    revolutionParticipants = {};
+    emperorElectionActive = false;
+    reelectionActive = false;
+    candidates = null;
+    revolutionStatusMsg = "";
+    await updateMessage(client, lastMessageId);
+  } catch (err) {
+    throw err;
+  }
+}
 
 module.exports = { setupMerchantBotEvents, messageMerchantCommands };

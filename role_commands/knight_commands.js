@@ -420,7 +420,7 @@ async function setupKnightBotEvents(client, lastMessageId) {
 
       let cooldown;
       try {
-        cooldown = await CacheGetCooldown("Revolution", userId);
+        cooldown = await CacheGetCooldown("Revolution", "Global");
       } catch (err) {
         showErrorMsg(err);
       }
@@ -434,7 +434,7 @@ async function setupKnightBotEvents(client, lastMessageId) {
         return;
       }
 
-      await CacheSetCooldown("Revolution", userId, RevolutionCoolDown);
+      await CacheSetCooldown("Revolution", "Global", RevolutionCoolDown);
 
       try {
         revolutionParticipants[userId] = target;
@@ -508,7 +508,7 @@ async function setupKnightBotEvents(client, lastMessageId) {
 
       await sendInteractionReply(
         interaction,
-        `You have joined the revolution with target @${target.user.username}.`
+        `You have joined the coup with target @${target.user.username}.`
       );
     }
     if (interaction.customId === "WithdrawRevolution") {
@@ -551,7 +551,7 @@ async function setupKnightBotEvents(client, lastMessageId) {
 
       let cooldown;
       try {
-        cooldown = await CacheGetCooldown("Coup", userId);
+        cooldown = await CacheGetCooldown("Coup", "Global");
       } catch (err) {
         showErrorMsg(err);
       }
@@ -560,7 +560,7 @@ async function setupKnightBotEvents(client, lastMessageId) {
         return;
       }
 
-      await CacheSetCooldown("Coup", userId, CoupCoolDown);
+      await CacheSetCooldown("Coup", "Global", CoupCoolDown);
 
       try {
         revolutionParticipants[userId] = target;
@@ -603,6 +603,10 @@ async function setupKnightBotEvents(client, lastMessageId) {
         }
 
         const candidate = selectedRevolutionTargets[userId];
+        if (target.user.id === userId) {
+          await sendInteractionReply(interaction, "You cannot vote yourself.");
+          return;
+        }
         revolutionParticipants[userId] = candidate;
 
         eventEmitter.emit(
@@ -1083,18 +1087,7 @@ async function updateMessage(client, lastMessageId) {
         .setStyle(ButtonStyle.Danger);
       revolutionStatusMsg = `\nCoup started. Join coup. (Joined ${revolutionarySize} / ${peopleSize}.)`;
       if (revolutionSecondPhase) {
-        if (siegeActive)
-          actionRow_4.components[3] = new ButtonBuilder()
-            .setCustomId("WithdrawRevolution")
-            .setLabel("Withdraw Revolution")
-            .setStyle(ButtonStyle.Primary);
-        else
-          actionRow_4.components[2] = new ButtonBuilder()
-            .setCustomId("WithdrawRevolution")
-            .setLabel("Withdraw Revolution")
-            .setStyle(ButtonStyle.Primary);
-
-        revolutionStatusMsg = `\nCoup moved in the next phase. Join coup. You can also withdraw. (Joined ${revolutionarySize} / ${peopleSize}.)`;
+        revolutionStatusMsg = `\nCoup moved in the next phase. (Joined ${revolutionarySize} / ${peopleSize}.)`;
         if (emperorElectionActive) {
           actionRow_2 = new ActionRowBuilder().addComponents(
             await buildSelectMenu(
@@ -1107,11 +1100,6 @@ async function updateMessage(client, lastMessageId) {
             .setCustomId("VoteEmperor")
             .setLabel("Vote")
             .setStyle(ButtonStyle.Danger);
-          if (siegeActive) {
-            if (actionRow_4.components[3]) actionRow_4.components.splice(3, 1);
-          } else {
-            if (actionRow_4.components[2]) actionRow_4.components.splice(2, 1);
-          }
           revolutionStatusMsg = `\nLet's vote a new emperor.  (Joined ${revolutionarySize} members.)`;
         }
         if (reelectionActive) {

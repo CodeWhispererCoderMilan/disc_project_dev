@@ -237,7 +237,7 @@ async function setupRatBotEvents(client, lastMessageId) {
 
       let cooldown;
       try {
-        cooldown = await CacheGetCooldown("Plague", userId);
+        cooldown = await CacheGetCooldown("Plague", "Global");
       } catch (err) {
         showErrorMsg(err);
       }
@@ -255,7 +255,7 @@ async function setupRatBotEvents(client, lastMessageId) {
           };
 
           // Set cooldown
-          await CacheSetCooldown("Plague", userId, PlagueCooldown);
+          await CacheSetCooldown("Plague", "Global", PlagueCooldown);
 
           const guild = await client.guilds.fetch(process.env.GUILDID);
           await guild.members.fetch();

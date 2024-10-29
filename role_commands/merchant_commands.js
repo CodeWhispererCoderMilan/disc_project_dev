@@ -37,6 +37,7 @@ let revolutionParticipants = {};
 let emperorElectionActive = false;
 let reelectionActive = false;
 let candidates = null;
+let coupActive = false;
 
 const initContent =
   "Merchants can trigger bride to give xp to a target by selecting Peasant,Merchant,Knight, Noble, Lord or King in a menu and clicking a button. There will be displayed a modal and should enter xp and message(optional) to give.\n\n" +
@@ -250,7 +251,7 @@ async function setupMerchantBotEvents(client, lastMessageId) {
 
         let cooldown;
         try {
-          cooldown = await CacheGetCooldown("Revolution", userId);
+          cooldown = await CacheGetCooldown("Revolution", "Global");
         } catch (err) {
           showErrorMsg(err);
         }
@@ -267,7 +268,7 @@ async function setupMerchantBotEvents(client, lastMessageId) {
           return;
         }
 
-        await CacheSetCooldown("Revolution", userId, RevolutionCoolDown);
+        await CacheSetCooldown("Revolution", "Global", RevolutionCoolDown);
 
         try {
           revolutionParticipants[userId] = target;

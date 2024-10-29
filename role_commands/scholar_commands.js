@@ -187,7 +187,7 @@ async function setupScholarBotEvents(client, lastMessageId) {
 
         let cooldown;
         try {
-          cooldown = await CacheGetCooldown("Revolution", userId);
+          cooldown = await CacheGetCooldown("Revolution", "Global");
         } catch (err) {
           showErrorMsg(err);
         }
@@ -204,7 +204,7 @@ async function setupScholarBotEvents(client, lastMessageId) {
           return;
         }
 
-        await CacheSetCooldown("Revolution", userId, RevolutionCoolDown);
+        await CacheSetCooldown("Revolution", "Global", RevolutionCoolDown);
 
         try {
           revolutionParticipants[userId] = target;

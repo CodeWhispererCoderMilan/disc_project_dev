@@ -603,7 +603,7 @@ async function setupKnightBotEvents(client, lastMessageId) {
         }
 
         const candidate = selectedRevolutionTargets[userId];
-        if (target.user.id === userId) {
+        if (candidate.user.id === userId) {
           await sendInteractionReply(interaction, "You cannot vote yourself.");
           return;
         }

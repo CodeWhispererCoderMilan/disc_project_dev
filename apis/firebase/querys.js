@@ -1,6 +1,6 @@
 const { db } = require('./firebaseDb.js');
 const { roleXpThresholds, FesteringDuration } = require('../../game_config.json');
-const { CacheRemoveUser, CacheAddUser, CacheSetUserXP, CacheSetFestering, CacheClearFestering, CacheIsPoopBeingFestered} = require('../redis/redisCache.js');
+const { CacheRemoveUser, CacheAddUser, CacheSetUserXP, CacheSetFestering, CacheClearFestering, CacheIsPoopBeingFestered, CacheGetEndows} = require('../redis/redisCache.js');
 const { eventEmitter } = require('../../functions/eventEmitter.js');
 
 async function CacheDataFromDB() {
@@ -102,6 +102,21 @@ async function DBUpdateXP(userId, xpChange, client) {
     const userData = userDataSnapshot.val();
     if (!userData) {
         throw new Error(`User ID :${userId} not found`);
+    }
+    const endowingMerchants = await CacheGetEndows(userId);
+    if (xpChange > 0) {
+        try {
+            if (endowingMerchants.length > 0) {
+                // Target gets 1.5x XP
+		xpChange = Math.foor(xpChange + endowingMerchants*xpChange*0.5);
+                const merchantShare = Math.floor(xpChange / 2);
+                for (const merchantId of endowingMerchants) {
+                    await DBUpdateXP(merchantId, merchantShare, client);
+                }
+	    }
+        } catch (err) {
+            console.error('Error processing endows:', err);
+        }
     }
     try {
         const festering = await CacheIsPoopBeingFestered(userId);

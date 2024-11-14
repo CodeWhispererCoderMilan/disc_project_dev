@@ -5,6 +5,7 @@
   "InfanticideCooldown": 1200000,
   "FesterCost": 50,
   "FesteringDuration": 12000,
+  "EndowDuration" :12000,
   "RoleChangeMessageDisplayTime": 60000,
   "FesterCooldown": 1200000,
   "NibbleCost": 100,

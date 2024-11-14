@@ -480,7 +480,153 @@ async function CacheCheckAndUpdateUserWrits(userId) {
     throw err;
   }
 }
+
+
+
+async function CacheSetEndow(merchantId, targetId, endTime) {
+  try {
+    await client.set(`endow:${targetId}:${merchantId}`, endTime.toString());
+    console.log(`Cache: successfully set endow from merchant ${merchantId} to target ${targetId}`);
+    
+    // Set up timeout to clear the endow when it expires
+    const timeLeft = endTime - Date.now();
+    setTimeout(async () => {
+      try {
+        await CacheClearEndow(merchantId, targetId);
+        console.log(`Cache: endow expired and cleared for merchant ${merchantId} and target ${targetId}`);
+        eventEmitter.emit('endowExpired', merchantId, targetId);
+      } catch (err) {
+        console.error(`Error clearing expired endow: ${err}`);
+      }
+    }, timeLeft);
+    
+  } catch (err) {
+    console.error(`Cache: Failed to set endow for merchant ${merchantId} and target ${targetId}`, err);
+    throw err;
+  }
+}
+
+async function CacheClearEndow(merchantId, targetId) {
+  try {
+    await client.del(`endow:${targetId}:${merchantId}`);
+    console.log(`Cache: successfully cleared endow from merchant ${merchantId} to target ${targetId}`);
+  } catch (err) {
+    console.error(`Cache: Failed to clear endow for merchant ${merchantId} and target ${targetId}`, err);
+    throw err;
+  }
+}
+
+async function CacheGetEndows(targetId) {
+  try {
+    const keys = await client.keys(`endow:${targetId}:*`);
+    const endows = [];
+    
+    for (const key of keys) {
+      const merchantId = key.split(':')[2];
+      const endTime = await client.get(key);
+      if (parseInt(endTime) > Date.now()) {
+        endows.push(merchantId);
+      }
+    }
+    
+    return endows;
+  } catch (err) {
+    console.error(`Cache: Failed to get endows for target ${targetId}`, err);
+    throw err;
+  }
+}
+
+async function CacheCheckEndowExists(merchantId, targetId) {
+  try {
+    const endTime = await client.get(`endow:${targetId}:${merchantId}`);
+    return endTime ? parseInt(endTime) > Date.now() : false;
+  } catch (err) {
+    console.error(`Cache: Failed to check endow existence for merchant ${merchantId} and target ${targetId}`, err);
+    throw err;
+  }
+}
+
+async function CacheClearMerchantEndows(merchantId) {
+  try {
+    // Find all keys that have this merchant as the endower
+    const keys = await client.keys(`endow:*:${merchantId}`);
+    
+    if (keys.length === 0) {
+      console.log(`Cache: No endows found for merchant ${merchantId}`);
+      return;
+    }
+
+    // Create a multi command to delete all keys
+    const multi = client.multi();
+    for (const key of keys) {
+      multi.del(key);
+      // Extract targetId from key format "endow:targetId:merchantId"
+      const targetId = key.split(':')[1];
+      console.log(`Cache: clearing endow from merchant ${merchantId} to target ${targetId}`);
+    }
+    
+    await multi.exec();
+    console.log(`Cache: successfully cleared all endows for merchant ${merchantId}`);
+  } catch (err) {
+    console.error(`Cache: Failed to clear all endows for merchant ${merchantId}`, err);
+    throw err;
+  }
+}
+
+async function CacheClearTargetEndows(targetId) {
+  try {
+    // Find all keys for this target
+    const keys = await client.keys(`endow:${targetId}:*`);
+    
+    if (keys.length === 0) {
+      console.log(`Cache: No endows found for target ${targetId}`);
+      return;
+    }
+
+    // Create a multi command to delete all keys
+    const multi = client.multi();
+    for (const key of keys) {
+      multi.del(key);
+      // Extract merchantId from key format "endow:targetId:merchantId"
+      const merchantId = key.split(':')[2];
+      console.log(`Cache: clearing endow from merchant ${merchantId} to target ${targetId}`);
+    }
+    
+    await multi.exec();
+    console.log(`Cache: successfully cleared all endows for target ${targetId}`);
+  } catch (err) {
+    console.error(`Cache: Failed to clear all endows for target ${targetId}`, err);
+    throw err;
+  }
+}
+
+async function CacheGetMerchantEndows(merchantId) {
+  try {
+    const keys = await client.keys(`endow:*:${merchantId}`);
+    const endows = [];
+    
+    for (const key of keys) {
+      const targetId = key.split(':')[1];
+      const endTime = await client.get(key);
+      if (parseInt(endTime) > Date.now()) {
+        endows.push(targetId);
+      }
+    }
+    
+    return endows;
+  } catch (err) {
+    console.error(`Cache: Failed to get endows for merchant ${merchantId}`, err);
+    throw err;
+  }
+}
 module.exports = {
+  CacheSetEndow,
+  CacheClearEndow,
+  CacheGetEndows,
+  CacheCheckEndowExists,
+  CacheClearMerchantEndows,
+  CacheClearTargetEndows,
+  CacheGetMerchantEndows,
   initializeRedis,
   CacheRemoveUser,
   CacheAddUser,

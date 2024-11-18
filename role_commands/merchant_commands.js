@@ -18,12 +18,14 @@ const {
 	CacheSetEndow,
 	CacheClearTargetEndows,
 	CacheClearMerchantEndows,
+	CacheCheckEndowExists
 } = require("../apis/redis/redisCache");
 const { DBUpdateXP } = require("../apis/firebase/querys");
 const {
 	BribeCoolDown,
 	RevolutionCoolDown,
 	RoleChangeMessageDisplayTime,
+	EndowDuration
 } = require("../game_config.json");
 const { eventEmitter } = require("../functions/eventEmitter.js");
 
@@ -51,7 +53,9 @@ const initContent =
 	"- **Endow**: Endow a target to receive half their future XP gains while they receive 1.5x XP.\n";
 let revolutionStatusMsg = "";
 
-
+function showErrorMsg(err) {
+	console.error("ERROR: merchant_commands.js", err);
+}
 
 
 async function setupMerchantBotEvents(client, lastMessageId) {
@@ -150,16 +154,7 @@ async function setupMerchantBotEvents(client, lastMessageId) {
 
 	client.on("interactionCreate", async (interaction) => {
 		if (!interaction.isStringSelectMenu() && !interaction.isButton() && !interaction.isModalSubmit()) return;
-		if (interaction.isStringSelectMenu() && interaction.customId === "EndowSelectMenu") {
-			const userId = interaction.user.id;
-			let targetId = interaction.values[0];
-			try {
-				selectedEndowTargets[userId] = await interaction.guild.members.cache.get(targetId);
-				await interaction.deferUpdate();
-			} catch (err) {
-				showErrorMsg(err);
-			}
-		}
+
 		if (
 			interaction.isStringSelectMenu() &&
 			interaction.customId === "BribeSelectMenu"

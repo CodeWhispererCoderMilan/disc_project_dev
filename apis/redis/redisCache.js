@@ -1,3 +1,4 @@
+const {eventEmitter} = require("../../functions/eventEmitter.js");
 // Import the Redis client
 const redis = require("redis");
 // Client will be set in the initializeRedis function
@@ -11,7 +12,7 @@ const {
   EminentWritTimeout,
   RoyalWritTimeout,
   ImperialWritTimeout,
-  WritDeleteTimeout,
+  WritDeleteTimeout
 } = require("../../game_config.json");
 // Initialize Redis connection
 

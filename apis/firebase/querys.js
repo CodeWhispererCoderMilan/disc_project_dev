@@ -105,11 +105,12 @@ async function DBUpdateXP(userId, xpChange, client) {
     }
     const endowingMerchants = await CacheGetEndows(userId);
     if (xpChange > 0) {
+	let initXpChange = xpChange;
         try {
             if (endowingMerchants.length > 0) {
                 // Target gets 1.5x XP
-		xpChange = Math.foor(xpChange + endowingMerchants*xpChange*0.5);
-                const merchantShare = Math.floor(xpChange / 2);
+		xpChange = Math.floor(initXpChange + endowingMerchants.length*xpChange*0.5);
+                const merchantShare = Math.floor(initXpChange / 2);
                 for (const merchantId of endowingMerchants) {
                     await DBUpdateXP(merchantId, merchantShare, client);
                 }

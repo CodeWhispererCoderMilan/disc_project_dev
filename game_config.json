@@ -6,6 +6,8 @@
   "FesterCost": 50,
   "FesteringDuration": 120000,
   "EndowDuration" :120000,
+  "EndowCost" : 200,
+  "EndowCooldown" : 60000,
   "RoleChangeMessageDisplayTime": 60000,
   "FesterCooldown": 1200000,
   "NibbleCost": 100,

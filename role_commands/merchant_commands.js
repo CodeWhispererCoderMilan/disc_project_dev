@@ -25,6 +25,8 @@ const {
 	BribeCoolDown,
 	RevolutionCoolDown,
 	RoleChangeMessageDisplayTime,
+	EndowDuration,
+	EndowCost,
 	EndowDuration
 } = require("../game_config.json");
 const { eventEmitter } = require("../functions/eventEmitter.js");
@@ -225,7 +227,21 @@ async function setupMerchantBotEvents(client, lastMessageId) {
 					await sendInteractionReply(interaction, "You cannot endow yourself!");
 					return;
 				}
-
+				let cooldown;
+				try {
+					cooldown = await CacheGetCooldown("Endow", userId);
+				} catch (err) {
+					showErrorMsg(err);
+				}
+				if (cooldown) {
+					sendInteractionReply(interaction, "Endow is on cooldown");
+					return;
+				}
+				let userXP = await CacheGetUserXP(userId);
+				if (userXP < EndowCost) {
+					await sendInteractionReply(interaction, `Not enough XP (current XP: ${userXP})`);
+					return;
+				}
 				try {
 					const endowExists = await CacheCheckEndowExists(userId, targetId);
 					if (endowExists) {
@@ -235,7 +251,8 @@ async function setupMerchantBotEvents(client, lastMessageId) {
 
 					const endTime = Date.now() + EndowDuration;
 					await CacheSetEndow(userId, targetId, endTime);
-
+					await DBUpdateXP(userId, EndowCost, client);
+					await CacheSetCooldown("Endow", userId, EndowCooldown);
 					await sendInteractionReply(
 						interaction,
 						`Successfully endowed ${selectedEndowTargets[userId].user.username}. You will receive half of their XP gains while they receive 1.5x XP.`
@@ -317,6 +334,7 @@ async function setupMerchantBotEvents(client, lastMessageId) {
 				} catch (err) {
 					showErrorMsg(err);
 				}
+
 				if (cooldown) {
 					await sendInteractionReply(interaction, "Revolution is on cooldown");
 					return;

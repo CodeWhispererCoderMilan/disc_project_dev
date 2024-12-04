@@ -26,6 +26,8 @@
   "ManhuntCooldown": 100,
   "PickingCost": 100,
   "PickingCooldown": 100,
+  "AstralRealmAccessDuration": 360000,
+  "AstralRealmCooldown": 360000,
   "ExileCost": 200,
   "ExileCooldown": 120000,
   "BurgageCost": 40,

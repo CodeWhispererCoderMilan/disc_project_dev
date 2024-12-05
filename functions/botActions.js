@@ -1,5 +1,5 @@
 const { StringSelectMenuBuilder } = require("discord.js");
-const { XpBoostInterval, XpBoostValue, AstralRealmAccessDuration } = require("../game_config.json");
+const { XpBoostInterval, XpBoostValue, ScholarAstralRealmAccessDuration, EmperorAstralRealmAccessDuration} = require("../game_config.json");
 const {
 	DBGetLastXPBoostTime,
 	DBBoostXPForAllUsers,
@@ -118,27 +118,31 @@ async function sendInteractionReply(interaction, msg) {
 		console.error("Error sending interaction reply:", error);
 	}
 }
-async function grantAstralRealmAccess(member, client) {
+async function grantAstralRealmAccess(member, client, type) {
 	try {
+		let writePermission;
+		let accessDuration;
+		if(type === "scholar"){
+			accessDuration = ScholarAstralRealmAccessDuration;
+			writePermission = false;
+		}else{
+			accessDuration = EmperorAstralRealmAccessDuration;
+			writePermission = true;
+		}
 		const channel = await client.channels.fetch(process.env.CHANNELIDASTRALREALM);
 		await channel.permissionOverwrites.create(member, {
 			ViewChannel: true,
-			SendMessages: true,
+			SendMessages: writePermission,
 		});
 
 		// Schedule permission removal
 		setTimeout(async () => {
 			try {
 				await revokeAstralRealmAccess(member, client);
-				const scholarChannel = await client.channels.fetch(process.env.CHANNELIDSCHOLAR);
-				await scholarChannel.send({
-					content: `${member.user.username}, your access to the astral realm has expired.`,
-					ephemeral: true
-				});
 			} catch (err) {
 				console.error('Error revoking astral realm access:', err);
 			}
-		}, AstralRealmAccessDuration);
+		}, accessDuration);
 
 		return true;
 	} catch (err) {

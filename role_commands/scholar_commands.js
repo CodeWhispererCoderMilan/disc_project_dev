@@ -22,7 +22,7 @@ const {
 	RoleChangeMessageDisplayTime,
 } = require("../game_config.json");
 const { eventEmitter } = require("../functions/eventEmitter.js");
-const { AstralRealmCooldown } = require("../game_config.json");
+const { ScholarAstralRealmCooldown } = require("../game_config.json");
 
 let scholars = [];
 let scholarsSize = 1;
@@ -193,7 +193,7 @@ async function setupScholarBotEvents(client, lastMessageId) {
 
 				const success = await grantAstralRealmAccess(interaction.member, client);
 				if (success) {
-					await CacheSetCooldown("AstralRealm", userId, AstralRealmCooldown);
+					await CacheSetCooldown("AstralRealm", userId, ScholarAstralRealmCooldown);
 					await sendInteractionReply(
 						interaction,
 						"You have been granted temporary access to the astral realm."

@@ -10,7 +10,6 @@ const {
 const {
 	buildSelectMenu,
 	sendInteractionReply,
-	grantAstralRealmAccess
 } = require("../functions/botActions");
 const {
 	CacheGetCooldown,
@@ -22,7 +21,6 @@ const {
 	RoleChangeMessageDisplayTime,
 } = require("../game_config.json");
 const { eventEmitter } = require("../functions/eventEmitter.js");
-const { ScholarAstralRealmCooldown } = require("../game_config.json");
 
 let scholars = [];
 let scholarsSize = 1;
@@ -41,8 +39,7 @@ const initContent =
 	"Test message to Scholar.\n" +
 	"**Abilities:**\n" +
 	"- **Advise**: Send message to the Royal Castle\n" +
-	"- **Revolution**: Let's make a new world!\n"+
-	"- **Astral Realm**: Gain temporary access to the astral realm\n";
+	"- **Revolution**: Let's make a new world!\n";
 let revolutionStatusMsg = "";
 
 function showErrorMsg(err) {
@@ -179,32 +176,7 @@ async function setupScholarBotEvents(client, lastMessageId) {
 				await interaction.showModal(modal);
 			}
 
-			if (interaction.customId === "AstralRealm") {
-				const userId = interaction.user.id;
 
-				const cooldown = await CacheGetCooldown("AstralRealm", userId);
-				if (cooldown) {
-					await sendInteractionReply(
-						interaction,
-						"Your spirit is not yet ready to reenter the astral realm."
-					);
-					return;
-				}
-
-				const success = await grantAstralRealmAccess(interaction.member, client);
-				if (success) {
-					await CacheSetCooldown("AstralRealm", userId, ScholarAstralRealmCooldown);
-					await sendInteractionReply(
-						interaction,
-						"You have been granted temporary access to the astral realm."
-					);
-				} else {
-					await sendInteractionReply(
-						interaction,
-						"Failed to grant access to the astral realm."
-					);
-				}
-			}
 			if (interaction.customId === "Revolution") {
 				const userId = interaction.user.id;
 				const target = selectedRevolutionTargets[userId];
@@ -502,11 +474,7 @@ async function updateMessage(client, lastMessageId) {
 			new ButtonBuilder()
 			.setCustomId("Revolution")
 			.setLabel("Revolution")
-			.setStyle(ButtonStyle.Danger),
-			new ButtonBuilder()
-			.setCustomId("AstralRealm")
-			.setLabel("Enter Astral Realm")
-			.setStyle(ButtonStyle.Secondary)
+			.setStyle(ButtonStyle.Danger)
 		);
 
 		if (coupActive) {
@@ -525,7 +493,7 @@ async function updateMessage(client, lastMessageId) {
 				.setStyle(ButtonStyle.Danger);
 			revolutionStatusMsg = `\nRevolution started. Join revolution. (Joined ${revolutionarySize} / ${peopleSize}.)`;
 			if (revolutionSecondPhase) {
-				actionRow_1.components[3] = new ButtonBuilder()
+				actionRow_1.components[2] = new ButtonBuilder()
 					.setCustomId("WithdrawRevolution")
 					.setLabel("Withdraw Revolution")
 					.setStyle(ButtonStyle.Primary);
@@ -543,7 +511,7 @@ async function updateMessage(client, lastMessageId) {
 						.setCustomId("VoteEmperor")
 						.setLabel("Vote")
 						.setStyle(ButtonStyle.Danger);
-					if (actionRow_1.components[3]) actionRow_1.components.splice(3, 1);
+					if (actionRow_1.components[2]) actionRow_1.components.splice(2, 1);
 					revolutionStatusMsg = `\nLet's vote a new emperor.  (Joined ${revolutionarySize} members.)`;
 				}
 				if (reelectionActive) {
@@ -584,16 +552,12 @@ async function messageScholarCommands(client) {
 		const actionRow_1 = new ActionRowBuilder().addComponents(
 			new ButtonBuilder()
 			.setCustomId("Advise")
-			.setLabel("Adivise to Royal Castle")
+			.setLabel("Advise Royal Castle")
 			.setStyle(ButtonStyle.Primary),
 			new ButtonBuilder()
 			.setCustomId("Revolution")
 			.setLabel("Revolution")
-			.setStyle(ButtonStyle.Danger),
-			new ButtonBuilder()
-			.setCustomId("AstralRealm")
-			.setLabel("Enter Astral Realm")
-			.setStyle(ButtonStyle.Secondary)
+			.setStyle(ButtonStyle.Danger)
 		);
 
 		return await channel.send({

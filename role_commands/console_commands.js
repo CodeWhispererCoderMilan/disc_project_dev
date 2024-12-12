@@ -15,7 +15,8 @@ const {
 	CacheIsPoopBeingFestered,
 	CacheGetFesteringTarget,
 	CacheGetCooldown,
-	CacheSetCooldown
+	CacheSetCooldown,
+	CacheGetUserXP
 } = require("./apis/redis/redisCache.js");
 const {
 	RevolutionFirstPhaseTime,
@@ -34,8 +35,10 @@ const {
 	CoupFirstPhaseTime,
 	CoupSecondPhaseTime,
 	ScholarAstralRealmCooldown,
-	EmperorAstralRealmCooldown
+	EmperorAstralRealmCooldown,
+	CheckXpCooldown
 } = require("./game_config.json");
+const { CacheGetUserXP } = require("../apis/redis/redisCache.js");
 
 let revolutionarySize = 0;
 let peopleSize = 0;
@@ -158,7 +161,23 @@ async function setupConsoleBotEvents(client) {
 	client.on("interactionCreate", async (interaction) => {
 		if (!interaction.isButton()) return;
 		if(interaction.customId === "CheckXP"){
+			try{
+				const userId = interaction.user.id;
+				const cooldown = await CacheGetCooldown("CheckXP", userId);
+				if(cooldown){
+					await sendInteractionReply(
+						interaction,
+						"You can only check your XP so often..."
+					);
+					return;
 
+				}
+				const userXP = await CacheGetUserXP(userId);
+				await CacheSetCooldown("CheckXP", userId, CheckXpCooldown);
+				await sendInteractionReply(interaction, `You currently have ${userXP} XP`);
+			}catch(err){
+				showErrorMsg(err);
+			}
 		}
 		if(interaction.customId == "Divination"){
 			try{

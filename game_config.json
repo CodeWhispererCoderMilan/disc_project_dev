@@ -1,6 +1,7 @@
 {
   "XpBoostInterval": 60000,
   "XpBoostValue": 40,
+  "CheckXpCooldown": 1200000,
   "InfanticideCost": 100,
   "InfanticideCooldown": 1200000,
   "FesterCost": 50,

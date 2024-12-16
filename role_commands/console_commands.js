@@ -1,23 +1,30 @@
 const { eventEmitter } = require("../functions/eventEmitter.js");
 const {
+  ActionRowBuilder,
+  ButtonBuilder,
+  ButtonStyle
+} = require("discord.js");
+
+const {
 	checkAndApplyMissedXPBoost,
 	scheduledXpBoost,
-	grantAstralRealmAccess
-} = require("./functions/botActions");
+	grantAstralRealmAccess,
+	sendInteractionReply
+} = require("../functions/botActions");
 const {
 	DBAddUser,
 	DBRemoveUser,
 	DBClearFestering,
 	DBSetRole,
 	DBResetXP,
-} = require("./apis/firebase/querys.js");
+} = require("../apis/firebase/querys.js");
 const {
 	CacheIsPoopBeingFestered,
 	CacheGetFesteringTarget,
 	CacheGetCooldown,
 	CacheSetCooldown,
 	CacheGetUserXP
-} = require("./apis/redis/redisCache.js");
+} = require("../apis/redis/redisCache.js");
 const {
 	RevolutionFirstPhaseTime,
 	RevolutionSecondPhaseTime,
@@ -37,8 +44,7 @@ const {
 	ScholarAstralRealmCooldown,
 	EmperorAstralRealmCooldown,
 	CheckXpCooldown
-} = require("./game_config.json");
-const { CacheGetUserXP } = require("../apis/redis/redisCache.js");
+} = require("../game_config.json");
 
 let revolutionarySize = 0;
 let peopleSize = 0;
@@ -72,9 +78,9 @@ function showErrorMsg(err) {
 }
 
 async function setupConsoleBotEvents(client) {
-	client.once("ready", async () => {
+	eventEmitter.on("startXpBoost", async () => {
 		console.log(
-			`Logged in as ${client.user.tag}! Proceeding to update XP missed in downtime`
+			`Proceeding to update XP missed in downtime`
 		);
 		let timeUntilNextBoost = 0;
 		try {

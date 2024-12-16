@@ -1,109 +1,119 @@
 const { GatewayIntentBits, Client } = require("discord.js");
+const { eventEmitter } = require("./functions/eventEmitter.js");
 const {
-  setupConsoleBotEvents,
-  messageConsoleCommands,
+	setupConsoleBotEvents,
+	messageConsoleCommands,
 } = require("./role_commands/console_commands");
 const {
-  setupPoopBotEvents,
-  messagePoopCommands,
+	setupPoopBotEvents,
+	messagePoopCommands,
 } = require("./role_commands/poop_commands");
 const {
-  setupMaggotBotEvents,
-  messageMaggotCommands,
+	setupMaggotBotEvents,
+	messageMaggotCommands,
 } = require("./role_commands/maggot_commands");
 const {
-  setupCockroachBotEvents,
-  messageCockroachCommands,
+	setupCockroachBotEvents,
+	messageCockroachCommands,
 } = require("./role_commands/cockroach_commands");
 const {
-  setupRatBotEvents,
-  messageRatCommands,
+	setupRatBotEvents,
+	messageRatCommands,
 } = require("./role_commands/rat_commands");
 const {
-  setupSubhumanBotEvents,
-  messageSubhumanCommands,
+	setupSubhumanBotEvents,
+	messageSubhumanCommands,
 } = require("./role_commands/subhuman_commands");
 const {
-  setupPeasantBotEvents,
-  messagePeasantCommands,
+	setupPeasantBotEvents,
+	messagePeasantCommands,
 } = require("./role_commands/peasant_commands");
 const {
-  setupMerchantBotEvents,
-  messageMerchantCommands,
+	setupMerchantBotEvents,
+	messageMerchantCommands,
 } = require("./role_commands/merchant_commands");
 const {
-  setupScholarBotEvents,
-  messageScholarCommands,
+	setupScholarBotEvents,
+	messageScholarCommands,
 } = require("./role_commands/scholar_commands");
 const {
-  setupKnightBotEvents,
-  messageKnightCommands,
+	setupKnightBotEvents,
+	messageKnightCommands,
 } = require("./role_commands/knight_commands");
 const {
-  setupNobleBotEvents,
-  messageNobleCommands,
+	setupNobleBotEvents,
+	messageNobleCommands,
 } = require("./role_commands/noble_commands");
 const {
-  setupLordBotEvents,
-  messageLordCommands,
+	setupLordBotEvents,
+	messageLordCommands,
 } = require("./role_commands/lord_commands");
 const {
-  setupKingBotEvents,
-  messageKingCommands,
+	setupKingBotEvents,
+	messageKingCommands,
 } = require("./role_commands/king_commands");
 const {
-  setupEmperorBotEvents,
-  messageEmperorCommands,
+	setupEmperorBotEvents,
+	messageEmperorCommands,
 } = require("./role_commands/emperor_commands");
 
 
-function createBot(token, channelId, setupEventsFunction, messageCommands) {
-  const client = new Client({
-    intents: [
-	    GatewayIntentBits.Guilds,
-	    GatewayIntentBits.GuildMessages,
-	    GatewayIntentBits.GuildMembers,
-	    GatewayIntentBits.MessageContent,
-    ],
-  });
+function createBot(token, channelId, setupEventsFunction, messageCommands, isConsole) {
+	const client = isConsole ? 
+		new Client({
+			intents: [
+				GatewayIntentBits.Guilds,
+				GatewayIntentBits.GuildMessages,
+				GatewayIntentBits.GuildMembers,
+				GatewayIntentBits.MessageContent,
+			],
+		}):
+		new Client({
+			intents: [
+				GatewayIntentBits.Guilds,
+				GatewayIntentBits.GuildMembers,
+			],
+		});
 
-  client.once("ready", async () => {
-    // Fetch the channel and delete all previous messages
-    const channel = client.channels.cache.get(channelId);
-    if (!channel) {
-      console.error(`Failed to fetch channel with ID: ${channelId}`);
-      return;
-    }
-    let shouldContinue = true;
-    while (shouldContinue) {
-      const messages = await channel.messages.fetch({ limit: 1 });
-      const botMessages = messages.filter(
-        (msg) => msg.author.id === client.user.id
-      );
-      if (botMessages.size === 0) {
-        shouldContinue = false;
-        console.log(`${client.user.tag}: No more messages to delete.`);
-        break;
-      }
+	client.once("ready", async () => {
+		// Fetch the channel and delete all previous messages
+		const channel = client.channels.cache.get(channelId);
+		if (!channel) {
+			console.error(`Failed to fetch channel with ID: ${channelId}`);
+			return;
+		}
+		let shouldContinue = true;
+		while (shouldContinue) {
+			const messages = await channel.messages.fetch({ limit: 1 });
+			const botMessages = messages.filter(
+				(msg) => msg.author.id === client.user.id
+			);
+			if (botMessages.size === 0) {
+				shouldContinue = false;
+				console.log(`${client.user.tag}: No more messages to delete.`);
+				break;
+			}
 
-      for (const message of botMessages.values()) {
-        await message.delete().catch(console.error);
-      }
+			for (const message of botMessages.values()) {
+				await message.delete().catch(console.error);
+			}
 
-      // Safety delay to respect rate limits - adjust as needed
-      await new Promise((resolve) => setTimeout(resolve, 1000));
-    }
-    try {
-      const sentMessage = await messageCommands(client);
-      let lastMessageId = sentMessage.id;
-      await setupEventsFunction(client, lastMessageId);
-    } catch (err) {
-      console.error(err);
-    }
-  });
+			// Safety delay to respect rate limits - adjust as needed
+			await new Promise((resolve) => setTimeout(resolve, 1000));
+		}
+		try {
+			const sentMessage = await messageCommands(client);
+			let lastMessageId = sentMessage.id;
+			await setupEventsFunction(client, lastMessageId);
+			if(isConsole) eventEmitter.emit("startXpBoost");
+		} catch (err) {
+			console.error(err);
+		}
+	});
 
-  client.login(token);
-  return client;
+	client.login(token);
+
+	return client;
 }
 
 function initializeBots() {
@@ -111,7 +121,8 @@ function initializeBots() {
 		process.env.TOKEN_CONSOLE,
 		process.env.CHANNELIDCONSOLE,
 		setupConsoleBotEvents,
-		messageConsoleCommands
+		messageConsoleCommands,
+		true
 	);
 
 	createBot(

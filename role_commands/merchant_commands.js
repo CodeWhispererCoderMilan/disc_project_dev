@@ -26,8 +26,7 @@ const {
 	RevolutionCoolDown,
 	RoleChangeMessageDisplayTime,
 	EndowDuration,
-	EndowCost,
-	EndowDuration
+	EndowCost
 } = require("../game_config.json");
 const { eventEmitter } = require("../functions/eventEmitter.js");
 

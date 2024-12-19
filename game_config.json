@@ -109,5 +109,7 @@
   "RevolutionKillNoble": 3,
   "RevolutionKillLord": 3,
   "RevolutionKillKing": 3,
-  "RevolutionKillEmperor": 3
+  "RevolutionKillEmperor": 3,
+  "TextInfanticideSelectMenu" : "Select a maggot to consume",
+  "TextSwarmSelectMenu" : "Select a Sub-human to swarm"
 }

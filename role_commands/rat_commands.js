@@ -207,7 +207,7 @@ async function setupRatBotEvents(client, lastMessageId) {
             );
             return;
           } else {
-            eventEmitter.emit("changeRole", selectedTargets[userId], "Poop");
+            eventEmitter.emit("changeRole", selectedTargets[userId], "Poop", false);
             await DBUpdateXP(userId, -NibbleCost, client);
             await CacheSetCooldown("nibble", userId, NibbleCooldown);
             eventEmitter.emit(
@@ -403,7 +403,7 @@ async function handleSecondPhasePlagueEnd(client, lastMessageId) {
     if (killTarget) {
       const guild = await client.guilds.fetch(process.env.GUILDID);
       const target = await guild.members.fetch(targetId);
-      eventEmitter.emit("changeRole", target, "Poop");
+      eventEmitter.emit("changeRole", target, "Poop", false);
       eventEmitter.emit(
         "NotifyRatChannel",
         `@${target.user.username} has been killed of plague.`

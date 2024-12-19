@@ -412,11 +412,11 @@ async function handleElectionEnd(client, lastMessageId) {
 		const target = selectedElectionCandidates[electionInitiatorId];
 		if (target) {
 			if (electionType === "Noble") {
-				eventEmitter.emit("changeRole", target, "Lord");
+				eventEmitter.emit("changeRole", target, "Lord", true);
 				msg = `Election successful! @${electionCandidate} has become a lord by @${electionInitiator}.`;
 			}
 			if (electionType === "Lord") {
-				eventEmitter.emit("changeRole", target, "King");
+				eventEmitter.emit("changeRole", target, "King", true);
 				msg = `Election successful! @${electionCandidate} has become a king by @${electionInitiator}.`;
 			}
 		}

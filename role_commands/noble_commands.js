@@ -358,7 +358,7 @@ async function handleAssassinationEnd(client, lastMessageId) {
 		assassinationParticipants.size >= AssassinationThreadshold
 	) {
 		const target = selectedTargets[assassinationInitiatorId];
-		if (target) eventEmitter.emit("changeRole", target, "Poop");
+		if (target) eventEmitter.emit("changeRole", target, "Poop", false);
 		const msg = `Assassination successful! @${assassinationTarget} has become a poop by @${assassinationInitiator}.`;
 		eventEmitter.emit("NotifyNobleChannel", msg);
 	} else {

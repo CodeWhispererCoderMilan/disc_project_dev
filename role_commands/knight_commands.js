@@ -948,7 +948,7 @@ function getWritType(type) {
 
 async function performCutDown(interaction, targetId) {
   const target = await interaction.guild.members.fetch(targetId);
-  eventEmitter.emit("changeRole", target, "Poop");
+  eventEmitter.emit("changeRole", target, "Poop", false);
   eventEmitter.emit(
     "CutDownComplete",
     target.user.username,

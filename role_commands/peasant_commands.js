@@ -592,7 +592,7 @@ async function handleMobFlayingEnd(client, lastMessageId) {
   const participationRate = mobFlayingParticipants.size / peasantsSize;
   if (mobFlayingActive && participationRate >= MobFlayingSuccessThreadshold) {
     const target = selectedMobFlayingTargets[mobFlayingInitiatorId];
-    if (target) eventEmitter.emit("changeRole", target, "Poop");
+    if (target) eventEmitter.emit("changeRole", target, "Poop", false);
     const msg = `Mob flaying successful! @${mobFlayingTarget} has become a poop by @${mobFlayingInitiator}.`;
     eventEmitter.emit("NotifyPeasantChannel", msg);
   } else {

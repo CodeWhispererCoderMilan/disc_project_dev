@@ -218,7 +218,8 @@ async function setupKingBotEvents(client, lastMessageId) {
 						eventEmitter.emit(
 							"changeRole",
 							selectedKnights[userId],
-							"Merchant"
+							"Merchant",
+							false
 						);
 						const targetUsername = selectedKnights[userId].user.username;
 						selectedKnights[userId] = null;
@@ -269,7 +270,7 @@ async function setupKingBotEvents(client, lastMessageId) {
 						);
 						return;
 					} else {
-						eventEmitter.emit("changeRole", selectedHumans[userId], "Knight");
+						eventEmitter.emit("changeRole", selectedHumans[userId],"Knight",true);
 						const targetUsername = selectedHumans[userId].user.username;
 						selectedHumans[userId] = null;
 						await DBUpdateXP(userId, -KnightCost, client);
@@ -387,7 +388,8 @@ async function setupKingBotEvents(client, lastMessageId) {
 				eventEmitter.emit(
 					"changeRole",
 					selectedKings[siegeInitiatorId],
-					"Poop"
+					"Poop",
+					false
 				);
 				message =
 					"Siege succeded! " +

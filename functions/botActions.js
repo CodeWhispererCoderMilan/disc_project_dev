@@ -89,7 +89,7 @@ async function buildSelectMenu(client, roleNames, customId, chooseText) {
 	console.log(`-----Fetched ${roleNames.join("|")}`, members);
 	return new StringSelectMenuBuilder()
 		.setCustomId(customId)
-		.setPlaceholder(members.length > 0 ? textChooseMember : textNoMembers)
+		.setPlaceholder(textChooseMember)
 		.setDisabled(members.length === 0)
 		.addOptions(
 			members.length > 0

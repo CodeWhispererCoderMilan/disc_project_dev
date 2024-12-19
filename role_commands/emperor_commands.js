@@ -194,7 +194,7 @@ async function setupEmperorBotEvents(client, lastMessageId) {
 						);
 						return;
 					} else {
-						eventEmitter.emit("changeRole", selectedLord, "King");
+						eventEmitter.emit("changeRole", selectedLord, "King", true);
 						const targetUsername = selectedLord.user.username;
 						selectedLord = null;
 						await DBUpdateXP(userId, -CoronationCost, client);
@@ -237,7 +237,7 @@ async function setupEmperorBotEvents(client, lastMessageId) {
 						);
 						return;
 					} else {
-						eventEmitter.emit("changeRole", selectedKing, "Lord");
+						eventEmitter.emit("changeRole", selectedKing, "Lord", false);
 						const targetUsername = selectedKing.user.username;
 						selectedKing = null;
 						await DBUpdateXP(userId, -DethroneCost, client);
@@ -285,7 +285,7 @@ async function setupEmperorBotEvents(client, lastMessageId) {
 							interaction,
 							`(${XPLeft} XP left) Heir to the Throne chosen, your rule has ended,  enthronement in progress...`
 						);
-						eventEmitter.emit("changeRole", interaction.user.id, "King");
+						eventEmitter.emit("changeRole", interaction.user.id, "King", true);
 						await DBUpdateXP(userId, -HeirCost, client);
 						await CacheSetCooldown("heirSuccession", null, HeirCooldown);
 						const selectedHeir = selectedKing;
@@ -308,7 +308,7 @@ async function setupEmperorBotEvents(client, lastMessageId) {
 			selectedHuman = null;
 			selectedKnight = null;
 			const channel = await client.channels.fetch(process.env.CHANNELIDEMPEROR);
-			eventEmitter.emit("changeRole", selectedHeir.id, "Emperor");
+			eventEmitter.emit("changeRole", selectedHeir.id, "Emperor", true);
 			const heirUsername = selectedHeir.user.username;
 			const tmpMessage = await channel.send(
 				`Hail our new Emperor! ${heirUsername} heir to ${initiatorUsername}, may your rule last 1000 years !`

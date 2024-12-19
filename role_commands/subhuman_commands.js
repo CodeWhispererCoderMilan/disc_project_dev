@@ -109,7 +109,7 @@ async function setupSubhumanBotEvents(client, lastMessageId) {
 					}else {
 
 						const targetUsername = selectedSubHumans[userId].user.username;
-						eventEmitter.emit('changeRole', selectedSubHumans[userId], 'Poop');
+						eventEmitter.emit('changeRole',selectedSubHumans[userId],'Poop',false);
 						selectedSubHumans[userId] = null;
 						await DBUpdateXP(userId, -DepravityCost, client);
 						await CacheSetCooldown("depravity", userId, DepravityCooldown);
@@ -140,7 +140,7 @@ async function setupSubhumanBotEvents(client, lastMessageId) {
 					}
 					else {
 						targetUsername = selectedPeasants[userId].user.username;
-						eventEmitter.emit('changeRole', selectedPeasants[userId], 'Poop');
+						eventEmitter.emit('changeRole', selectedPeasants[userId], 'Poop',false);
 						selectedSubHumans[userId] = null;
 						await DBUpdateXP(userId, -ManhuntCost, client);
 						await CacheSetCooldown("manhunt", userId, ManhuntCooldown);
@@ -164,12 +164,13 @@ async function setupSubhumanBotEvents(client, lastMessageId) {
 					await sendInteractionReply(interaction, `Not enough XP (current XP: ${userXP})`)
 					return;
 				}else {
+					const cooldown = await CacheGetCooldown("picking", userId);
 					if (cooldown){
 						await sendInteractionReply(interaction, "Picking is on cooldown and cannot be used");
 						return;
 					}else {
 						const targetUsername = selectedPickings[userId].user.username
-						eventEmitter.emit('changeRole', selectedPickings[userId],'Poop');
+						eventEmitter.emit('changeRole', selectedPickings[userId],'Poop',false);
 						selectedPickings[userId] = null;
 						await DBUpdateXP(userId, -PickingCost, client);
 						await CacheSetCooldown("picking", userId, PickingCooldown);

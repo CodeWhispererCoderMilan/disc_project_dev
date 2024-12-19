@@ -147,7 +147,7 @@ async function setupConsoleBotEvents(client) {
 			await handleAdminRoleChange(client, message, args);
 		}
 	});
-	eventEmitter.on("changeRole", async (memberId, roleName) => {
+	eventEmitter.on("changeRole", async (memberId, roleName, keepXP) => {
 		try {
 			const guild = await client.guilds.fetch(process.env.GUILDID);
 			if (!guild) {
@@ -159,7 +159,7 @@ async function setupConsoleBotEvents(client) {
 				console.error("Member not found");
 				return;
 			}
-			await changeRole(member, roleName);
+			await changeRole(member, roleName, keepXP);
 		} catch (err) {
 			throw err;
 		}
@@ -630,7 +630,7 @@ async function notifyRevolutionResult(message) {
 	eventEmitter.emit("NotifyMerchantChannel", message);
 	eventEmitter.emit("NotifyScholarChannel", message);
 }
-async function changeRole(member, roleName) {
+async function changeRole(member, roleName, keepXP) {
 	console.log(`Change Role called for ${member.id} with role ${roleName}`);
 	const memberRoleArr = member.roles.cache.filter(
 		(r) => r.name !== "@everyone"
@@ -651,15 +651,17 @@ async function changeRole(member, roleName) {
 			name: "unable to write role to DB",
 			message: `error settig new role to ${member.id}`,
 		};
-	}
-	try {
-		await DBResetXP(member.id);
-	} catch (err) {
-		throw {
-			name: "RoleChangeError",
-			message: `Couldn't reset XP for user ${member.displayName}:${err.message}`,
-		};
-	}
+	};
+	if(!keepXP){
+		try {
+			await DBResetXP(member.id);
+		} catch (err) {
+			throw {
+				name: "RoleChangeError",
+				message: `Couldn't reset XP for user ${member.displayName}:${err.message}`,
+			};
+		}
+	};
 	try {
 		await member.roles.remove(memberRole);
 	} catch (err) {

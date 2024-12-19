@@ -17,6 +17,8 @@ const {
 	SwarmVoteTime,
 	SwarmSpawnTime,
 	SwarmThreshold,
+	TextSwarmSelectMenu,
+	TextInfanticideSelectMenu
 } = require(`../game_config.json`);
 const { buildSelectMenu } = require(`../functions/botActions.js`);
 const { DBUpdateXP } = require("../apis/firebase/querys.js");
@@ -247,7 +249,7 @@ async function setupCockroachBotEvents(client, lastMessageId) {
 							const subhumanMember = await interaction.guild.members.fetch(
 								subhumanId
 							);
-							eventEmitter.emit("changeRole", subhumanMember, "Poop");
+							eventEmitter.emit("changeRole", subhumanMember, "Poop", false);
 							eventEmitter.emit(
 								"SwarmComplete",
 								selectedSubhumans[swarmInitiatorId].user.username,
@@ -301,7 +303,7 @@ async function setupCockroachBotEvents(client, lastMessageId) {
 					}
 				} else {
 					try {
-						eventEmitter.emit("changeRole", selectedMaggots[userId], "Poop");
+						eventEmitter.emit("changeRole",selectedMaggots[userId],"Poop",false);
 						await DBUpdateXP(userId, -InfanticideCost, client);
 						await CacheSetCooldown("infanticide", userId, InfanticideCooldown);
 					} catch (err) {
@@ -411,12 +413,14 @@ async function updateMessage(client, lastMessageId){
 			const selectMenuMaggots = await buildSelectMenu(
 				client,
 				["maggot"],
-				"selectMaggot"
+				"selectMaggot",
+				TextInfanticideSelectMenu
 			);
 			const selectMenuSubhumans = await buildSelectMenu(
 				client,
 				["subhuman"],
-				"selectSubhuman"
+				"selectSubhuman",
+				TextSwarmSelectMenu
 			);
 			const row_maggot_select = new ActionRowBuilder().addComponents(
 				selectMenuMaggots
@@ -444,7 +448,8 @@ async function updateMessage(client, lastMessageId){
 			const selectMenuMaggots = await buildSelectMenu(
 				client,
 				["maggot"],
-				"selectMaggot"
+				"selectMaggot",
+				TextInfanticideSelectMenu
 			);
 			const actionRow_0 = new ActionRowBuilder().addComponents(
 				selectMenuMaggots
@@ -487,7 +492,8 @@ async function updateMessage(client, lastMessageId){
 			const selectMenuMaggots = await buildSelectMenu(
 				client,
 				["maggot"],
-				"selectMaggot"
+				"selectMaggot",
+				TextInfanticideSelectMenu
 			);
 			const actionRow_0 = new ActionRowBuilder().addComponents(
 				selectMenuMaggots
@@ -544,12 +550,14 @@ async function messageCockroachCommands(client) {
 		const selectMenuMaggots = await buildSelectMenu(
 			client,
 			["maggot"],
-			"selectMaggot"
+			"selectMaggot",
+			TextInfanticideSelectMenu
 		);
 		const selectMenuSubhumans = await buildSelectMenu(
 			client,
 			["subhuman"],
-			"selectSubhuman"
+			"selectSubhuman",
+			TextSwarmSelectMenu
 		);
 		const row_maggot_select = new ActionRowBuilder().addComponents(
 			selectMenuMaggots

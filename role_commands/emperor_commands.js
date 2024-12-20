@@ -26,17 +26,21 @@ const {
 	HeirCost,
 	HeirCooldown,
 	ImperialWritCost,
-	ImperialWritCooldown
+	ImperialWritCooldown,
+	TextEmperorMessageContent,
+	TextCoronationSelectMenu,
+	TextHeirDethroneSelectMenu,
+	TextImperialWritTargetSelectMenu,
+	TextImperialWritKnightSelectMenu,
+	ButtonLabelCoronation,
+	ButtonLabelHeir,
+	ButtonLabelDethrone,
+	ButtonLabelImperialWrit,
+	ButtonLabelShowWrits
 } = require("../game_config.json");
 const { DBUpdateXP } = require("../apis/firebase/querys");
 
-const content =
-	"Test message to Emperor.\n" +
-	"**Abilities:**\n" +
-	"- **Coronation**: Choose Lord to make him King.\n" +
-	"- **Dethrone**: Choose King to make him Knight.\n" +
-	"- **Heir Succession**: Choose King to make him emperor.\n";
-
+const content = TextEmperorMessageContent;
 let selectedKing = null;
 let selectedLord = null;
 let selectedKnight = null;
@@ -384,21 +388,20 @@ async function updateSelectMenu(client, lastMessageId) {
 		const channel = await client.channels.fetch(process.env.CHANNELIDEMPEROR);
 		const messageToEdit = await channel.messages.fetch(lastMessageId);
 		const actionRow_0 = new ActionRowBuilder().addComponents(
-			await buildSelectMenu(client, ["lord"], "SelectLord")
+			await buildSelectMenu(client, ["lord"], "SelectLord", TextCoronationSelectMenu)
 		);
 		const actionRow_1 = new ActionRowBuilder().addComponents(
-			await buildSelectMenu(client, ["king"], "SelectKing")
+			await buildSelectMenu(client, ["king"], "SelectKing", TextHeirDethroneSelectMenu)
 		);
 		const existingComponents = messageToEdit.components.map((component) =>
 			ActionRowBuilder.from(component.toJSON())
 		);
 		const actionRow_2 = new ActionRowBuilder()
 			.addComponents(await buildSelectMenu(
-				client, ["peasant", "scholar", "merchant","knight","noble","lord","king"], "SelectHuman"
-			));
+				client, ["peasant", "scholar", "merchant","knight","noble","lord","king"],					"SelectHuman",TextImperialWritTargetSelectMenu));
 		const actionRow_3 = new ActionRowBuilder()
 			.addComponents(await buildSelectMenu(
-				client, ["knight"], "SelectKnight"
+				client, ["knight"], "SelectKnight",TextImperialWritKnightSelectMenu
 			));		
 		existingComponents[0] = actionRow_0;
 		existingComponents[1] = actionRow_1;
@@ -419,39 +422,38 @@ async function messageEmperorCommands(client) {
 	try {
 		channel = await client.channels.fetch(process.env.CHANNELIDEMPEROR);
 		const lordSelectMenu = new ActionRowBuilder().addComponents(
-			await buildSelectMenu(client, ["lord"], "SelectLord")
+			await buildSelectMenu(client, ["lord"], "SelectLord", TextCoronationSelectMenu)
 		);
 		const kingSelectMenu = new ActionRowBuilder().addComponents(
-			await buildSelectMenu(client, ["king"], "SelectKing")
+			await buildSelectMenu(client, ["king"], "SelectKing",TextHeirDethroneSelectMenu)
 		);
 		const actionRow_2 = new ActionRowBuilder()
 			.addComponents(await buildSelectMenu(
-				client, ["peasant", "scholar", "merchant","knight","noble","lord","king"], "SelectHuman"
-			));
+				client, ["peasant", "scholar", "merchant","knight","noble","lord","king"], "SelectHuman",TextImperialWritTargetSelectMenu));
 		const actionRow_3 = new ActionRowBuilder()
 			.addComponents(await buildSelectMenu(
-				client, ["knight"], "SelectKnight"
+				client, ["knight"], "SelectKnight",TextImperialWritKnightSelectMenu
 			));
 		const btnRow = new ActionRowBuilder().addComponents(
 			new ButtonBuilder()
 			.setCustomId("Coronation")
-			.setLabel("Coronation")
+			.setLabel(ButtonLabelCoronation)
 			.setStyle(ButtonStyle.Primary),
 			new ButtonBuilder()
 			.setCustomId("Dethrone")
-			.setLabel("Dethrone")
+			.setLabel(ButtonLabelDethrone)
 			.setStyle(ButtonStyle.Danger),
 			new ButtonBuilder()
 			.setCustomId("HeirSuccession")
-			.setLabel("Choose a Heir")
+			.setLabel(ButtonLabelHeir)
 			.setStyle(ButtonStyle.Danger),
 			new ButtonBuilder()
 			.setCustomId("ImperialWrit")
-			.setLabel("Writ")
+			.setLabel(ButtonLabelImperialWrit)
 			.setStyle(ButtonStyle.Primary),
 			new ButtonBuilder()
 			.setCustomId("ShowWrits")
-			.setLabel("Show Writs")
+			.setLabel(ButtonLabelShowWrits)
 			.setStyle(ButtonStyle.Secondary)
 		);
 		return await channel.send({

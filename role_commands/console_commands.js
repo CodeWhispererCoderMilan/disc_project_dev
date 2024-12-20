@@ -43,7 +43,10 @@ const {
 	CoupSecondPhaseTime,
 	ScholarAstralRealmCooldown,
 	EmperorAstralRealmCooldown,
-	CheckXpCooldown
+	CheckXpCooldown,
+	TextConsoleMessageContent,
+	ButtonLabelCheckXP,
+	ButtonLabelDivination
 } = require("../game_config.json");
 
 let revolutionarySize = 0;
@@ -69,9 +72,7 @@ const REVOLUTIONTHREADSHOLD2 = 0.4;
 const COUPTHREADSHOLD = 0.5;
 
 
-const content = "Console Bot - Admin Controls:\n" +
-	"**Commands:**\n" +
-	"- **!changerole <user_id> <new_role_name>**: Change a user's role (Admin only)\n";
+const content = TextConsoleMessageContent;
 
 function showErrorMsg(err) {
 	console.error("ERROR: console_commands.js", err);
@@ -723,11 +724,11 @@ async function messageConsoleCommands(client) {
 		const buttonRow = new ActionRowBuilder().addComponents(
 			new ButtonBuilder()
 			.setCustomId("CheckXP")
-			.setLabel("Check XP")
+			.setLabel(ButtonLabelCheckXP)
 			.setStyle(ButtonStyle.Danger),
 			new ButtonBuilder()
 			.setCustomId("Divination")
-			.setLabel("Divination")
+			.setLabel(ButtonLabelDivination)
 			.setStyle(ButtonStyle.Primary)
 		);
 

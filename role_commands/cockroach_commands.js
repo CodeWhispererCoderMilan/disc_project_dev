@@ -18,18 +18,16 @@ const {
 	SwarmSpawnTime,
 	SwarmThreshold,
 	TextSwarmSelectMenu,
-	TextInfanticideSelectMenu
+	TextInfanticideSelectMenu,
+	TextCockroachMessageContent,
+	ButtonLabelSwarm,
+	ButtonLabelInfanticide
 } = require(`../game_config.json`);
 const { buildSelectMenu } = require(`../functions/botActions.js`);
 const { DBUpdateXP } = require("../apis/firebase/querys.js");
 const { eventEmitter } = require("../functions/eventEmitter.js");
 
-const content = "You have matured out of your larva phase into a full-fledged cockroach! " +
-	"Although cockroaches are harmless on their own, they may carry the plague in large numbers. " +
-	"However, they can only attack dirty humans (sub-humans, slaves, servants, peasants).\n\n" +
-	"**Abilities:**\n" +
-	"- **Pest Swarm**: With three or more cockroaches, you can choose one sub-human to infest.\n" +
-	"- **Infanticide**: Use 200 XP to kill a maggot.";
+const content = TextCockroachMessageContent;
 const selectedMaggots = {};
 let selectedSubhumans = {};
 let swarmInitiatorId = null;
@@ -120,13 +118,8 @@ async function setupCockroachBotEvents(client, lastMessageId) {
 				}
 			}
 			if(swarmTargetId === oldMember.id && lastMessageId){
-				client.emit("SwarmTargetChangedRoles", oldMember.user.username);"You have matured out of your larva phase into a full-fledged cockroach! " +
-					"Although cockroaches are harmless on their own, they may carry the plague in large numbers. " +
-					"However, they can only attack dirty humans (sub-humans, slaves, servants, peasants).\n\n" +
-					"**Abilities:**\n" +
-					"- **Pest Swarm**: With three or more cockroaches, you can choose one sub-human to infest.\n" +
-					"- **Infanticide**: Use 200 XP to kill a maggot.",
-					resetSwarm(client, lastMessageId);
+				client.emit("SwarmTargetChangedRoles", oldMember.user.username);	
+				resetSwarm(client, lastMessageId);
 			}
 		}
 
@@ -431,11 +424,11 @@ async function updateMessage(client, lastMessageId){
 			const buttonRow = new ActionRowBuilder().addComponents(
 				new ButtonBuilder()
 				.setCustomId("commitInfanticide")
-				.setLabel("Infanticide")
+				.setLabel(ButtonLabelInfanticide)
 				.setStyle(ButtonStyle.Danger),
 				new ButtonBuilder()
 				.setCustomId("swarmInitiated")
-				.setLabel("swarm")
+				.setLabel(ButtonLabelSwarm)
 				.setStyle(ButtonStyle.Primary)
 			);
 
@@ -466,11 +459,11 @@ async function updateMessage(client, lastMessageId){
 			const buttonRow = new ActionRowBuilder().addComponents(
 				new ButtonBuilder()
 				.setCustomId("commitInfanticide")
-				.setLabel("Infanticide")
+				.setLabel(ButtonLabelInfanticide)
 				.setStyle(ButtonStyle.Danger),
 				new ButtonBuilder()
 				.setCustomId("joinSwarm")
-				.setLabel("join swarm")
+				.setLabel(ButtonLabelSwarm)
 				.setStyle(ButtonStyle.Primary)
 			);
 
@@ -510,15 +503,14 @@ async function updateMessage(client, lastMessageId){
 			const buttonRow = new ActionRowBuilder().addComponents(
 				new ButtonBuilder()
 				.setCustomId("commitInfanticide")
-				.setLabel("Infanticide")
+				.setLabel(ButtonLabelInfanticide)
 				.setStyle(ButtonStyle.Danger),
 				new ButtonBuilder()
 				.setCustomId("joinSwarm")
-				.setLabel("join swarm")
+				.setLabel(ButtonLabelSwarm)
 				.setStyle(ButtonStyle.Primary)
 				.setDisabled(true)
 			);
-
 
 			const actionRow_2 = ActionRowBuilder.from(
 				buttonRow
@@ -577,13 +569,7 @@ async function messageCockroachCommands(client) {
 		);
 
 		const message = await channel.send({
-			content:
-			"You have matured out of your larva phase into a full-fledged cockroach! " +
-			"Although cockroaches are harmless on their own, they may carry the plague in large numbers. " +
-			"However, they can only attack dirty humans (sub-humans, slaves, servants, peasants).\n\n" +
-			"**Abilities:**\n" +
-			"- **Pest Swarm**: With three or more cockroaches, you can choose one sub-human to infest.\n" +
-			"- **Infanticide**: Use 200 XP to kill a maggot.",
+			content:TextCockroachMessageContent,
 			components: [row_maggot_select, row_subhuman_select, buttonRow],
 		});
 		return message;

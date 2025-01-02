@@ -28,7 +28,17 @@ const {
 	SiegeCost,
 	RoleChangeMessageDisplayTime,
 	RoyalWritCost,
-	RoyalWritCooldown
+	RoyalWritCooldown,
+	TextKingMessageContent,
+	TextDegradationRoyalWritSelectMenu,
+	TextKnightSelectMenu,
+	TextSiegeKingSelectMenu,
+	TextRoyalWritTargetSelectMenu,
+	ButtonLabelDegradation,
+	ButtonLabelRoyalWrit,
+	ButtonLabelKnight,
+	ButtonLabelSiege,
+	ButtonLabelShowWrits
 } = require("../game_config.json");
 const { eventEmitter } = require("../functions/eventEmitter.js");
 const { DBUpdateXP } = require("../apis/firebase/querys");
@@ -47,13 +57,8 @@ let siegeTarget = null;
 let siegeActive = false;
 const selectedWritHumans = {};
 
-const initContent =
-	"Test message to King.\n" +
-	"**Abilities:**\n" +
-	"- **Degradation**: Choose Knight to degradation to merchant\n" +
-	"- **Knight**: Choose peasant, scholar, merchant select to make him knight\n" +
-	"- **Siege**: Choose a king to make him poop\n";
-
+const initContent =TextKingMessageContent;
+	
 function showErrorMsg(err) {
 	console.error("ERROR: king_commands.js", err);
 }
@@ -511,43 +516,43 @@ async function updateMessage(client, lastMessageId) {
 
 		if (!siegeActive) {
 			const degradationSelectMenu = new ActionRowBuilder().addComponents(
-				await buildSelectMenu(client, ["knight"], "SelectDegradation")
+				await buildSelectMenu(client, ["knight"], "SelectDegradation", TextDegradationRoyalWritSelectMenu)
 			);
 			const knightSelectMenu = new ActionRowBuilder().addComponents(
 				await buildSelectMenu(
 					client,
 					["peasant", "scholar", "merchant"],
-					"SelectKnight"
+					"SelectKnight", TextKnightSelectMenu
 				)
 			);
 			const kingSelectMenu = new ActionRowBuilder().addComponents(
-				await buildSelectMenu(client, ["king"], "SelectKing")
+				await buildSelectMenu(client, ["king"], "SelectKing", TextSiegeKingSelectMenu)
 			);
 			const actionRow_3 = new ActionRowBuilder()
 				.addComponents(await buildSelectMenu(
 					client, ["peasant", "scholar", "merchant","noble",
-						"knight","lord"], "SelectWritHuman"
+						"knight","lord"], "SelectWritHuman",TextRoyalWritTargetSelectMenu
 				));
 			const btnRow = new ActionRowBuilder().addComponents(
 				new ButtonBuilder()
 				.setCustomId("DegradationKnight")
-				.setLabel("Degradation Knight")
+				.setLabel(ButtonLabelDegradation)
 				.setStyle(ButtonStyle.Primary),
 				new ButtonBuilder()
 				.setCustomId("Knight")
-				.setLabel("Knight")
+				.setLabel(ButtonLabelKnight)
 				.setStyle(ButtonStyle.Primary),
 				new ButtonBuilder()
 				.setCustomId("Siege")
-				.setLabel("Siege")
+				.setLabel(ButtonLabelSiege)
 				.setStyle(ButtonStyle.Danger),
 				new ButtonBuilder()
 				.setCustomId("RoyalWrit")
-				.setLabel("Writ")
+				.setLabel(ButtonLabelRoyalWrit)
 				.setStyle(ButtonStyle.Primary),
 				new ButtonBuilder()
 				.setCustomId("ShowWrits")
-				.setLabel("Show Writs")
+				.setLabel(ButtonLabelShowWrits)
 				.setStyle(ButtonStyle.Secondary)
 			);
 			await messageToEdit.edit({
@@ -563,13 +568,13 @@ async function updateMessage(client, lastMessageId) {
 		} else {
 
 			const degradationSelectMenu = new ActionRowBuilder().addComponents(
-				await buildSelectMenu(client, ["knight"], "SelectDegradation")
+				await buildSelectMenu(client, ["knight"], "SelectDegradation", TextDegradationRoyalWritSelectMenu)
 			);
 			const knightSelectMenu = new ActionRowBuilder().addComponents(
 				await buildSelectMenu(
 					client,
 					["peasant", "scholar", "merchant"],
-					"SelectKnight"
+					"SelectKnight", TextKnightSelectMenu
 				)
 			);
 			const actionRow_2 = ActionRowBuilder.from(
@@ -578,7 +583,7 @@ async function updateMessage(client, lastMessageId) {
 			const actionRow_3 = new ActionRowBuilder()
 				.addComponents(await buildSelectMenu(
 					client, ["peasant", "scholar", "merchant","noble",
-						"knight","lord"], "SelectWritHuman"
+						"knight","lord"], "SelectWritHuman", TextRoyalWritTargetSelectMenu
 				));
 			const kingSelectMenu = StringSelectMenuBuilder.from(
 				actionRow_2.components[0].toJSON()
@@ -589,24 +594,24 @@ async function updateMessage(client, lastMessageId) {
 			const btnRow = new ActionRowBuilder().addComponents(
 				new ButtonBuilder()
 				.setCustomId("DegradationKnight")
-				.setLabel("Degradation Knight")
+				.setLabel(ButtonLabelDegradation)
 				.setStyle(ButtonStyle.Primary),
 				new ButtonBuilder()
 				.setCustomId("Knight")
-				.setLabel("Knight")
+				.setLabel(ButtonLabelKnight)
 				.setStyle(ButtonStyle.Primary),
 				new ButtonBuilder()
 				.setCustomId("Siege")
-				.setLabel("Siege")
+				.setLabel(ButtonLabelSiege)
 				.setStyle(ButtonStyle.Danger)
 				.setDisabled(true),
 				new ButtonBuilder()
 				.setCustomId("RoyalWrit")
-				.setLabel("Writ")
+				.setLabel(ButtonLabelRoyalWrit)
 				.setStyle(ButtonStyle.Primary),
 				new ButtonBuilder()
 				.setCustomId("ShowWrits")
-				.setLabel("Show Writs")
+				.setLabel(ButtonLabelShowWrits)
 				.setStyle(ButtonStyle.Secondary)
 			);
 			let content = "";
@@ -635,43 +640,43 @@ async function messageKingCommands(client) {
 	try {
 		channel = await client.channels.fetch(process.env.CHANNELIDKING);
 		const degradationSelectMenu = new ActionRowBuilder().addComponents(
-			await buildSelectMenu(client, ["knight"], "SelectDegradation")
+			await buildSelectMenu(client, ["knight"], "SelectDegradation", TextDegradationRoyalWritSelectMenu)
 		);
 		const knightSelectMenu = new ActionRowBuilder().addComponents(
 			await buildSelectMenu(
 				client,
 				["peasant", "scholar", "merchant"],
-				"SelectKnight"
+				"SelectKnight", TextKnightSelectMenu
 			)
 		);
 		const kingSelectMenu = new ActionRowBuilder().addComponents(
-			await buildSelectMenu(client, ["king"], "SelectKing")
+			await buildSelectMenu(client, ["king"], "SelectKing", TextSiegeKingSelectMenu)
 		);
 		const actionRow_3 = new ActionRowBuilder()
 			.addComponents(await buildSelectMenu(
 				client, ["peasant", "scholar", "merchant","noble",
-					"knight","lord"], "SelectWritHuman"
+					"knight","lord"], "SelectWritHuman",TextRoyalWritTargetSelectMenu
 			));
 		const btnRow = new ActionRowBuilder().addComponents(
 			new ButtonBuilder()
 			.setCustomId("DegradationKnight")
-			.setLabel("Degradation Knight")
+			.setLabel(ButtonLabelDegradation)
 			.setStyle(ButtonStyle.Primary),
 			new ButtonBuilder()
 			.setCustomId("Knight")
-			.setLabel("Knight")
+			.setLabel(ButtonLabelKnight)
 			.setStyle(ButtonStyle.Primary),
 			new ButtonBuilder()
 			.setCustomId("Siege")
-			.setLabel("Siege")
+			.setLabel(ButtonLabelSiege)
 			.setStyle(ButtonStyle.Danger),
 			new ButtonBuilder()
 			.setCustomId("RoyalWrit")
-			.setLabel("Writ")
+			.setLabel(ButtonLabelRoyalWrit)
 			.setStyle(ButtonStyle.Primary),
 			new ButtonBuilder()
 			.setCustomId("ShowWrits")
-			.setLabel("Show Writs")
+			.setLabel(ButtonLabelShowWrits)
 			.setStyle(ButtonStyle.Secondary)
 
 		);

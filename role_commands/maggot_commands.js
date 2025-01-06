@@ -6,16 +6,18 @@ const {
 	CacheGetUserXP
 } = require('../apis/redis/redisCache');
 const {DBSetFestering, DBClearFestering, DBUpdateXP, DBGetUserById} = require('../apis/firebase/querys');
-const {FesterCost} = require('../game_config.json');
+const {
+	FesterCost,
+	ButtonLabelFester,
+	TextMaggotMessageContent,
+	TextFesterSelectMenu,
+	TextFesterEmptySelectMenu
+} = require('../game_config.json');
 const {eventEmitter} = require('../functions/eventEmitter');
 const {sendInteractionReply} = require("../functions/botActions");
 
 const selectedPoops = {};
-const content = "Whisps of excremental agency have incubated a Maggot. \n " +
-	"Barely living, soft and squishy, cling on to whatever you can to survive. \n" +
-	"**Abilities:**\n" +
-	"- **Fester**: Choose poop to fester in\n" +
-	"- **parasite**: ";
+const content = TextMaggotMessageContent;
 
 function showErrorMsg(err) {
 	console.error("ERROR: maggot_commands.js", err);
@@ -127,18 +129,13 @@ async function messageMaggotCommands(client) {
 		channel = await client.channels.fetch(process.env.CHANNELIDMAGGOT);
 		const selectMenu = await buildUnfesteredPoopSelectMenu(client);
 		const row = new ActionRowBuilder()
-			.addComponents(selectMenu); // Add the select menu to the action row
+			.addComponents(selectMenu); 	
 		const buttonRow = new ActionRowBuilder()
 			.addComponents(
 				new ButtonBuilder()
 				.setCustomId('fester')
-				.setLabel('fester')
+				.setLabel(ButtonLabelFester)
 				.setStyle(ButtonStyle.Danger)
-				.setDisabled(true), // Initially disabled, enable after selection
-				new ButtonBuilder()
-				.setCustomId('parasite')
-				.setLabel('parasite')
-				.setStyle(ButtonStyle.Primary),
 			);
 
 		return await channel.send({ // this is a message.
@@ -230,13 +227,13 @@ async function buildUnfesteredPoopSelectMenu(client) {
 		.setDisabled(availablePoops.length === 0);
 
 	if (availablePoops.length > 0) {
-		selectMenu.setPlaceholder('Pick a poop to fester inside of')
+		selectMenu.setPlaceholder(TextFesterSelectMenu)
 			.addOptions(availablePoops.map(poop => ({
 				label: poop.username,
 				value: poop.id,
 			})));
 	} else {
-		selectMenu.setPlaceholder('Sadly, there is no poop to fester in')
+		selectMenu.setPlaceholder(TextFesterEmptySelectMenu)
 			.addOptions([{
 				label: 'No poops available',
 				value: 'no_poops',

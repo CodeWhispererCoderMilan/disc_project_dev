@@ -26,7 +26,15 @@ const {
 	LordElectionCoolDown,
 	RoleChangeMessageDisplayTime,
 	EminentWritCost,
-	EminentWritCooldown
+	EminentWritCooldown,
+	TextLordMessageContent,
+	TextEminentWritKnightSelectMenu,
+	TextEminentWritTargetSelectMenu,
+	TextElectionSelectMenu,
+	ButtonLabelEminentWrit,
+	ButtonLabelElection,
+	ButtonLabelElectionVote,
+	ButtonLabelShowWrits
 } = require("../game_config.json");
 const { eventEmitter } = require("../functions/eventEmitter.js");
 const { DBUpdateXP } = require("../apis/firebase/querys");
@@ -45,12 +53,8 @@ let electionType = "";
 const selectedHumans = {};
 const selectedKnights = {};
 
-const initContent =
-	"Lords can trigger a timed poll to upgrade a target of their role by selecting noble or lord in a menu and clicking a button. If over 50% of participants join before the timer ends, the noble role is changed to LORD and if over 60% of participants join before the timer ends, the lord role is changed to KING; otherwise, the attempt fails. A global cooldown is activated after each use.\n\n" +
-	"**Abilities:**\n" +
-	"- **Elect Lord**: With more than 50% of lords, you can make one noble to lord.\n" +
-	"- **Elect King**: With more than 60% of lords, you can make one lord to king.";
-
+const initContent = TextLordMessageContent;
+	
 function showErrorMsg(err) {
 	console.error("ERROR: lord_commands.js", err);
 }
@@ -497,33 +501,33 @@ async function updateMessage(client, lastMessageId) {
 			const electionSelectMenu = await buildSelectMenu(
 				client,
 				["noble", "lord"],
-				"ElectionSelectMenu"
+				"ElectionSelectMenu", TextElectionSelectMenu
 			);
 			const actionRow_0 = new ActionRowBuilder().addComponents(
 				electionSelectMenu
 			);
 			const actionRow_1 = new ActionRowBuilder()
 				.addComponents(await buildSelectMenu(
-					client, ["peasant", "scholar", "merchant","noble"], "SelectHuman"
+					client, ["peasant", "scholar", "merchant","noble"], "SelectHuman", TextEminentWritTargetSelectMenu
 				));
 			const actionRow_2 = new ActionRowBuilder()
 				.addComponents(await buildSelectMenu(
-					client, ["knight"], "SelectKnight"
+					client, ["knight"], "SelectKnight", TextEminentWritKnightSelectMenu
 				));
 			const buttonRow = new ActionRowBuilder().addComponents(
 				new ButtonBuilder()
 				.setCustomId("Election")
-				.setLabel("Election")
+				.setLabel(ButtonLabelElection)
 				.setStyle(ButtonStyle.Primary),
 				new ButtonBuilder()
-				.setCustomId("EminentWrit")
+				.setCustomId(ButtonLabelEminentWrit)
 				.setLabel("Writ")
 				.setStyle(ButtonStyle.Primary)
 			);
 			const infoBtnRow = new ActionRowBuilder().addComponents(
 				new ButtonBuilder()
 				.setCustomId("ShowWrits")
-				.setLabel("Show Writs")
+				.setLabel(ButtonLabelShowWrits)
 				.setStyle(ButtonStyle.Secondary)
 			);
 			await messageToEdit.edit({
@@ -542,26 +546,26 @@ async function updateMessage(client, lastMessageId) {
 			actionRow_0.components[0] = electionSelectMenu;
 			const actionRow_1 = new ActionRowBuilder()
 				.addComponents(await buildSelectMenu(
-					client, ["peasant", "scholar", "merchant","noble"], "SelectHuman"
+					client, ["peasant", "scholar", "merchant","noble"], "SelectHuman", TextEminentWritTargetSelectMenu
 				));
 			const actionRow_2 = new ActionRowBuilder()
 				.addComponents(await buildSelectMenu(
-					client, ["knight"], "SelectKnight"
+					client, ["knight"], "SelectKnight",TextEminentWritKnightSelectMenu
 				));
 			const buttonRow = new ActionRowBuilder().addComponents(
 				new ButtonBuilder()
 				.setCustomId("Vote")
-				.setLabel("Vote")
+				.setLabel(ButtonLabelElectionVote)
 				.setStyle(ButtonStyle.Primary),
 				new ButtonBuilder()
 				.setCustomId("EminentWrit")
-				.setLabel("Writ")
+				.setLabel(ButtonLabelEminentWrit)
 				.setStyle(ButtonStyle.Primary)
 			);
 			const infoBtnRow = new ActionRowBuilder().addComponents(
 				new ButtonBuilder()
 				.setCustomId("ShowWrits")
-				.setLabel("Show Writs")
+				.setLabel(ButtonLabelShowWrits)
 				.setStyle(ButtonStyle.Secondary)
 			);
 			await messageToEdit.edit({
@@ -589,33 +593,33 @@ async function messageLordCommands(client) {
 		const electionSelectMenu = await buildSelectMenu(
 			client,
 			["noble", "lord"],
-			"ElectionSelectMenu"
+			"ElectionSelectMenu", TextElectionSelectMenu
 		);
 		const actionRow_0 = new ActionRowBuilder().addComponents(
 			electionSelectMenu
 		);
 		const actionRow_1 = new ActionRowBuilder()
 			.addComponents(await buildSelectMenu(
-				client, ["peasant", "scholar", "merchant", "noble"], "SelectHuman"
+				client, ["peasant", "scholar", "merchant", "noble"], "SelectHuman", TextEminentWritTargetSelectMenu
 			));
 		const actionRow_2 = new ActionRowBuilder()
 			.addComponents(await buildSelectMenu(
-				client, ["knight"], "SelectKnight"
+				client, ["knight"], "SelectKnight", TextEminentWritKnightSelectMenu
 			));
 		const buttonRow = new ActionRowBuilder().addComponents(
 			new ButtonBuilder()
 			.setCustomId("Election")
-			.setLabel("Election")
+			.setLabel(ButtonLabelElection)
 			.setStyle(ButtonStyle.Primary),
 			new ButtonBuilder()
 			.setCustomId("EminentWrit")
-			.setLabel("Writ")
+			.setLabel(ButtonLabelEminentWrit)
 			.setStyle(ButtonStyle.Primary)
 		);
 		const infoBtnRow = new ActionRowBuilder().addComponents(
 			new ButtonBuilder()
 			.setCustomId("ShowWrits")
-			.setLabel("Show Writs")
+			.setLabel(ButtonLabelShowWrits)
 			.setStyle(ButtonStyle.Secondary)
 		);
 		const message = await channel.send({

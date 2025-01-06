@@ -26,7 +26,17 @@ const {
 	RevolutionCoolDown,
 	RoleChangeMessageDisplayTime,
 	EndowDuration,
-	EndowCost
+	EndowCost,
+	TextMerchantMessageContent,
+	TextRevolutionTargetSelectMenu,
+	TextEmperorCandidateSelectMenu,
+	ButtonLabelRevolution,
+	ButtonLabelWithdrawRevolution,
+	ButtonLabelVoteEmperor,
+	ButtonLabelBribe,
+	ButtonLabelEndow,
+	TextEndowSelectmenu,
+	TextBribeSelectMenu
 } = require("../game_config.json");
 const { eventEmitter } = require("../functions/eventEmitter.js");
 
@@ -46,12 +56,7 @@ let candidates = null;
 let coupActive = false;
 let selectedEndowTargets = {};
 
-const initContent =
-	"Merchants can trigger bride to give xp to a target by selecting Peasant,Merchant,Knight, Noble, Lord or King in a menu and clicking a button. There will be displayed a modal and should enter xp and message(optional) to give.\n\n" +
-	"**Abilities:**\n" +
-	"- **Bribe**: Enter xp and message to give to a target.\n" +
-	"- **Revolution**: Let's make a new world!\n"+
-	"- **Endow**: Endow a target to receive half their future XP gains while they receive 1.5x XP.\n";
+const initContent = TextMerchantMessageContent;
 let revolutionStatusMsg = "";
 
 function showErrorMsg(err) {
@@ -625,38 +630,38 @@ async function updateMessage(client, lastMessageId) {
 					"king",
 					"emperor",
 				],
-				"BribeSelectMenu"
+				"BribeSelectMenu", TextBribeSelectMenu
 			)
 		);
 		let actionRow_1 = new ActionRowBuilder().addComponents(
 			await buildSelectMenu(
 				client,
 				["knight", "noble", "lord", "king", "emperor"],
-				"SelectRevolutionTarget"
+				"SelectRevolutionTarget", TextRevolutionTargetSelectMenu
 			)
 		);
 		const actionRow_2 = new ActionRowBuilder().addComponents(
-			await buildSelectMenu(client, ["peasant", "scholar", "merchant", "knight", "noble"], "EndowSelectMenu")
+			await buildSelectMenu(client, ["peasant", "scholar", "merchant", "knight", "noble"], "EndowSelectMenu", TextEndowSelectmenu)
 		);
 		let actionRow_3 = new ActionRowBuilder().addComponents(
 			new ButtonBuilder()
 			.setCustomId("Bribe")
-			.setLabel("Bribe")
+			.setLabel(ButtonLabelBribe)
 			.setStyle(ButtonStyle.Danger),
 			new ButtonBuilder()
 			.setCustomId("Revolution")
-			.setLabel("Revolution")
+			.setLabel(ButtonLabelRevolution)
 			.setStyle(ButtonStyle.Danger),
 			new ButtonBuilder()
 			.setCustomId("Endow")
-			.setLabel("Endow")
+			.setLabel(ButtonLabelEndow)
 			.setStyle(ButtonStyle.Primary)
 		);
 
 		if (coupActive) {
 			const revolutionBtn = new ButtonBuilder()
 				.setCustomId("Revolution")
-				.setLabel("Revolution")
+				.setLabel(ButtonLabelRevolution)
 				.setDisabled(true)
 				.setStyle(ButtonStyle.Danger);
 			actionRow_3.components[1] = revolutionBtn;
@@ -665,13 +670,13 @@ async function updateMessage(client, lastMessageId) {
 		if (revolutionActive) {
 			let revolutionBtn = new ButtonBuilder()
 				.setCustomId("JoinRevolution")
-				.setLabel("Join Revolution")
+				.setLabel(ButtonLabelJoinRevolution)
 				.setStyle(ButtonStyle.Danger);
 			revolutionStatusMsg = `\nRevolution started. Join revolution. (Joined ${revolutionarySize} / ${peopleSize}.)`;
 			if (revolutionSecondPhase) {
 				actionRow_3.components[3] = new ButtonBuilder()
 					.setCustomId("WithdrawRevolution")
-					.setLabel("Withdraw Revolution")
+					.setLabel(ButtonLabelWithdrawRevolution)
 					.setStyle(ButtonStyle.Primary);
 
 				revolutionStatusMsg = `\nRevolution moved in the next phase. Join revolution. You can also withdraw. (Joined ${revolutionarySize} / ${peopleSize}.)`;
@@ -680,12 +685,12 @@ async function updateMessage(client, lastMessageId) {
 						await buildSelectMenu(
 							client,
 							["knight", "noble", "lord", "king"],
-							"SelectEmperorCandidate"
+							"SelectEmperorCandidate", TextEmperorCandidateSelectMenu
 						)
 					);
 					revolutionBtn = new ButtonBuilder()
 						.setCustomId("VoteEmperor")
-						.setLabel("Vote")
+						.setLabel(ButtonLabelVoteEmperor)
 						.setStyle(ButtonStyle.Danger);
 					if (actionRow_3.components[3]) actionRow_3.components.splice(3, 1);
 					revolutionStatusMsg = `\nLet's vote a new emperor.  (Joined ${revolutionarySize} members.)`;
@@ -694,7 +699,7 @@ async function updateMessage(client, lastMessageId) {
 					actionRow_1 = new ActionRowBuilder().addComponents(
 						new StringSelectMenuBuilder()
 						.setCustomId("SelectEmperorCandidate")
-						.setPlaceholder("Choose a candidate")
+						.setPlaceholder(TextEmperorCandidateSelectMenu)
 						.addOptions(candidates)
 					);
 
@@ -730,32 +735,32 @@ async function messageMerchantCommands(client) {
 					"king",
 					"emperor",
 				],
-				"BribeSelectMenu"
+				"BribeSelectMenu", TextBribeSelectMenu
 			)
 		);
 		const actionRow_1 = new ActionRowBuilder().addComponents(
 			await buildSelectMenu(
 				client,
 				["knight", "noble", "lord", "king", "emperor"],
-				"SelectRevolutionTarget"
+				"SelectRevolutionTarget", TextRevolutionTargetSelectMenu
 			)
 		);
 		const actionRow_2 = new ActionRowBuilder().addComponents(
-			await buildSelectMenu(client, ["peasant", "scholar", "merchant", "knight", "noble"], "EndowSelectMenu")
+			await buildSelectMenu(client, ["peasant", "scholar", "merchant", "knight", "noble"], "EndowSelectMenu", TextEndowSelectmenu)
 		);
 
 		const actionRow_3 = new ActionRowBuilder().addComponents(
 			new ButtonBuilder()
 			.setCustomId("Bribe")
-			.setLabel("Bribe")
+			.setLabel(ButtonLabelBribe)
 			.setStyle(ButtonStyle.Danger),
 			new ButtonBuilder()
 			.setCustomId("Revolution")
-			.setLabel("Revolution")
+			.setLabel(ButtonLabelRevolution)
 			.setStyle(ButtonStyle.Danger),
 			new ButtonBuilder()
 			.setCustomId("Endow")
-			.setLabel("Endow")
+			.setLabel(ButtonLabelEndow)
 			.setStyle(ButtonStyle.Danger)
 
 		);

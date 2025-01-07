@@ -24,7 +24,14 @@ const {
 	GlobalCoolDown,
 	RoleChangeMessageDisplayTime,
 	HighWritCost,
-	HighWritCooldown
+	HighWritCooldown,
+	TextNobleMessageContent,
+	ButtonLabelShowWrits,
+	ButtonLabelHighWrit,
+	ButtonLabelAssassination,
+	TextAssassinationSelectMenu,
+	TextHighWritKnightSelectMenu,
+	TextHighWritTargetSelectMenu,
 } = require("../game_config.json");
 const { eventEmitter } = require("../functions/eventEmitter.js");
 const { DBUpdateXP } = require("../apis/firebase/querys");
@@ -42,11 +49,7 @@ let assassinationTimeout;
 const selectedHumans = {};
 const selectedKnights = {};
 
-const initContent =
-	"Nobles can assassin a target of their role by selecting Knight, Noble or Lord in a menu and clicking a button. If over 3 of participants join before the timer ends, the target's role is changed to POOP; otherwise, the attempt fails. A global cooldown is activated after each use.\n\n" +
-	"**Abilities:**\n" +
-	"- **Assassination**: With more than 3 of Nobles, you can make one knight, noble or lord to poop.";
-
+const initContent = TextNobleMessageContent;
 function showErrorMsg(err) {
 	console.error("ERROR: noble_commands.js", err);
 }
@@ -90,7 +93,6 @@ async function setupNobleBotEvents(client, lastMessageId) {
 					selectedTargets[newMember.id] = null;
 					assassinationParticipants.delete(newMember.id);
 					const guild = await client.guilds.fetch(process.env.GUILDID);
-					// await guild.members.fetch();
 					nobles = guild.members.cache.filter((member) =>
 						member.roles.cache.has(process.env.ROLEID_NOBLE)
 					);
@@ -436,34 +438,34 @@ async function updateMessage(client, lastMessageId) {
 			const assassinationSelectMenu = await buildSelectMenu(
 				client,
 				["knight", "noble", "lord"],
-				"AssassinationTargetSelectMenu"
+				"AssassinationTargetSelectMenu", TextAssassinationSelectMenu
 			);
 			const actionRow_0 = new ActionRowBuilder().addComponents(
 				assassinationSelectMenu
 			);
 			const actionRow_1 = new ActionRowBuilder()
 				.addComponents(await buildSelectMenu(
-					client, ["peasant", "scholar", "merchant"], "SelectHuman"
+					client, ["peasant", "scholar", "merchant"], "SelectHuman", TextHighWritTargetSelectMenu
 				));
 			const actionRow_2 = new ActionRowBuilder()
 				.addComponents(await buildSelectMenu(
-					client, ["knight"], "SelectKnight"
+					client, ["knight"], "SelectKnight", TextHighWritKnightSelectMenu
 				));
 
 			const buttonRow = new ActionRowBuilder().addComponents(
 				new ButtonBuilder()
 				.setCustomId("Assassination")
-				.setLabel("Assassination")
+				.setLabel(ButtonLabelAssassination)
 				.setStyle(ButtonStyle.Danger),
 				new ButtonBuilder()
 				.setCustomId("HighWrit")
-				.setLabel("Writ")
+				.setLabel(ButtonLabelHighWrit)
 				.setStyle(ButtonStyle.Primary)
 			);
 			const infoBtnRow = new ActionRowBuilder().addComponents(
 				new ButtonBuilder()
 				.setCustomId("ShowWrits")
-				.setLabel("Show Writs")
+				.setLabel(ButtonLabelShowWrits)
 				.setStyle(ButtonStyle.Secondary)
 			);
 
@@ -484,27 +486,27 @@ async function updateMessage(client, lastMessageId) {
 			actionRow_0.components[0] = assassinationSelectMenu;
 			const actionRow_1 = new ActionRowBuilder()
 				.addComponents(await buildSelectMenu(
-					client, ["peasant", "scholar", "merchant"], "SelectHuman"
+					client, ["peasant", "scholar", "merchant"], "SelectHuman", TextHighWritTargetSelectMenu
 				));
 			const actionRow_2 = new ActionRowBuilder()
 				.addComponents(await buildSelectMenu(
-					client, ["knight"], "SelectKnight"
+					client, ["knight"], "SelectKnight", TextHighWritKnightSelectMenu
 				));
 
 			const buttonRow = new ActionRowBuilder().addComponents(
 				new ButtonBuilder()
 				.setCustomId("JoinAssassination")
-				.setLabel("Join Assassination")
+				.setLabel(ButtonLabelAssassination)
 				.setStyle(ButtonStyle.Primary),
 				new ButtonBuilder()
 				.setCustomId("HighWrit")
-				.setLabel("Writ")
+				.setLabel(ButtonLabelHighWrit)
 				.setStyle(ButtonStyle.Primary)
 			);
 			const infoBtnRow = new ActionRowBuilder().addComponents(
 				new ButtonBuilder()
 				.setCustomId("ShowWrits")
-				.setLabel("Show Writs")
+				.setLabel(ButtonLabelShowWrits)
 				.setStyle(ButtonStyle.Secondary)
 			);
 			await messageToEdit.edit({
@@ -532,34 +534,34 @@ async function messageNobleCommands(client) {
 		const assassinationSelectMenu = await buildSelectMenu(
 			client,
 			["knight", "noble", "lord"],
-			"AssassinationTargetSelectMenu"
+			"AssassinationTargetSelectMenu", TextAssassinationSelectMenu
 		);
 		const actionRow_0 = new ActionRowBuilder().addComponents(
 			assassinationSelectMenu
 		);
 		const actionRow_1 = new ActionRowBuilder()
 			.addComponents(await buildSelectMenu(
-				client, ["peasant", "scholar", "merchant"], "SelectHuman"
+				client, ["peasant", "scholar", "merchant"], "SelectHuman", TextHighWritTargetSelectMenu
 			));
 		const actionRow_2 = new ActionRowBuilder()
 			.addComponents(await buildSelectMenu(
-				client, ["knight"], "SelectKnight"
+				client, ["knight"], "SelectKnight", TextHighWritKnightSelectMenu
 			));
 
 		const buttonRow = new ActionRowBuilder().addComponents(
 			new ButtonBuilder()
 			.setCustomId("Assassination")
-			.setLabel("Assassination")
+			.setLabel(ButtonLabelAssassination)
 			.setStyle(ButtonStyle.Danger),
 			new ButtonBuilder()
 			.setCustomId("HighWrit")
-			.setLabel("Writ")
+			.setLabel(ButtonLabelHighWrit)
 			.setStyle(ButtonStyle.Primary)
 		);
 		const infoBtnRow = new ActionRowBuilder().addComponents(
 			new ButtonBuilder()
 			.setCustomId("ShowWrits")
-			.setLabel("Show Writs")
+			.setLabel(ButtonLabelShowWrits)
 			.setStyle(ButtonStyle.Secondary)
 		);
 		const message = await channel.send({

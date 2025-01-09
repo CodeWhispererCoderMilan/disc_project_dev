@@ -22,6 +22,7 @@ const {
 	TextRevolutionTargetSelectMenu,
 	TextEmperorCandidateSelectMenu,
 	ButtonLabelRevolution,
+	ButtonLabelJoinRevolution,
 	ButtonLabelWithdrawRevolution,
 	ButtonLabelVoteEmperor,
 	ButtonLabelMobFlaying,

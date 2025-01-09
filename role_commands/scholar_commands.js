@@ -19,6 +19,14 @@ const {
 	AdviseCoolDown,
 	RevolutionCoolDown,
 	RoleChangeMessageDisplayTime,
+	TextScholarMessageContent,
+	TextEmperorCandidateSelectMenu,
+	TextRevolutionTargetSelectMenu,
+	ButtonLabelWithdrawRevolution,
+	ButtonLabelJoinRevolution,
+	ButtonLabelRevolution,
+	ButtonLabelVoteEmperor,
+	ButtonLabelAdvise
 } = require("../game_config.json");
 const { eventEmitter } = require("../functions/eventEmitter.js");
 
@@ -35,11 +43,7 @@ let reelectionActive = false;
 let candidates = null;
 let coupActive = false;
 
-const initContent =
-	"Test message to Scholar.\n" +
-	"**Abilities:**\n" +
-	"- **Advise**: Send message to the Royal Castle\n" +
-	"- **Revolution**: Let's make a new world!\n";
+const initContent =TextScholarMessageContent;
 let revolutionStatusMsg = "";
 
 function showErrorMsg(err) {
@@ -463,24 +467,24 @@ async function updateMessage(client, lastMessageId) {
 			await buildSelectMenu(
 				client,
 				["knight", "noble", "lord", "king", "emperor"],
-				"SelectRevolutionTarget"
+				"SelectRevolutionTarget", TextRevolutionTargetSelectMenu
 			)
 		);
 		let actionRow_1 = new ActionRowBuilder().addComponents(
 			new ButtonBuilder()
 			.setCustomId("Advise")
-			.setLabel("Adivise to Royal Castle")
+			.setLabel(ButtonLabelAdvise)
 			.setStyle(ButtonStyle.Primary),
 			new ButtonBuilder()
 			.setCustomId("Revolution")
-			.setLabel("Revolution")
+			.setLabel(ButtonLabelRevolution)
 			.setStyle(ButtonStyle.Danger)
 		);
 
 		if (coupActive) {
 			const revolutionBtn = new ButtonBuilder()
 				.setCustomId("Revolution")
-				.setLabel("Revolution")
+				.setLabel(ButtonLabelRevolution)
 				.setDisabled(true)
 				.setStyle(ButtonStyle.Danger);
 			actionRow_1.components[1] = revolutionBtn;
@@ -489,13 +493,13 @@ async function updateMessage(client, lastMessageId) {
 		if (revolutionActive) {
 			let revolutionBtn = new ButtonBuilder()
 				.setCustomId("JoinRevolution")
-				.setLabel("Join Revolution")
+				.setLabel(ButtonLabelJoinRevolution)
 				.setStyle(ButtonStyle.Danger);
 			revolutionStatusMsg = `\nRevolution started. Join revolution. (Joined ${revolutionarySize} / ${peopleSize}.)`;
 			if (revolutionSecondPhase) {
 				actionRow_1.components[2] = new ButtonBuilder()
 					.setCustomId("WithdrawRevolution")
-					.setLabel("Withdraw Revolution")
+					.setLabel(ButtonLabelWithdrawRevolution)
 					.setStyle(ButtonStyle.Primary);
 
 				revolutionStatusMsg = `\nRevolution moved in the next phase. Join revolution. You can also withdraw. (Joined ${revolutionarySize} / ${peopleSize}.)`;
@@ -504,12 +508,12 @@ async function updateMessage(client, lastMessageId) {
 						await buildSelectMenu(
 							client,
 							["knight", "noble", "lord", "king"],
-							"SelectEmperorCandidate"
+							"SelectEmperorCandidate",TextEmperorCandidateSelectMenu
 						)
 					);
 					revolutionBtn = new ButtonBuilder()
 						.setCustomId("VoteEmperor")
-						.setLabel("Vote")
+						.setLabel(ButtonLabelVoteEmperor)
 						.setStyle(ButtonStyle.Danger);
 					if (actionRow_1.components[2]) actionRow_1.components.splice(2, 1);
 					revolutionStatusMsg = `\nLet's vote a new emperor.  (Joined ${revolutionarySize} members.)`;
@@ -518,7 +522,7 @@ async function updateMessage(client, lastMessageId) {
 					actionRow_0 = new ActionRowBuilder().addComponents(
 						new StringSelectMenuBuilder()
 						.setCustomId("SelectEmperorCandidate")
-						.setPlaceholder("Choose a candidate")
+						.setPlaceholder(TextEmperorCandidateSelectMenu)
 						.addOptions(candidates)
 					);
 
@@ -546,17 +550,17 @@ async function messageScholarCommands(client) {
 			await buildSelectMenu(
 				client,
 				["knight", "noble", "lord", "king", "emperor"],
-				"SelectRevolutionTarget"
+				"SelectRevolutionTarget", TextRevolutionTargetSelectMenu
 			)
 		);
 		const actionRow_1 = new ActionRowBuilder().addComponents(
 			new ButtonBuilder()
 			.setCustomId("Advise")
-			.setLabel("Advise Royal Castle")
+			.setLabel(ButtonLabelAdvise)
 			.setStyle(ButtonStyle.Primary),
 			new ButtonBuilder()
 			.setCustomId("Revolution")
-			.setLabel("Revolution")
+			.setLabel(ButtonLabelRevolution)
 			.setStyle(ButtonStyle.Danger)
 		);
 

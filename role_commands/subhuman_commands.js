@@ -3,13 +3,23 @@ const {sendInteractionReply, buildSelectMenu} = require("../functions/botActions
 const { CacheGetUserXP, CacheGetCooldown, CacheSetCooldown} = require("../apis/redis/redisCache");
 const {ActionRowBuilder, ButtonBuilder, ButtonStyle} = require("discord.js");
 const {DBUpdateXP} = require("../apis/firebase/querys");
-const {DepravityCost, DepravityCooldown, ManhuntCost, ManhuntCooldown, PickingCost, PickingCooldown} = require("../game_config.json");
+const {
+	DepravityCost,
+	DepravityCooldown, 
+	ManhuntCost, 
+	ManhuntCooldown, 
+	PickingCost, 
+	PickingCooldown,
+	TextSubhumanMessageContent,
+	ButtonLabelManhunt,
+	ButtonLabelDepravity,
+	ButtonLabelPickings,
+	TextPickingsSelectMenu,
+	TextDepravitySelectMenu,
+	TextManhuntSelectMenu
+} = require("../game_config.json");
 
-const content = "Test message to SubHuman.\n" +
-	"**Abilities**:\n" +
-	"- **Depravity**: Choose SubHuman to depravity him.\n" +
-	"- **Manhunt**: Choose SubHuman to manhunt.\n" +
-	"- **Picking**: Choose Maggot or Rat to picking.\n";
+const content = TextSubhumanMessageContent;
 
 let selectedSubHumans = {};
 let selectedPeasants = {};
@@ -203,11 +213,11 @@ async function updateSelectMenu(client, lastMessageId) {
 		const channel = await client.channels.fetch(process.env.CHANNELIDSUBHUMAN);
 		const messageToEdit = await channel.messages.fetch(lastMessageId);
 		const actionRow_0 = new ActionRowBuilder()
-			.addComponents(await buildSelectMenu(client, ["subhuman"], "SelectSubHuman")); 
+			.addComponents(await buildSelectMenu(client, ["subhuman"], "SelectSubHuman", TextDepravitySelectMenu)); 
 		const actionRow_1 = new ActionRowBuilder()
-			.addComponents(await buildSelectMenu(client, ["peasant"], "SelectPeasant"));
+			.addComponents(await buildSelectMenu(client, ["peasant"], "SelectPeasant",TextManhuntSelectMenu));
 		const actionRow_2 = new ActionRowBuilder()
-			.addComponents(await buildSelectMenu(client, ["maggot", "rat"], "SelectPicking"));
+			.addComponents(await buildSelectMenu(client, ["maggot", "rat"], "SelectPicking", TextPickingsSelectMenu));
 		const existingComponents = messageToEdit.components.map(component => ActionRowBuilder.from(component.toJSON()));
 		existingComponents[0] = actionRow_0;
 		existingComponents[1] = actionRow_1;
@@ -229,25 +239,25 @@ async function messageSubhumanCommands(client) {
 	try {
 		channel = await client.channels.fetch(process.env.CHANNELIDSUBHUMAN);
 		const subHumanSelectMenu = new ActionRowBuilder()
-			.addComponents(await buildSelectMenu(client, ["subhuman"], "SelectSubHuman"));
+			.addComponents(await buildSelectMenu(client, ["subhuman"], "SelectSubHuman", TextDepravitySelectMenu));
 		const peasantSelectMenu = new ActionRowBuilder()
-			.addComponents(await buildSelectMenu(client, ["peasant"], "SelectPeasant"));
+			.addComponents(await buildSelectMenu(client, ["peasant"], "SelectPeasant",TextManhuntSelectMenu));
 		const pickingSelectMenu = new ActionRowBuilder()
-			.addComponents(await buildSelectMenu(client, ["maggot", "rat"], "SelectPicking"));
+			.addComponents(await buildSelectMenu(client, ["maggot", "rat"], "SelectPicking", TextPickingsSelectMenu));
 
 		const btnRows = new ActionRowBuilder()
 			.addComponents(
 				new ButtonBuilder()
 				.setCustomId("Depravity")
-				.setLabel("Depravity")
+				.setLabel(ButtonLabelDepravity)
 				.setStyle(ButtonStyle.Primary),
 				new ButtonBuilder()
 				.setCustomId("Manhunt")
-				.setLabel("Manhunt")
+				.setLabel(ButtonLabelManhunt)
 				.setStyle(ButtonStyle.Primary),
 				new ButtonBuilder()
 				.setCustomId("Picking")
-				.setLabel("Picking")
+				.setLabel(ButtonLabelPickings)
 				.setStyle(ButtonStyle.Danger),
 			);
 

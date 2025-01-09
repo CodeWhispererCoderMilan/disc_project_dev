@@ -1,7 +1,10 @@
 const {eventEmitter} = require('../functions/eventEmitter.js');
-const {RoleChangeMessageDisplayTime} = require('../game_config.json');
+const {
+	RoleChangeMessageDisplayTime,
+	TextPoopMessageContent
+} = require('../game_config.json');
 
-const content = "Test message to POOP.";
+const content = TextPoopMessageContent;
 
 function showErrorMsg(err) {
 	console.error("ERROR: poop_commands.js", err);

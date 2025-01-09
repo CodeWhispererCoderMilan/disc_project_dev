@@ -141,6 +141,18 @@
 	"ButtonLabelAssassination" : "Assassination",
 	"ButtonLabelMobFlaying" : "Mob Flaying",
 	"ButtonLabelJoinMobFlaying" : "Join Mob Flaying",
+	"ButtonLabelNibble": "Nibble",
+	"ButtonLabelPlague": "Begin Plague",
+	"ButtonLabelJoinPlague" : "Join Plague",
+	"ButtonLabelAdvise" :"Advise the Royal Court",
+	"ButtonLabelManhunt" : "Manhunt",
+	"ButtonLabelDepravity" : "Depravity",
+	"ButtonLabelPickings" : "Pickings",
+	"TextPickingsSelectMenu" : "Pick a maggot or rat to consume",
+	"TextDepravitySelectMenu" : "Depravity",
+	"TextManhuntSelectMenu" : "Manhunt",
+	"TextNibbleSelectMenu" : "Choose a maggot or cockroach to Nibble on",
+	"TextPlagueTargetSelectMenu" : "Choose a target for Plague",
 	"TextMobFlayingSelectMenu" : "Select a target for Mob Flaying",
 	"TextAssassinationSelectMenu" : "Select target to assassinate",
 	"TextHighWritKnightSelectMenu" : "Select a Knight for High Writ",
@@ -176,6 +188,9 @@
 	"TextLordMessageContent" : "Lords can trigger a timed poll to upgrade a target of their role by selecting noble or lord in a menu and clicking a button. If over 50% of participants join before the timer ends, the noble role is changed to LORD and if over 60% of participants join before the timer ends, the lord role is changed to KING; otherwise, the attempt fails. A global cooldown is activated after each use.\n\n**Abilities:**\n- **Elect Lord**: With more than 50% of lords, you can make one noble to lord.\n- **Elect King**: With more than 60% of lords, you can make one lord to king.",
 	"TextNobleMessageContent" : "Nobles can assassin a target of their role by selecting Knight, Noble or Lord in a menu and clicking a button. If over 3 of participants join before the timer ends, the target's role is changed to POOP; otherwise, the attempt fails. A global cooldown is activated after each use.\n\n**Abilities:**\n- **Assassination**: With more than 3 of Nobles, you can make one knight, noble or lord to poop.",
 	"TextKnightMessageContent": "Test message to Knight.\n**Abilities:**\n- **Cut down**: Description goes here.\n- **Writ**: Description goes here.\n- **Join Siege**: Siege a king to make him a poop.\n- **Revolution**: Let's make a new world!\n- **Coup**: Choose Noble, Lord, King or Emperor.",
-
+	"TextPoopMessageContent": "Pu, the vileness on the streets is you. Named empty and desolate. You were once a crucible of life, now shunned into the abyssal depths of human cunning, the sewers. Estranged from the earth and shrouded in darkness, your amun feeds festering vermin.",
+	"TextRatMessageContent":"Test message to Rat.\n**Abilities:**\n- **Nibble**: Choose Cockroach or Maggot to nibble\n- **Plague**: Choose Sub-Human, Peasant, Scholar, Merchant or Knight to plague",
+	"TextScholarMessageContent":"Test message to Scholar.\n**Abilities:**\n- **Advise**: Send message to the Royal Castle\n- **Revolution**: Let's make a new world!\n",
+	"TextSubhumanMessaageContent":"Test message to SubHuman.\n**Abilities**:\n- **Depravity**: Choose SubHuman to depravity him.\n- **Manhunt**: Choose SubHuman to manhunt.\n- **Picking**: Choose Maggot or Rat to picking.\n"
 }
 

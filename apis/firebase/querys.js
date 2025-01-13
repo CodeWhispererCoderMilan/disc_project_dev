@@ -218,7 +218,7 @@ async function DBSetLastXPBoostTime(time) {
     }
 }
 
-async function DBBoostXPForAllUsers(xpBoost, client) {
+async function DBBoostXPForAllUsers(BoostCount, client) {
     let snapshot;
     try {
         const usersRef = db.ref('users');
@@ -243,7 +243,47 @@ async function DBBoostXPForAllUsers(xpBoost, client) {
 
         for (const userId of usersToUpdate) {
             try {
+		switch(users[userId].role){
+			case("Poop"):
                 await DBUpdateXP(userId, xpBoost, client);
+			break;
+			case("Maggot"):
+                await DBUpdateXP(userId, xpBoost, client);
+			break;
+			case("Cockroach"):
+                await DBUpdateXP(userId, xpBoost, client);
+			break;	
+			case("Rat"):
+                await DBUpdateXP(userId, xpBoost, client);
+			break;	
+			case("Subhuman"):
+                await DBUpdateXP(userId, xpBoost, client);
+			break;	
+			case("Peasant"):
+                await DBUpdateXP(userId, xpBoost, client);
+			break;	
+			case("Scholar"):
+                await DBUpdateXP(userId, xpBoost, client);
+			break;	
+			case("Merchant"):
+                await DBUpdateXP(userId, xpBoost, client);
+			break;	
+			case("Knight"):
+                await DBUpdateXP(userId, xpBoost, client);
+			break;	
+			case("Noble"):
+                await DBUpdateXP(userId, xpBoost, client);
+			break;	
+			case("Lord"):
+                await DBUpdateXP(userId, xpBoost, client);
+			break;	
+			case("King"):
+                await DBUpdateXP(userId, xpBoost, client);
+			break;	
+			case("Emperor"):
+                await DBUpdateXP(userId, xpBoost, client);
+			break;
+		}
                 console.log(`XP boosted for user ${userId}.`);
             } catch (err) {
                 console.error(`Failed to boost XP for user ${userId}: ${err.message}`);

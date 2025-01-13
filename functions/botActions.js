@@ -25,7 +25,7 @@ async function scheduledXpBoost(timeUntilNextBoost, client) {
 	while (keepBoosting) {
 		console.log("Synced! Applying XP boost to all users...");
 		try {
-			await DBBoostXPForAllUsers(XpBoostValue, client);
+			await DBBoostXPForAllUsers(1, client);
 		} catch (err) {
 			console.error(`error boosting XP for all users ${err.message}`);
 			// throw err;
@@ -49,7 +49,7 @@ async function checkAndApplyMissedXPBoost(client) {
 			console.log("Missed XP boost window detected, applying boost...");
 			let boostsMissed = Math.trunc(missedTime / XpBoostInterval);
 			try {
-				await DBBoostXPForAllUsers(boostsMissed * XpBoostValue, client);
+				await DBBoostXPForAllUsers(boostsMissed, client);
 			} catch (err) {
 				console.error("DB: XPboost failed");
 			}

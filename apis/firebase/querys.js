@@ -1,5 +1,21 @@
 const { db } = require('./firebaseDb.js');
-const { roleXpThresholds, FesteringDuration } = require('../../game_config.json');
+const { 
+	roleXpThresholds,
+	FesteringDuration,
+	XpBoostPoop,
+	XpBoostMaggot,
+	XpBoostCoockroach,
+	XpBoostRat,
+	XpBoostSubhuman,
+	XpBoostPeasant,
+	XpBoostScholar,
+	XpBoostMerchant,
+	XpBoostKnight,
+	XpBoostNoble,
+	XpBoostLord,
+	XpBoostKing,
+	XpBoostEmperor
+} = require('../../game_config.json');
 const { CacheRemoveUser, CacheAddUser, CacheSetUserXP, CacheSetFestering, CacheClearFestering, CacheIsPoopBeingFestered, CacheGetEndows} = require('../redis/redisCache.js');
 const { eventEmitter } = require('../../functions/eventEmitter.js');
 
@@ -231,7 +247,7 @@ async function DBBoostXPForAllUsers(BoostCount, client) {
     const users = snapshot.val();
     if (!users) {
         console.error('No users found for XP boost.');
-        return; // Exit if no users found
+        return; // Exit if no uers found
     }
 
     let usersToUpdate = Object.keys(users); // List of user IDs to update
@@ -245,43 +261,55 @@ async function DBBoostXPForAllUsers(BoostCount, client) {
             try {
 		switch(users[userId].role){
 			case("Poop"):
-                await DBUpdateXP(userId, xpBoost, client);
+         	      	await DBUpdateXP(userId, BoostCount*XpBoostPoop, client);
 			break;
+
 			case("Maggot"):
-                await DBUpdateXP(userId, xpBoost, client);
+                	await DBUpdateXP(userId, BoostCount*XpBoostMaggot, client);
 			break;
+
 			case("Cockroach"):
-                await DBUpdateXP(userId, xpBoost, client);
-			break;	
+                	await DBUpdateXP(userId, BoostCount*XpBoostCoockroach, client);
+			break;
+
 			case("Rat"):
-                await DBUpdateXP(userId, xpBoost, client);
-			break;	
+                	await DBUpdateXP(userId, BoostCount*XpBoostRat, client);
+			break;
+
 			case("Subhuman"):
-                await DBUpdateXP(userId, xpBoost, client);
+                	await DBUpdateXP(userId, BoostCount*XpBoostSubhuman, client);
 			break;	
+
 			case("Peasant"):
-                await DBUpdateXP(userId, xpBoost, client);
+                	await DBUpdateXP(userId, BoostCount*XpBoostPeasant, client);
 			break;	
+
 			case("Scholar"):
-                await DBUpdateXP(userId, xpBoost, client);
+                	await DBUpdateXP(userId, BoostCount*XpBoostScholar, client);
 			break;	
+
 			case("Merchant"):
-                await DBUpdateXP(userId, xpBoost, client);
+                	await DBUpdateXP(userId, BoostCount*XpBoostMerchant, client);
 			break;	
+
 			case("Knight"):
-                await DBUpdateXP(userId, xpBoost, client);
+                	await DBUpdateXP(userId, BoostCount*XpBoostKnight, client);
 			break;	
+
 			case("Noble"):
-                await DBUpdateXP(userId, xpBoost, client);
+                	await DBUpdateXP(userId, BoostCount*XpBoostNoble, client);
 			break;	
+
 			case("Lord"):
-                await DBUpdateXP(userId, xpBoost, client);
+                	await DBUpdateXP(userId, BoostCount*XpBoostLord, client);
 			break;	
+
 			case("King"):
-                await DBUpdateXP(userId, xpBoost, client);
+                	await DBUpdateXP(userId, BoostCount*XpBoostKing, client);
 			break;	
+
 			case("Emperor"):
-                await DBUpdateXP(userId, xpBoost, client);
+                	await DBUpdateXP(userId, BoostCount*XpBoostEmperor, client);
 			break;
 		}
                 console.log(`XP boosted for user ${userId}.`);

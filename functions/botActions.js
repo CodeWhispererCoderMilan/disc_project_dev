@@ -1,5 +1,5 @@
 const { StringSelectMenuBuilder } = require("discord.js");
-const { XpBoostInterval, XpBoostValue, ScholarAstralRealmAccessDuration, EmperorAstralRealmAccessDuration} = require("../game_config.json");
+const { XpBoostInterval, ScholarAstralRealmAccessDuration, EmperorAstralRealmAccessDuration} = require("../game_config.json");
 const {
 	DBGetLastXPBoostTime,
 	DBBoostXPForAllUsers,
@@ -54,9 +54,7 @@ async function checkAndApplyMissedXPBoost(client) {
 				console.error("DB: XPboost failed");
 			}
 			console.log(
-				`updated with ${
-					boostsMissed * XpBoostValue
-				} XP for ${boostsMissed} minutes missed`
+				`updated XP for ${boostsMissed} boosts missed`
 			);
 			return timeUntilNextBoost;
 		} else {

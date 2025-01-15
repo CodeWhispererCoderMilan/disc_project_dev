@@ -28,6 +28,8 @@ const {
 	RevolutionCoolDown,
 	CoupCoolDown,
 	RoleChangeMessageDisplayTime,
+	MinimumKnightSizeForCoup,
+	MinimumKnightSize,
 	TextKnightMessageContent,
 	TextCutDownSelectMenu,
 	TextRevolutionTargetSelectMenu,
@@ -66,7 +68,8 @@ let reelectionActive = false;
 let candidates = null;
 let coupActive = false;
 let selectedCoupTargets = {};
-
+let disableCoup = false;
+let xpThresholdKnightOpen = true;
 const initContent = TextKnightMessageContent;
 let siegeStatusMsg = "";
 let revolutionStatusMsg = "";
@@ -120,6 +123,29 @@ async function setupKnightBotEvents(client, lastMessageId) {
 			process.env.ROLEID_EMPEROR
 		);
 
+		if( hadRoleBeforeKnight || hasRoleNowKnight){
+			const guild = await client.guilds.fetch(process.env.GUILDID);
+			knights = guild.members.cache.filter((member) =>
+				member.roles.cache.has(process.env.ROLEID_KNIGHT)
+			);
+			knightsSize = knights.size;
+			if(knightsSize < MinimumKnightSize && !xpThresholdKnightOpen){
+				xpThresholdKnightOpen  = true;
+				eventEmitter.emit("OpenXpThresholdKnight");
+			}
+			if(knightsSize > MinimumKnightSize && xpThresholdKnightOpen ){
+				xpThresholdKnightOpen = false;
+				eventEmitter.emit("CloseXpThresholdKnight");
+			}
+			if(knightsSize < MinimumKnightSizeForCoup && disableCoup === false){
+				disableCoup = true;
+				if(!coupActive && !revolutionActive)await updateMessage(client, lastMessageId);
+			}
+			if(knightsSize >= MinimumKnightSizeForCoup && disableCoup === true){
+				disableCoup = false;
+				if(!coupActive && !revolutionActive)await updateMessage(client, lastMessageId);
+			}
+		}
 		if (
 			hadRoleBeforePeasant ||
 			hadRoleBeforeScholar ||
@@ -202,16 +228,10 @@ async function setupKnightBotEvents(client, lastMessageId) {
 		) {
 			if (lastMessageId) {
 				try {
-					const guild = await client.guilds.fetch(process.env.GUILDID);
-					knights = guild.members.cache.filter((member) =>
-						member.roles.cache.has(process.env.ROLEID_KNIGHT)
-					);
-					knightsSize = knights.size;
 					const kings = guild.members.cache.filter((member) =>
 						member.roles.cache.has(process.env.ROLEID_KING)
 					);
 					kingsSize = kings.size;
-
 					if (siegeActive) {
 						const siegeSuccess =
 							siegeParticipants.size >= knightsSize / kingsSize;
@@ -1007,6 +1027,7 @@ async function updateMessage(client, lastMessageId) {
 			.setCustomId("Coup")
 			.setLabel(ButtonLabelCoup)
 			.setStyle(ButtonStyle.Danger)
+			.setDisabled(disableCoup)
 		);
 
 		if (siegeActive) {
@@ -1182,6 +1203,7 @@ async function messageKnightCommands(client) {
 			.setCustomId("Coup")
 			.setLabel(ButtonLabelCoup)
 			.setStyle(ButtonStyle.Danger)
+			.setDisabled(disableCoup)
 		);
 
 		const message = await channel.send({

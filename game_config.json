@@ -16,6 +16,8 @@
 	"XpBoostEmperor" : 600,
 	"MinimumKnightSize" : 3,
 	"MinimumKnightSizeForCoup": 5,
+	"MinimumNobleSize" : 3,
+	"MinimumNobleSizeForAssassination": 4,
 	"CheckXpCooldown": 1200000,
 	"InfanticideCost": 100,
 	"InfanticideCooldown": 1200000,

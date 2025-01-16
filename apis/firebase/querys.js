@@ -22,10 +22,16 @@ const { eventEmitter } = require('../../functions/eventEmitter.js');
 const roleUpgradeAvailable = Array(12).fill(true); //array that opens or blocks leveling up between roles.
 
 eventEmitter.on("CloseXpThresholdKnight", () => {
-	roleUpgradeAvailable[7] = false;
+	roleUpgradeAvailable[8] = false;
 });
 eventEmitter.on("OpenXpThresholdKnight", () => {
-	roleUpgradeAvailable[7] = true;
+	roleUpgradeAvailable[8] = true;
+});
+eventEmitter.on("OpenXpThresholdNoble", () => {
+	roleUpgradeAvailable[9] = false;
+});
+eventEmitter.on("CloseXpThresholdNoble", () => {
+	roleUpgradeAvailable[9] = true;
 });
 async function CacheDataFromDB() {
     try {
@@ -168,7 +174,7 @@ async function DBUpdateXP(userId, xpChange, client) {
                 remainderXP = newXP - roleXpThresholds[roles[i]]; // Calculate remainder XP
                 newXP = remainderXP; // Reset XP to remainder
             }
-	    if(roleUpgradeAvailable[i] === False) break;
+	    if(!roleUpgradeAvailable[i]) break;
             if (remainderXP < roleXpThresholds[roles[i + 1]]) break;
         }
     }

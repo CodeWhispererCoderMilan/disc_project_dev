@@ -31,6 +31,7 @@ const {
 	TextRevolutionTargetSelectMenu,
 	TextEmperorCandidateSelectMenu,
 	ButtonLabelRevolution,
+	ButtonLabelJoinRevolution,
 	ButtonLabelWithdrawRevolution,
 	ButtonLabelVoteEmperor,
 	ButtonLabelBribe,
@@ -55,6 +56,7 @@ let reelectionActive = false;
 let candidates = null;
 let coupActive = false;
 let selectedEndowTargets = {};
+let disaleAssassination = true;
 
 const initContent = TextMerchantMessageContent;
 let revolutionStatusMsg = "";

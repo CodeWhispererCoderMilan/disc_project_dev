@@ -27,11 +27,17 @@ eventEmitter.on("CloseXpThresholdKnight", () => {
 eventEmitter.on("OpenXpThresholdKnight", () => {
 	roleUpgradeAvailable[8] = true;
 });
-eventEmitter.on("OpenXpThresholdNoble", () => {
+eventEmitter.on("CloseXpThresholdNoble", () => {
 	roleUpgradeAvailable[9] = false;
 });
-eventEmitter.on("CloseXpThresholdNoble", () => {
+eventEmitter.on("OpenXpThresholdNoble", () => {
 	roleUpgradeAvailable[9] = true;
+});
+eventEmitter.on("CloseXpThresholdLord", () => {
+	roleUpgradeAvailable[10] = false;
+});
+eventEmitter.on("OpenXpThresholdLord", () => {
+	roleUpgradeAvailable[10] = true;
 });
 async function CacheDataFromDB() {
     try {

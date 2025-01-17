@@ -34,14 +34,16 @@ const {
 	ButtonLabelEminentWrit,
 	ButtonLabelElection,
 	ButtonLabelElectionVote,
-	ButtonLabelShowWrits
+	ButtonLabelShowWrits,
+	MinimumLordSize,
+	MinimumLordSizeForElection
 } = require("../game_config.json");
 const { eventEmitter } = require("../functions/eventEmitter.js");
 const { DBUpdateXP } = require("../apis/firebase/querys");
 
 let selectedElectionCandidates = {};
 let lords = [];
-let lordsSize = 1;
+let lordsSize = 0;
 let electionInitiatorId = null;
 let electionInitiator = null;
 let electionCandidateId = null;
@@ -50,11 +52,13 @@ let electionActive = false;
 let electionParticipants = new Set();
 let electionTimeout;
 let electionType = "";
+let xpThresholdLordOpen = true;
+let disableElection = true;
 const selectedHumans = {};
 const selectedKnights = {};
 
 const initContent = TextLordMessageContent;
-	
+
 function showErrorMsg(err) {
 	console.error("ERROR: lord_commands.js", err);
 }
@@ -78,7 +82,7 @@ async function setupLordBotEvents(client, lastMessageId) {
 			newMember.roles.cache.has(process.env.ROLEID_SCHOLAR) ||
 			newMember.roles.cache.has(process.env.ROLEID_MERCHANT) ||
 			newMember.roles.cache.has(process.env.ROLEID_NOBLE)) {
-			await updateMessage(client, lastMessageId);
+			if(newMember.id != electionCandidateId) await updateMessage(client, lastMessageId);
 			for(let userId in selectedHumans){
 				if(selectedHumans[userId] && selectedHumans[userId].id === oldMember.id){
 					selectedHumans[userId] = null;
@@ -90,16 +94,39 @@ async function setupLordBotEvents(client, lastMessageId) {
 				}
 			}
 		}
-		if (electionActive && hadRoleBeforeLord) {
-			if (electionParticipants.has(newMember.id)) {
+		if( hadRoleBeforeLord || hasRoleNowLord){
+			try{
+				const guild = await client.guilds.fetch(process.env.GUILDID);
+				lords = guild.members.cache.filter((member) =>
+					member.roles.cache.has(process.env.ROLEID_LORD)
+				);
+				lordsSize = lords.size;
+				if(lordsSize < MinimumLordSize && !xpThresholdLordOpen){
+					xpThresholdLordOpen  = true;
+					eventEmitter.emit("OpenXpThresholdLord");
+				}
+				if(lordsSize > MinimumLordSize && xpThresholdLordOpen ){
+					xpThresholdLordOpen = false;
+					eventEmitter.emit("CloseXpThresholdLord");
+				}
+				if(lordsSize < MinimumLordSizeForElection && disableElection === false){
+					disableElection = true;
+					if(!electionActive && lastMessageId) await updateMessage(client,lastMessageId);
+				}
+				if(lordsSize >= MinimumLordSizeForElection && disableElection === true){
+					disableElection = true;
+					if(!electionActive && lastMessageId) await updateMessage(client,lastMessageId);
+				}
+			}catch(err){
+				showErrorMsg(err);
+			}
+		}
+
+		if (electionActive && hadRoleBeforeLord ) {
+			if(electionParticipants.has(newMember.id)){
 				try {
 					selectedElectionCandidates[newMember.id] = null;
 					electionParticipants.delete(newMember.id);
-					const guild = await client.guilds.fetch(process.env.GUILDID);
-					lords = guild.members.cache.filter((member) =>
-						member.roles.cache.has(process.env.ROLEID_LORD)
-					);
-					lordsSize = lords.size;
 
 					const participationRate = electionParticipants.size / lordsSize;
 
@@ -130,7 +157,7 @@ async function setupLordBotEvents(client, lastMessageId) {
 			}
 		}
 		if (electionActive && (hadRoleBeforeNoble || hadRoleBeforeLord)) {
-			if (newMember.id === electionCandidateId) {
+			if(newMember.id === electionCandidateId){
 				try {
 					const msg = `The role of the candidate @${electionCandidate} has been changed.`;
 					eventEmitter.emit("NotifyLordChannel", msg);
@@ -143,50 +170,35 @@ async function setupLordBotEvents(client, lastMessageId) {
 			}
 		}
 		if (electionActive && (hadRoleBeforeLord || hasRoleNowLord)) {
-			try {
-				const guild = await client.guilds.fetch(process.env.GUILDID);
-				lords = guild.members.cache.filter((member) =>
-					member.roles.cache.has(process.env.ROLEID_LORD)
-				);
-				lordsSize = lords.size;
-				const participationRate = electionParticipants.size / lordsSize;
-				if (
-					electionType === "Noble" &&
-					participationRate >= NobleLordElectionSuccessThreadshold
-				) {
-					ceaseElection(client, lastMessageId);
-				} else if (
-					electionType === "Lord" &&
-					participationRate >= LordKingElectionSuccessThreadshold
-				) {
-					ceaseElection(client, lastMessageId);
-				} else {
-					updateMessage(client, lastMessageId);
-				}
-			} catch (e) {
-				showErrorMsg(e);
-			}
-		}
-		if (
-			!electionActive &&
-			(hadRoleBeforeLord ||
-				hasRoleNowLord)
-		) {
-			if (lastMessageId) {
+			if(!newMember.id === electionCandidateId &&!electionParticipants.has(newMember.id)){	
 				try {
-					await updateMessage(client, lastMessageId);
-				} catch (err) {
-					showErrorMsg(err);
+					const participationRate = electionParticipants.size / lordsSize;
+					if (
+						electionType === "Noble" &&
+						participationRate >= NobleLordElectionSuccessThreadshold
+					) {
+						ceaseElection(client, lastMessageId);
+					} else if (
+						electionType === "Lord" &&
+						participationRate >= LordKingElectionSuccessThreadshold
+					) {
+						ceaseElection(client, lastMessageId);
+					} else {
+						updateMessage(client, lastMessageId);
+					}
+				} catch (e) {
+					showErrorMsg(e);
 				}
 			}
 		}
+
 	});
 
 	client.on("interactionCreate", async (interaction) => {
 		if (!interaction.isStringSelectMenu() && 
 			!interaction.isButton()&& !interaction.isModalSubmit()) return;
 		const userId = interaction.user.id;
-		
+
 		if (interaction.customId === "SelectHuman") {
 			let selectedUserId = interaction.values[0];
 			try {
@@ -518,7 +530,8 @@ async function updateMessage(client, lastMessageId) {
 				new ButtonBuilder()
 				.setCustomId("Election")
 				.setLabel(ButtonLabelElection)
-				.setStyle(ButtonStyle.Primary),
+				.setStyle(ButtonStyle.Primary)
+				.setDisabled(disableElection),
 				new ButtonBuilder()
 				.setCustomId(ButtonLabelEminentWrit)
 				.setLabel("Writ")
@@ -610,7 +623,8 @@ async function messageLordCommands(client) {
 			new ButtonBuilder()
 			.setCustomId("Election")
 			.setLabel(ButtonLabelElection)
-			.setStyle(ButtonStyle.Primary),
+			.setStyle(ButtonStyle.Primary)
+			.setDisabled(disableElection),
 			new ButtonBuilder()
 			.setCustomId("EminentWrit")
 			.setLabel(ButtonLabelEminentWrit)
@@ -641,7 +655,7 @@ async function resetComponents(client, lastMessageId) {
 		electionCandidate = null;
 		electionCandidateId = null;
 		electionParticipants.clear();
-		lordsSize = 1;
+		lordsSize = 0;
 		lords = [];
 		electionType = "";
 		await updateMessage(client, lastMessageId);

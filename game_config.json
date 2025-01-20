@@ -20,6 +20,8 @@
 	"MinimumNobleSizeForAssassination": 4,	
 	"MinimumLordSize" : 3,
 	"MinimumLordSizeForElection" : 4,
+	"MinimumKingSize" : 3,
+	"MinimumKnightToKingSiegeRatio" : 1,
 	"CheckXpCooldown": 1200000,
 	"InfanticideCost": 100,
 	"InfanticideCooldown": 1200000,

@@ -17,7 +17,6 @@ const {
 	CacheSetCooldown,
 	CacheGetWriterWrits,
 	CacheSetWrit
-
 } = require("../apis/redis/redisCache");
 const {
 	DegradationCost,
@@ -38,7 +37,9 @@ const {
 	ButtonLabelRoyalWrit,
 	ButtonLabelKnight,
 	ButtonLabelSiege,
-	ButtonLabelShowWrits
+	ButtonLabelShowWrits,
+	MinimumKingSize,
+	MinimumKnightToKingSiegeRatio
 } = require("../game_config.json");
 const { eventEmitter } = require("../functions/eventEmitter.js");
 const { DBUpdateXP } = require("../apis/firebase/querys");
@@ -47,7 +48,9 @@ let selectedHumans = {};
 let selectedKnights = {};
 let selectedKings = {};
 let kings = [];
-let kingSize = 1;
+let kingSize = 0;
+let knights = [];
+let numberOfKnights = 0;
 let knightsSize = 0;
 let siegeParticipantsSize = 0;
 let siegeInitiatorId = null;
@@ -55,7 +58,10 @@ let siegeInitiator = null;
 let siegeTargetId = null;
 let siegeTarget = null;
 let siegeActive = false;
+let disableSiege = true;
+let xpThresholdKingOpen = true;
 const selectedWritHumans = {};
+
 
 const initContent =TextKingMessageContent;
 	
@@ -68,6 +74,16 @@ async function setupKingBotEvents(client, lastMessageId) {
 		const hadRoleBeforeKing = oldMember.roles.cache.has(
 			process.env.ROLEID_KING
 		);
+		const hasRoleNowKing = newMember.roles.cache.has(
+			process.env.ROLEID_KING
+		);
+		const hadRoleBeforeKnight = oldMember.roles.cache.has(
+			process.env.ROLEID_KNIGHT
+		);
+		const hasRoleNowKnight = newMember.roles.cache.has(
+			process.env.ROLEID_KNIGHT
+		);
+
 		if (siegeActive && hadRoleBeforeKing) {
 			if (newMember.id === siegeInitiatorId) {
 				const message = "The role of the initiator has been changed.";
@@ -80,43 +96,80 @@ async function setupKingBotEvents(client, lastMessageId) {
 				eventEmitter.emit("siegeResult", message, "early");
 				await resetComponents(client, lastMessageId);
 			}
+		}	
+
+		if( hadRoleBeforeKnight || hasRoleNowKnight || hadRoleBeforeKnight || hasRoleNowKnight){
+			try{
+				if(hadRoleBeforeKing || hasRoleNowKing){
+					const guild = await client.guilds.fetch(process.env.GUILDID);
+					kings = guild.members.cache.filter((member) =>
+						member.roles.cache.has(process.env.ROLEID_KINGS)
+					);
+					kingSize = kings.size;
+					if(kingSize < MinimumKingSize && !xpThresholdKingOpen){
+						xpThresholdKingOpen  = true;
+						eventEmitter.emit("OpenXpThresholdKing");
+					}
+					if(kingSize > MinimumKingSize && xpThresholdKingOpen ){
+						xpThresholdKingOpen = false;
+						eventEmitter.emit("CloseXpThresholdKnight");
+					}
+				}
+				if(hadRoleBeforeKnight || hasRoleNowKnight){
+					const guild = await client.guilds.fetch(process.env.GUILDID);
+					knights = guild.members.cache.filter((member) =>
+						member.roles.cache.has(process.env.ROLEID_KNIGHT)
+					);
+					numberOfKnights = knights.size;
+				}	
+				if(numberOfKnights/kingSize > MinimumKnightToKingSiegeRatio && disableSiege === true){
+					disableSiege = false;
+				}
+				if(numberOfKnights/kingSize > MinimumKnightToKingSiegeRatio && disableSiege === false){
+					disableSiege = true;
+				}
+				if(!siegeActive && (hasRoleNowKing || hadRoleBeforeKing)) 
+					await updateMessage(client, lastMessageId);
+			}catch(err){
+				showErrorMsg(err);
+			}
 		}
 		if (oldMember.roles.cache.has(process.env.ROLEID_PEASANT) ||
 			oldMember.roles.cache.has(process.env.ROLEID_SCHOLAR) ||
 			oldMember.roles.cache.has(process.env.ROLEID_MERCHANT) ||
-			oldMember.roles.cache.has(process.env.ROLEID_NOBLE) ||
-			oldMember.roles.cache.has(process.env.ROLEID_KNIGHT) ||
+			oldMemb
+
+
+
+
+
+
+
+
+			er.roles.cache.has(process.env.ROLEID_NOBLE) ||
+			hadRoleBeforeKnight ||
 			oldMember.roles.cache.has(process.env.ROLEID_LORD) ||
 			newMember.roles.cache.has(process.env.ROLEID_PEASANT) ||
 			newMember.roles.cache.has(process.env.ROLEID_SCHOLAR) ||
 			newMember.roles.cache.has(process.env.ROLEID_MERCHANT) ||
 			newMember.roles.cache.has(process.env.ROLEID_NOBLE) ||
 			newMember.roles.cache.has(process.env.ROLEID_LORD) ||
-			newMember.roles.cache.has(process.env.ROLEID_KNIGHT)) {
+			hasRoleNowKnight) {
 			await updateMessage(client, lastMessageId);
 			for(let userId in selectedWritHumans){
 				if(selectedWritHumans[userId] && selectedWritHumans[userId].id === oldMember.id){
 					selectedWritHumans[userId] = null;
 				}
 			}
-			for(let userId in selectedKnights){
-				if(selectedKnights[userId] && selectedKnights[userId].id == oldMember.id){
-					selectedKnights[userId] = null;
+			if(hadRoleBeforeKnight){
+				for(let userId in selectedKnights){
+					if(selectedKnights[userId] && selectedKnights[userId].id == oldMember.id){
+						selectedKnights[userId] = null;
+					}
 				}
 			}
 		}
-		if (
-			(oldMember.roles.cache.has(process.env.ROLEID_KING) ||
-				newMember.roles.cache.has(process.env.ROLEID_KING)) &&
-				!siegeActive){
-			if (lastMessageId) {
-				try {
-					await updateMessage(client, lastMessageId);
-				} catch (err) {
-					showErrorMsg(err);
-				}
-			}
-		}
+
 	});
 	client.on("interactionCreate", async (interaction) => {
 		if (!interaction.isStringSelectMenu() && !interaction.isButton() && !interaction.isModalSubmit()) return;
@@ -298,11 +351,6 @@ async function setupKingBotEvents(client, lastMessageId) {
 		}
 		if (interaction.customId === "Siege") {
 			try {
-				kings = interaction.guild.members.cache.filter((member) =>
-					member.roles.cache.has(process.env.ROLEID_KING)
-				);
-				kingSize = kings.size;
-
 				if (!selectedKings[userId]) {
 					await sendInteractionReply(interaction, "No king selected");
 					return;
@@ -545,7 +593,8 @@ async function updateMessage(client, lastMessageId) {
 				new ButtonBuilder()
 				.setCustomId("Siege")
 				.setLabel(ButtonLabelSiege)
-				.setStyle(ButtonStyle.Danger),
+				.setStyle(ButtonStyle.Danger)
+				.setDisabled(disableSiege),
 				new ButtonBuilder()
 				.setCustomId("RoyalWrit")
 				.setLabel(ButtonLabelRoyalWrit)
@@ -669,7 +718,8 @@ async function messageKingCommands(client) {
 			new ButtonBuilder()
 			.setCustomId("Siege")
 			.setLabel(ButtonLabelSiege)
-			.setStyle(ButtonStyle.Danger),
+			.setStyle(ButtonStyle.Danger)
+			.setDisabled(disableSiege),
 			new ButtonBuilder()
 			.setCustomId("RoyalWrit")
 			.setLabel(ButtonLabelRoyalWrit)
@@ -701,8 +751,6 @@ async function resetComponents(client, lastMessageId) {
 		selectedHumans = {};
 		selectedKnights = {};
 		selectedKings = {};
-		kings = [];
-		kingSize = 1;
 		siegeInitiator = "";
 		siegeTarget = "";
 		siegeParticipantsSize = 0;

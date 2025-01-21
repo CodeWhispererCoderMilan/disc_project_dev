@@ -137,16 +137,7 @@ async function setupKingBotEvents(client, lastMessageId) {
 		if (oldMember.roles.cache.has(process.env.ROLEID_PEASANT) ||
 			oldMember.roles.cache.has(process.env.ROLEID_SCHOLAR) ||
 			oldMember.roles.cache.has(process.env.ROLEID_MERCHANT) ||
-			oldMemb
-
-
-
-
-
-
-
-
-			er.roles.cache.has(process.env.ROLEID_NOBLE) ||
+			oldMember.roles.cache.has(process.env.ROLEID_NOBLE) ||
 			hadRoleBeforeKnight ||
 			oldMember.roles.cache.has(process.env.ROLEID_LORD) ||
 			newMember.roles.cache.has(process.env.ROLEID_PEASANT) ||

@@ -45,6 +45,7 @@ let selectedKing = null;
 let selectedLord = null;
 let selectedKnight = null;
 let selectedHuman = null;
+let xpThresholdEmperorOpen = true;
 
 function showErrorMsg(err) {
 	console.error("ERROR: emperor_commands.js", err);
@@ -52,6 +53,12 @@ function showErrorMsg(err) {
 
 async function setupEmperorBotEvents(client, lastMessageId) {
 	client.on("guildMemberUpdate", async (oldMember, newMember) => {
+		let hasRoleEmperor = newMember.roles.cache.has(process.env.ROLEID_EMPEROR);
+		if( xpThresholdEmperorOpen === true && hasRoleEmperor){
+				xpThresholdEmperorOpen = false;
+				eventEmitter.emit("CloseXpThresholdEmperor");
+				eventEmitter.emit("FirstEnthronement");
+		}
 		if (oldMember.roles.cache.has(process.env.ROLEID_KING)) {
 			if (selectedKing && selectedKing.id === oldMember.id) {
 				selectedKing = null;

@@ -19,7 +19,7 @@ const {
 const { CacheRemoveUser, CacheAddUser, CacheSetUserXP, CacheSetFestering, CacheClearFestering, CacheIsPoopBeingFestered, CacheGetEndows} = require('../redis/redisCache.js');
 const { eventEmitter } = require('../../functions/eventEmitter.js');
 
-const roleUpgradeAvailable = Array(12).fill(true); //array that opens or blocks leveling up between roles.
+const roleUpgradeAvailable = Array(13).fill(true); //array that opens or blocks leveling up between roles.
 
 eventEmitter.on("CloseXpThresholdKnight", () => {
 	roleUpgradeAvailable[8] = false;
@@ -39,6 +39,19 @@ eventEmitter.on("CloseXpThresholdLord", () => {
 eventEmitter.on("OpenXpThresholdLord", () => {
 	roleUpgradeAvailable[10] = true;
 });
+eventEmitter.on("CloseXpThresholdKing", () => {
+	roleUpgradeAvailable[11] = false;
+});
+eventEmitter.on("OpenXpThresholdKing", () => {
+	roleUpgradeAvailable[11] = true;
+});
+eventEmitter.on("CloseXpThresholdEmperor", () => {
+	roleUpgradeAvailable[12] = false;
+});
+eventEmitter.on("OpenXpThresholdEmperor", () => {
+	roleUpgradeAvailable[12] = true;
+});
+
 async function CacheDataFromDB() {
     try {
         await CacheAllUserXP();
@@ -180,7 +193,7 @@ async function DBUpdateXP(userId, xpChange, client) {
                 remainderXP = newXP - roleXpThresholds[roles[i]]; // Calculate remainder XP
                 newXP = remainderXP; // Reset XP to remainder
             }
-	    if(!roleUpgradeAvailable[i]) break;
+	    if(!roleUpgradeAvailable[i+1]) break;
             if (remainderXP < roleXpThresholds[roles[i + 1]]) break;
         }
     }

@@ -57,7 +57,7 @@ async function setupEmperorBotEvents(client, lastMessageId) {
 		if( xpThresholdEmperorOpen === true && hasRoleEmperor){
 				xpThresholdEmperorOpen = false;
 				eventEmitter.emit("CloseXpThresholdEmperor");
-				eventEmitter.emit("FirstEnthronement");
+				eventEmitter.emit("FirstEnthronement", newMember.username);
 		}
 		if (oldMember.roles.cache.has(process.env.ROLEID_KING)) {
 			if (selectedKing && selectedKing.id === oldMember.id) {
@@ -328,6 +328,25 @@ async function setupEmperorBotEvents(client, lastMessageId) {
 				"heirSuccessionComplete",
 				heirUsername,
 				initiatorUsername
+			);
+			setTimeout(() => {
+				tmpMessage.delete().catch(showErrorMsg);
+			}, 30000);
+		} catch (err) {
+			showErrorMsg(err);
+		}
+	});
+	eventEmitter.on("FirstEnthronement", async (emperorUsername) => {
+		try {
+			const channel = await client.channels.fetch(process.env.CHANNELIDEMPEROR);
+			
+			const tmpMessage = await channel.send(
+				`Hail our first Emperor! ${emperorUsername} the Progenitor, may your rule last 1000 years !`
+			);
+			emperorUsername
+			eventEmitter.emit(
+				"firstEnthronementComplete",
+				emperorUsername
 			);
 			setTimeout(() => {
 				tmpMessage.delete().catch(showErrorMsg);

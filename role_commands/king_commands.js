@@ -424,6 +424,22 @@ async function setupKingBotEvents(client, lastMessageId) {
 			}
 		}
 	);
+	eventEmitter.on(
+		"FirstEnthronementComplete",
+		async (emperorUsername) => {
+			try {
+				const channel = await client.channels.fetch(process.env.CHANNELIDKING);
+				const tmpMessage = await channel.send(
+					`Hail our first Emperor! ${emperorUsername} The Progenitor, has taken the throne.`
+				);
+				setTimeout(() => {
+					tmpMessage.delete().catch(showErrorMsg);
+				}, 30000);
+			} catch (err) {
+				showErrorMsg(err);
+			}
+		}
+	);
 	eventEmitter.on("SiegeFinished", async (siegeParticipants, knights) => {
 		try {
 			const success = siegeParticipants >= knights / kingSize;

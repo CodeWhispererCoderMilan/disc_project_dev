@@ -141,7 +141,8 @@ async function setupNobleBotEvents(client, lastMessageId) {
 				nobles = guild.members.cache.filter((member) =>
 					member.roles.cache.has(process.env.ROLEID_NOBLE)
 				);
-				noblesSize = knights.size;
+				noblesSize = nobles.size;
+				eventEmitter.emit("UpdateNobleSize", noblesSize);
 				if(noblesSize < MinimumNobleSize && !xpThresholdNobleOpen){
 					xpThresholdNobleOpen  = true;
 					eventEmitter.emit("OpenXpThresholdNoble");

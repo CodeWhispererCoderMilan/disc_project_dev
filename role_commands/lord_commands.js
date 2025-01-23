@@ -101,6 +101,7 @@ async function setupLordBotEvents(client, lastMessageId) {
 					member.roles.cache.has(process.env.ROLEID_LORD)
 				);
 				lordsSize = lords.size;
+				eventEmitter.emit("UpdateLordSize", lordsSize);
 				if(lordsSize < MinimumLordSize && !xpThresholdLordOpen){
 					xpThresholdLordOpen  = true;
 					eventEmitter.emit("OpenXpThresholdLord");

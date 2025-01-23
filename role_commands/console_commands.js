@@ -46,7 +46,14 @@ const {
 	CheckXpCooldown,
 	TextConsoleMessageContent,
 	ButtonLabelCheckXP,
-	ButtonLabelDivination
+	ButtonLabelDivination,
+	REVOLUTIONTHRESHOLD,
+	REVOLUTIONTHRESHOLD2,
+	COUPTHRESHOLD,
+	MinimumHigherRoleSizeForRevolution,
+	MinimumHigherRoleSizeForCoup,
+	MinimumHigherRoleRatioForRevolution,
+	MinimumHigherRoleRatioForCoup
 } = require("../game_config.json");
 
 let revolutionarySize = 0;
@@ -64,12 +71,15 @@ let revolutionSecondPhase = false;
 let emperorElectionActive = false;
 let botCallCounts = 0;
 let coupActive = false;
+let disableCoup = true;
+let disableRevolution = true;
+
+let nobleSize = 0;
+let lordSize = 0;
+let kingSize = 0;
 
 let struggleMethod = "Revolution";
 
-const REVOLUTIONTHREADSHOLD = 0.6;
-const REVOLUTIONTHREADSHOLD2 = 0.4;
-const COUPTHREADSHOLD = 0.5;
 
 
 const content = TextConsoleMessageContent;
@@ -79,6 +89,18 @@ function showErrorMsg(err) {
 }
 
 async function setupConsoleBotEvents(client) {
+	eventEmitter.on("UpdateNobleSize", (size)=>{
+		nobleSize = size;
+		handleHigherRoleSizeChange();
+	});				
+	eventEmitter.on("UpdateLordSize", (size)=>{
+		lordSize = size;
+		handleHigherRoleSizeChange();
+	});
+	eventEmitter.on("UpdateKingSize", (size)=>{
+		kingSize = size;
+		handleHigherRoleSizeChange();
+	});
 	eventEmitter.on("startXpBoost", async () => {
 		console.log(
 			`Proceeding to update XP missed in downtime`
@@ -97,8 +119,70 @@ async function setupConsoleBotEvents(client) {
 			throw err;
 		}
 	});
+	client.on("guildMemberUpdate", async (oldMember, newMember)=>{
+		const hadRoleBeforePeasant = oldMember.roles.cache.has(
+			process.env.ROLEID_PEASANT
+		);
+		const hasRoleNowPeasant = newMember.roles.cache.has(
+			process.env.ROLEID_PEASANT
+		);
+		const hadRoleBeforeScholar = oldMember.roles.cache.has(
+			process.env.ROLEID_SCHOLAR
+		);
+		const hasRoleNowScholar = newMember.roles.cache.has(
+			process.env.ROLEID_SCHOLAR
+		);
+		const hadRoleBeforeMerchant = oldMember.roles.cache.has(
+			process.env.ROLEID_MERCHANT
+		);
+		const hasRoleNowMerchant = newMember.roles.cache.has(
+			process.env.ROLEID_MERCHANT
+		);
+		const hadRoleBeforeKnight = oldMember.roles.cache.has(
+			process.env.ROLEID_KNIGHT
+		);
+		const hasRoleNowKnight = newMember.roles.cache.has(
+			process.env.ROLEID_KNIGHT
+		);
+		const hadRoleBeforePoop = oldMember.roles.cache.has(
+			process.env.ROLEID_POOP
+		);
+		const hasRoleNowPoop = newMember.roles.cache.has(process.env.ROLEID_POOP);
+		const hadRoleBeforeMaggot = oldMember.roles.cache.has(
+			process.env.ROLEID_MAGGOT
+		);
+		const hasRoleNowMaggot = newMember.roles.cache.has(process.env.ROLEID_MAGGOT);
+		const hadRoleBeforeRat = oldMember.roles.cache.has(
+			process.env.ROLEID_RAT
+		);
+		const hasRoleNowRat = newMember.roles.cache.has(process.env.ROLEID_RAT);
+		const hadRoleBeforeCockroach = oldMember.roles.cache.has(
+			process.env.ROLEID_COCKROACH
+		);
+		const hasRoleNowCockroach = newMember.roles.cache.has(
+			process.env.ROLEID_COCKROACH
+		);
+		const hadRoleBeforeSubhuman = oldMember.roles.cache.has(
+			process.env.ROLEID_SUBHUMAN
+		);
+		const hasRoleNowSubhuman = newMember.roles.cache.has(
+			process.env.ROLEID_SUBHUMAN
+		);
+		if(hasRoleNowPoop || hadRoleBeforePoop || hasRoleNowMaggot || hadRoleBeforeMaggot ||
+			hadRoleBeforeCockroach || hasRoleNowCockroach ||
+			hasRoleNowRat || hadRoleBeforeRat ||
+			hasRoleNowSubhuman || hadRoleBeforeSubhuman ||
+			hasRoleNowPeasant || hadRoleBeforePeasant||
+			hasRoleNowScholar || hadRoleBeforeScholar ||
+			hasRoleNowMerchant || hadRoleBeforeMerchant ||
+			hasRoleNowKnight || hadRoleBeforeKnight){
+				
+				handleHigherRoleSizeChange();
+		}
 
+	});
 	client.on("guildMemberRemove", async (member) => {
+		handleHigherRoleSizeChange();
 		const isFesteredByMaggot = await CacheIsPoopBeingFestered(member.id);
 		if (isFesteredByMaggot) {
 			await DBClearFestering(isFesteredByMaggot.maggotId);
@@ -123,6 +207,7 @@ async function setupConsoleBotEvents(client) {
 	});
 	client.on("guildMemberAdd", async (member) => {
 		try {
+			handleHigherRoleSizeChange();
 			await member.roles.add(
 				member.guild.roles.cache.find((r) => r.name === "Poop")
 			);
@@ -319,9 +404,9 @@ async function setupConsoleBotEvents(client) {
 					Object.keys(knightParticipants).length;
 				peopleSize = peasantSize + merchantSize + scholarSize + knightSize;
 				if (revolutionSecondPhase && !emperorElectionActive) {
-					let success = revolutionarySize / peopleSize > REVOLUTIONTHREADSHOLD2;
+					let success = revolutionarySize / peopleSize > REVOLUTIONTHRESHOLD2;
 					if (coupActive)
-						success = revolutionarySize / peopleSize > COUPTHREADSHOLD;
+						success = revolutionarySize / peopleSize > COUPTHRESHOLD;
 
 					if (!success) {
 						clearTimeout(revolutionTimeout);
@@ -349,10 +434,38 @@ async function setupConsoleBotEvents(client) {
 
 
 }
+async function handleHigherRoleSizeChange(){
 
+	let higherRoleSize = nobleSize + lordSize + kingSize;
+	const guild = client.guilds.cache.get(process.env.GUILD_ID);
+	const playerCount = guild.memberCount - 2;
+	if (((higherRoleSize >= MinimumHigherRoleSizeForRevolution) &&
+		(higherRoleSize/playerCount >=MinimumHigherRoleRatioForRevolution)) &&
+		disableRevolution === true){
+		disableRevolution = false;
+		eventEmitter.emit("enableRevolution");
+	}else if(((higherRoleSize < MinimumHigherRoleSizeForRevolution) ||
+		(higherRoleSize/playerCount < MinimumHigherRoleRatioForRevolution))
+		&& disableRevolution === false){
+		disableRevolution = true;
+		eventEmitter.emit("disableRevolution");
+	}	
+	if (((higherRoleSize >= MinimumHigherRoleSizeForCoup) &&
+		(higherRoleSize/playerCount >= MinimumHigherRoleRatioForCoup))
+		&& disableCoup === true){
+		disableCoup = false;
+		eventEmitter.emit("enableCoup");
+	}else if(((higherRoleSize < MinimumHigherRoleSizeForCoup) ||
+		(higherRoleSize/playerCount < MinimumHigherRoleRatioForCoup))
+		&& disableCoup === false){
+		disableCoup = true;
+		eventEmitter.emit("disableCoup");
+	}
+
+}
 async function handleFirstPhaseRevolutionEnd() {
-	let success = revolutionarySize / peopleSize > REVOLUTIONTHREADSHOLD;
-	if (coupActive) success = revolutionarySize / peopleSize > COUPTHREADSHOLD;
+	let success = revolutionarySize / peopleSize > REVOLUTIONTHRESHOLD;
+	if (coupActive) success = revolutionarySize / peopleSize > COUPTHRESHOLD;
 	if (success) {
 		notifyRevolutionResult(`${struggleMethod} moved in the second phase.`);
 		revolutionSecondPhase = true;

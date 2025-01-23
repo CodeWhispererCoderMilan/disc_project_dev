@@ -638,7 +638,9 @@ async function setupKnightBotEvents(client, lastMessageId) {
 				eventEmitter.emit(
 					"SendRevolutionStatus",
 					"Knight",
-					revolutionParticipants,
+				Sincerely,
+Michael Behar 
+Tel: +40786042000	revolutionParticipants,
 					knightsSize
 				);
 

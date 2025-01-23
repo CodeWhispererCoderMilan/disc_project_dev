@@ -98,7 +98,7 @@ async function setupKingBotEvents(client, lastMessageId) {
 			}
 		}	
 
-		if( hadRoleBeforeKnight || hasRoleNowKnight || hadRoleBeforeKnight || hasRoleNowKnight){
+		if( hadRoleBeforeKing || hasRoleNowKing || hadRoleBeforeKnight || hasRoleNowKnight){
 			try{
 				if(hadRoleBeforeKing || hasRoleNowKing){
 					const guild = await client.guilds.fetch(process.env.GUILDID);
@@ -106,6 +106,7 @@ async function setupKingBotEvents(client, lastMessageId) {
 						member.roles.cache.has(process.env.ROLEID_KINGS)
 					);
 					kingSize = kings.size;
+					eventEmitter.emit("UpdateKingSize", kingSize);
 					if(kingSize < MinimumKingSize && !xpThresholdKingOpen){
 						xpThresholdKingOpen  = true;
 						eventEmitter.emit("OpenXpThresholdKing");

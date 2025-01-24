@@ -56,7 +56,7 @@ let reelectionActive = false;
 let candidates = null;
 let coupActive = false;
 let selectedEndowTargets = {};
-let disaleAssassination = true;
+let disableRevolution = true;
 
 const initContent = TextMerchantMessageContent;
 let revolutionStatusMsg = "";
@@ -67,6 +67,12 @@ function showErrorMsg(err) {
 
 
 async function setupMerchantBotEvents(client, lastMessageId) {
+	eventEmitter.on("DisableRevolution", () => {
+		disableRevolution = true;
+	});
+	eventEmitter.on("enableRevolution", () => {
+		disableRevolution = false;
+	});
 	client.on("guildMemberUpdate", async (oldMember, newMember) => {
 		const hadRoleBeforeMerchant = oldMember.roles.cache.has(
 			process.env.ROLEID_MERCHANT
@@ -612,6 +618,7 @@ async function setupMerchantBotEvents(client, lastMessageId) {
 			}
 		}
 	);
+
 }
 
 async function updateMessage(client, lastMessageId) {
@@ -653,7 +660,8 @@ async function updateMessage(client, lastMessageId) {
 			new ButtonBuilder()
 			.setCustomId("Revolution")
 			.setLabel(ButtonLabelRevolution)
-			.setStyle(ButtonStyle.Danger),
+			.setStyle(ButtonStyle.Danger)
+			.setDisabled(disableRevolution),
 			new ButtonBuilder()
 			.setCustomId("Endow")
 			.setLabel(ButtonLabelEndow)
@@ -759,7 +767,8 @@ async function messageMerchantCommands(client) {
 			new ButtonBuilder()
 			.setCustomId("Revolution")
 			.setLabel(ButtonLabelRevolution)
-			.setStyle(ButtonStyle.Danger),
+			.setStyle(ButtonStyle.Danger)
+			.setDisabled(disableRevolution),
 			new ButtonBuilder()
 			.setCustomId("Endow")
 			.setLabel(ButtonLabelEndow)

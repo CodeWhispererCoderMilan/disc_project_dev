@@ -70,6 +70,7 @@ let coupActive = false;
 let selectedCoupTargets = {};
 let disableCoup = true;
 let xpThresholdKnightOpen = true;
+let disableRevolution = true;
 const initContent = TextKnightMessageContent;
 let siegeStatusMsg = "";
 let revolutionStatusMsg = "";
@@ -79,6 +80,14 @@ function showErrorMsg(err) {
 }
 
 async function setupKnightBotEvents(client, lastMessageId) {
+	eventEmitter.on("DisableRevolution", async () => {
+		disableRevolution = true;
+		await updateMessage();
+	});
+	eventEmitter.on("enableRevolution", async () => {
+		disableRevolution = false;
+		await updateMessage();
+	});
 	client.on("guildMemberUpdate", async (oldMember, newMember) => {
 		const hadRoleBeforePeasant = oldMember.roles.cache.has(
 			process.env.ROLEID_PEASANT
@@ -1024,7 +1033,8 @@ async function updateMessage(client, lastMessageId) {
 			new ButtonBuilder()
 			.setCustomId("Revolution")
 			.setLabel(ButtonLabelRevolution)
-			.setStyle(ButtonStyle.Danger),
+			.setStyle(ButtonStyle.Danger)
+			.setDisabled(disableRevolution),
 			new ButtonBuilder()
 			.setCustomId("Coup")
 			.setLabel(ButtonLabelCoup)
@@ -1200,7 +1210,8 @@ async function messageKnightCommands(client) {
 			new ButtonBuilder()
 			.setCustomId("Revolution")
 			.setLabel(ButtonLabelRevolution)
-			.setStyle(ButtonStyle.Danger),
+			.setStyle(ButtonStyle.Danger)
+			.setDisabled(disableRevolution),
 			new ButtonBuilder()
 			.setCustomId("Coup")
 			.setLabel(ButtonLabelCoup)

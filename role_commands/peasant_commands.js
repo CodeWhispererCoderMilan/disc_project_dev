@@ -51,7 +51,7 @@ let emperorElectionActive = false;
 let reelectionActive = false;
 let candidates = null;
 let coupActive = false;
-
+let disableRevolution = true;
 const initContent = TextPeasantMessageContent;
 let mobFlayingStatusMsg = "";
 let revolutionStatusMsg = "";
@@ -61,6 +61,14 @@ function showErrorMsg(err) {
 }
 
 async function setupPeasantBotEvents(client, lastMessageId) {
+	eventEmitter.on("DisableRevolution", async () => {
+		disableRevolution = true;
+		await updateMessage();
+	});
+	eventEmitter.on("enableRevolution", async () => {
+		disableRevolution = false;
+		await updateMessage();
+	});
 	client.on("guildMemberUpdate", async (oldMember, newMember) => {
 		const hadRoleBeforeSubHuman = oldMember.roles.cache.has(
 			process.env.ROLEID_SUBHUMAN
@@ -644,6 +652,7 @@ async function updateMessage(client, lastMessageId) {
 			.setCustomId("Revolution")
 			.setLabel(ButtonLabelRevolution)
 			.setStyle(ButtonStyle.Danger)
+			.setDisabled(disableRevolution)
 		);
 
 		if (coupActive) {
@@ -755,6 +764,7 @@ async function messagePeasantCommands(client) {
 			.setCustomId("Revolution")
 			.setLabel(ButtonLabelRevolution)
 			.setStyle(ButtonStyle.Danger)
+			.setDisabled(disableRevolution)
 		);
 
 		const message = await channel.send({

@@ -42,6 +42,7 @@ let emperorElectionActive = false;
 let reelectionActive = false;
 let candidates = null;
 let coupActive = false;
+let disableRevolution = true;
 
 const initContent =TextScholarMessageContent;
 let revolutionStatusMsg = "";
@@ -51,6 +52,14 @@ function showErrorMsg(err) {
 }
 
 async function setupScholarBotEvents(client, lastMessageId) {
+	eventEmitter.on("DisableRevolution", async () => {
+		disableRevolution = true;
+		await updateMessage();
+	});
+	eventEmitter.on("enableRevolution", async () => {
+		disableRevolution = false;
+		await updateMessage();
+	});
 	client.on("guildMemberUpdate", async (oldMember, newMember) => {
 		const hadRoleBeforeScholar = oldMember.roles.cache.has(
 			process.env.ROLEID_SCHOLAR
@@ -479,6 +488,7 @@ async function updateMessage(client, lastMessageId) {
 			.setCustomId("Revolution")
 			.setLabel(ButtonLabelRevolution)
 			.setStyle(ButtonStyle.Danger)
+			.setDisabled(disableRevolution)
 		);
 
 		if (coupActive) {
@@ -562,6 +572,7 @@ async function messageScholarCommands(client) {
 			.setCustomId("Revolution")
 			.setLabel(ButtonLabelRevolution)
 			.setStyle(ButtonStyle.Danger)
+			.setDisabled(disableRevolution)
 		);
 
 		return await channel.send({

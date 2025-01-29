@@ -69,11 +69,11 @@ function showErrorMsg(err) {
 async function setupMerchantBotEvents(client, lastMessageId) {
 	eventEmitter.on("DisableRevolution", async () => {
 		disableRevolution = true;
-		await updateMessage();
+		if(!revolutionActive && !coupActive) await updateMessage();
 	});
 	eventEmitter.on("enableRevolution", async () => {
 		disableRevolution = false;
-		await updateMessage();
+		if(!revolutionActive && !coupActive) await updateMessage();
 	});
 	client.on("guildMemberUpdate", async (oldMember, newMember) => {
 		const hadRoleBeforeMerchant = oldMember.roles.cache.has(

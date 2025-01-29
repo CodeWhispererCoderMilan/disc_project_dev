@@ -54,11 +54,11 @@ function showErrorMsg(err) {
 async function setupScholarBotEvents(client, lastMessageId) {
 	eventEmitter.on("DisableRevolution", async () => {
 		disableRevolution = true;
-		await updateMessage();
+		if(!revolutionActive && !coupActive) await updateMessage();
 	});
 	eventEmitter.on("enableRevolution", async () => {
 		disableRevolution = false;
-		await updateMessage();
+		if(!revolutionActive && !coupActive) await updateMessage();
 	});
 	client.on("guildMemberUpdate", async (oldMember, newMember) => {
 		const hadRoleBeforeScholar = oldMember.roles.cache.has(

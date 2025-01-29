@@ -53,7 +53,8 @@ const {
 	MinimumHigherRoleSizeForRevolution,
 	MinimumHigherRoleSizeForCoup,
 	MinimumHigherRoleRatioForRevolution,
-	MinimumHigherRoleRatioForCoup
+	MinimumHigherRoleRatioForCoup,
+	MinimumKnightSizeForCoup
 } = require("../game_config.json");
 
 let revolutionarySize = 0;
@@ -81,7 +82,6 @@ let kingSize = 0;
 let struggleMethod = "Revolution";
 
 
-
 const content = TextConsoleMessageContent;
 
 function showErrorMsg(err) {
@@ -89,18 +89,23 @@ function showErrorMsg(err) {
 }
 
 async function setupConsoleBotEvents(client) {
-	eventEmitter.on("UpdateNobleSize", (size)=>{
+	eventEmitter.on("UpdateNobleSize", async (size)=>{
 		nobleSize = size;
-		handleHigherRoleSizeChange();
+		await handleHigherRoleSizeChange();
 	});				
-	eventEmitter.on("UpdateLordSize", (size)=>{
+	eventEmitter.on("UpdateLordSize", async (size)=>{
 		lordSize = size;
-		handleHigherRoleSizeChange();
+		await handleHigherRoleSizeChange();
 	});
-	eventEmitter.on("UpdateKingSize", (size)=>{
+	eventEmitter.on("UpdateKingSize", async (size)=>{
 		kingSize = size;
-		handleHigherRoleSizeChange();
+		await handleHigherRoleSizeChange();
 	});
+	eventEmitter.on("UpdateKnightSize", async (size)=>{
+		knightSize = size;
+		await handleHigherRoleSizeChange();
+	});
+
 	eventEmitter.on("startXpBoost", async () => {
 		console.log(
 			`Proceeding to update XP missed in downtime`
@@ -114,7 +119,7 @@ async function setupConsoleBotEvents(client) {
 		}
 		try {
 			await scheduledXpBoost(timeUntilNextBoost, client);
-		} catch (error) {
+		}catch (error) {
 			console.error(`DB: An error occurred: ${err.message}`);
 			throw err;
 		}
@@ -177,12 +182,12 @@ async function setupConsoleBotEvents(client) {
 			hasRoleNowMerchant || hadRoleBeforeMerchant ||
 			hasRoleNowKnight || hadRoleBeforeKnight){
 				
-				handleHigherRoleSizeChange();
+				await handleHigherRoleSizeChange();
 		}
 
 	});
 	client.on("guildMemberRemove", async (member) => {
-		handleHigherRoleSizeChange();
+		await handleHigherRoleSizeChange();
 		const isFesteredByMaggot = await CacheIsPoopBeingFestered(member.id);
 		if (isFesteredByMaggot) {
 			await DBClearFestering(isFesteredByMaggot.maggotId);
@@ -207,7 +212,7 @@ async function setupConsoleBotEvents(client) {
 	});
 	client.on("guildMemberAdd", async (member) => {
 		try {
-			handleHigherRoleSizeChange();
+			await handleHigherRoleSizeChange();
 			await member.roles.add(
 				member.guild.roles.cache.find((r) => r.name === "Poop")
 			);
@@ -392,7 +397,6 @@ async function setupConsoleBotEvents(client) {
 						break;
 					case "Knight":
 						knightParticipants = participants;
-						knightSize = groupSize;
 						botCallCounts++;
 						break;
 				}
@@ -435,10 +439,11 @@ async function setupConsoleBotEvents(client) {
 
 }
 async function handleHigherRoleSizeChange(){
-
+	
 	let higherRoleSize = nobleSize + lordSize + kingSize;
-	const guild = client.guilds.cache.get(process.env.GUILD_ID);
+	const guild = await client.guilds.cache.get(process.env.GUILD_ID);
 	const playerCount = guild.memberCount - 2;
+
 	if (((higherRoleSize >= MinimumHigherRoleSizeForRevolution) &&
 		(higherRoleSize/playerCount >=MinimumHigherRoleRatioForRevolution)) &&
 		disableRevolution === true){
@@ -449,15 +454,19 @@ async function handleHigherRoleSizeChange(){
 		&& disableRevolution === false){
 		disableRevolution = true;
 		eventEmitter.emit("disableRevolution");
-	}	
-	if (((higherRoleSize >= MinimumHigherRoleSizeForCoup) &&
-		(higherRoleSize/playerCount >= MinimumHigherRoleRatioForCoup))
-		&& disableCoup === true){
+	}
+
+	if ((higherRoleSize >= MinimumHigherRoleSizeForCoup) &&
+		(higherRoleSize/playerCount >= MinimumHigherRoleRatioForCoup)  &&
+		(knightSize >=MinimumKnightSizeForCoup) && disableCoup === true){
+
 		disableCoup = false;
 		eventEmitter.emit("enableCoup");
 	}else if(((higherRoleSize < MinimumHigherRoleSizeForCoup) ||
-		(higherRoleSize/playerCount < MinimumHigherRoleRatioForCoup))
+		(higherRoleSize/playerCount < MinimumHigherRoleRatioForCoup) ||
+		(knightSize < MinimumKnightSizeForCoup))
 		&& disableCoup === false){
+
 		disableCoup = true;
 		eventEmitter.emit("disableCoup");
 	}
@@ -492,7 +501,6 @@ async function resetRevolution() {
 	peasantSize = 0;
 	scholarSize = 0;
 	merchantSize = 0;
-	knightSize = 0;
 	peasantParticipants = 0;
 	scholarParticipants = 0;
 	merchantParticipants = 0;
@@ -635,7 +643,6 @@ async function handleSecondPhaseRevolutionEnd() {
 		peasantSize = 0;
 		scholarSize = 0;
 		merchantSize = 0;
-		knightSize = 0;
 		eventEmitter.emit("RevolutionMovedInEmperorElection");
 		setTimeout(async () => {
 			await handleEmperorElectionEnd();
@@ -711,7 +718,6 @@ async function handleEmperorElectionEnd() {
 		peasantSize = 0;
 		scholarSize = 0;
 		merchantSize = 0;
-		knightSize = 0;
 		eventEmitter.emit("RevolutionMovedInEmperorReelection", candidates);
 
 		setTimeout(async () => {
@@ -730,7 +736,6 @@ async function handleEmperorElectionEnd() {
 		peasantSize = 0;
 		scholarSize = 0;
 		merchantSize = 0;
-		knightSize = 0;
 		eventEmitter.emit("RevolutionMovedInEmperorElection");
 		setTimeout(async () => {
 			await handleEmperorElectionEnd();

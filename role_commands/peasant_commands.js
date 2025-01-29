@@ -63,11 +63,11 @@ function showErrorMsg(err) {
 async function setupPeasantBotEvents(client, lastMessageId) {
 	eventEmitter.on("DisableRevolution", async () => {
 		disableRevolution = true;
-		await updateMessage();
+		if(!revolutionActive && !coupActive) await updateMessage();
 	});
 	eventEmitter.on("enableRevolution", async () => {
 		disableRevolution = false;
-		await updateMessage();
+		if(!revolutionActive && !coupActive) await updateMessage();
 	});
 	client.on("guildMemberUpdate", async (oldMember, newMember) => {
 		const hadRoleBeforeSubHuman = oldMember.roles.cache.has(

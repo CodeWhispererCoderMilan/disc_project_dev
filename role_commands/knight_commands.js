@@ -28,7 +28,6 @@ const {
 	RevolutionCoolDown,
 	CoupCoolDown,
 	RoleChangeMessageDisplayTime,
-	MinimumKnightSizeForCoup,
 	MinimumKnightSize,
 	TextKnightMessageContent,
 	TextCutDownSelectMenu,
@@ -82,12 +81,20 @@ function showErrorMsg(err) {
 async function setupKnightBotEvents(client, lastMessageId) {
 	eventEmitter.on("DisableRevolution", async () => {
 		disableRevolution = true;
-		await updateMessage();
+		if(!revolutionActive && !coupActive) await updateMessage();
 	});
 	eventEmitter.on("enableRevolution", async () => {
 		disableRevolution = false;
-		await updateMessage();
+		if(!revolutionActive && !coupActive) await updateMessage();
+	});	
+	eventEmitter.on("DisableCoup", async () => {
+		disableCoup = true;
+		if(!revolutionActive && !coupActive) await updateMessage();
 	});
+	eventEmitter.on("EnableCoup", async () => {
+		disableCoup = false;
+		if(!revolutionActive && !coupActive) await updateMessage();
+	});	
 	client.on("guildMemberUpdate", async (oldMember, newMember) => {
 		const hadRoleBeforePeasant = oldMember.roles.cache.has(
 			process.env.ROLEID_PEASANT
@@ -138,6 +145,7 @@ async function setupKnightBotEvents(client, lastMessageId) {
 				member.roles.cache.has(process.env.ROLEID_KNIGHT)
 			);
 			knightsSize = knights.size;
+			eventEmitter.emit("UpdateKnightSize", knightsSize);
 			if(knightsSize < MinimumKnightSize && !xpThresholdKnightOpen){
 				xpThresholdKnightOpen  = true;
 				eventEmitter.emit("OpenXpThresholdKnight");
@@ -145,14 +153,6 @@ async function setupKnightBotEvents(client, lastMessageId) {
 			if(knightsSize > MinimumKnightSize && xpThresholdKnightOpen ){
 				xpThresholdKnightOpen = false;
 				eventEmitter.emit("CloseXpThresholdKnight");
-			}
-			if(knightsSize < MinimumKnightSizeForCoup && disableCoup === false){
-				disableCoup = true;
-				if(!coupActive && !revolutionActive)await updateMessage(client, lastMessageId);
-			}
-			if(knightsSize >= MinimumKnightSizeForCoup && disableCoup === true){
-				disableCoup = false;
-				if(!coupActive && !revolutionActive)await updateMessage(client, lastMessageId);
 			}
 		}
 		if (
@@ -647,9 +647,7 @@ async function setupKnightBotEvents(client, lastMessageId) {
 				eventEmitter.emit(
 					"SendRevolutionStatus",
 					"Knight",
-				Sincerely,
-Michael Behar 
-Tel: +40786042000	revolutionParticipants,
+					revolutionParticipants,
 					knightsSize
 				);
 

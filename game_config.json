@@ -227,6 +227,6 @@
 	"TextPoopMessageContent": "Pu, the vileness on the streets is you. Named empty and desolate. You were once a crucible of life, now shunned into the abyssal depths of human cunning, the sewers. Estranged from the earth and shrouded in darkness, your amun feeds festering vermin.",
 	"TextRatMessageContent":"Test message to Rat.\n**Abilities:**\n- **Nibble**: Choose Cockroach or Maggot to nibble\n- **Plague**: Choose Sub-Human, Peasant, Scholar, Merchant or Knight to plague",
 	"TextScholarMessageContent":"Test message to Scholar.\n**Abilities:**\n- **Advise**: Send message to the Royal Castle\n- **Revolution**: Let's make a new world!\n",
-	"TextSubhumanMessaageContent":"Test message to SubHuman.\n**Abilities**:\n- **Depravity**: Choose SubHuman to depravity him.\n- **Manhunt**: Choose SubHuman to manhunt.\n- **Picking**: Choose Maggot or Rat to picking.\n"
+	"TextSubhumanMessageContent":"Test message to SubHuman.\n**Abilities**:\n- **Depravity**: Choose SubHuman to depravity him.\n- **Manhunt**: Choose SubHuman to manhunt.\n- **Picking**: Choose Maggot or Rat to picking.\n"
 }
 

@@ -52,12 +52,21 @@ function showErrorMsg(err) {
 }
 
 async function setupEmperorBotEvents(client, lastMessageId) {
+	client.on("guildMemberRemove", async (member) => {
+		// If emperor leaves, need to handle succession/opening emperor role
+		if (member.roles.cache.has(process.env.ROLEID_EMPEROR)) {
+			xpThresholdEmperorOpen = true;
+			eventEmitter.emit("OpenXpThresholdEmperor");
+			// Could also notify channels about emperor vacancy
+			eventEmitter.emit("EmperorVanished", member.username);		}
+		await updateMessage(client, lastMessageId);
+	});
 	client.on("guildMemberUpdate", async (oldMember, newMember) => {
 		let hasRoleEmperor = newMember.roles.cache.has(process.env.ROLEID_EMPEROR);
 		if( xpThresholdEmperorOpen === true && hasRoleEmperor){
-				xpThresholdEmperorOpen = false;
-				eventEmitter.emit("CloseXpThresholdEmperor");
-				eventEmitter.emit("FirstEnthronement", newMember.username);
+			xpThresholdEmperorOpen = false;
+			eventEmitter.emit("CloseXpThresholdEmperor");
+			eventEmitter.emit("FirstEnthronement", newMember.username);
 		}
 		if (oldMember.roles.cache.has(process.env.ROLEID_KING)) {
 			if (selectedKing && selectedKing.id === oldMember.id) {
@@ -68,7 +77,7 @@ async function setupEmperorBotEvents(client, lastMessageId) {
 			if (selectedLord && selectedLord.id === oldMember.id) {
 				selectedLord = null;
 				console.log(
-					`Removed ${oldMember.user.username} from Nibble selectedTargets`
+					`Removed ${oldMember.user.username} from Coronation selectedTargets`
 				);
 
 			}
@@ -88,12 +97,12 @@ async function setupEmperorBotEvents(client, lastMessageId) {
 			newMember.roles.cache.has(process.env.ROLEID_KING) ||
 			newMember.roles.cache.has(process.env.ROLEID_KNIGHT)) {
 			await updateSelectMenu(client, lastMessageId);
-				if(selectedHuman && selectedHuman.id === oldMember.id){
-					selectedHuman = null;
-				}
-				if(selectedKnight && selectedKnight.id === oldMember.id){
-					selectedKnight = null;
-				}
+			if(selectedHuman && selectedHuman.id === oldMember.id){
+				selectedHuman = null;
+			}
+			if(selectedKnight && selectedKnight.id === oldMember.id){
+				selectedKnight = null;
+			}
 		}
 	});
 	client.on("interactionCreate", async (interaction) => {
@@ -339,7 +348,7 @@ async function setupEmperorBotEvents(client, lastMessageId) {
 	eventEmitter.on("FirstEnthronement", async (emperorUsername) => {
 		try {
 			const channel = await client.channels.fetch(process.env.CHANNELIDEMPEROR);
-			
+
 			const tmpMessage = await channel.send(
 				`Hail our first Emperor! ${emperorUsername} the Progenitor, may your rule last 1000 years !`
 			);

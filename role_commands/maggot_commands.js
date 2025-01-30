@@ -24,6 +24,17 @@ function showErrorMsg(err) {
 }
 
 async function setupMaggotBotEvents(client, lastMessageId) {
+	client.on("guildMemberAdd", () => {
+		client.emit('festeringStatusChanged');
+	});
+
+	client.on("guildMemberRemove", async (member) => {
+		const isFesteredByMaggot = await CacheIsPoopBeingFestered(member.id);
+		if (isFesteredByMaggot) {
+			await DBClearFestering(isFesteredByMaggot.maggotId);
+		}
+		client.emit('festeringStatusChanged');
+	});
 	client.on('guildMemberUpdate', async (oldMember, newMember) => {
 		if (oldMember.roles.cache.has(process.env.ROLEID_MAGGOT)) {
 			try {
@@ -110,7 +121,7 @@ async function setupMaggotBotEvents(client, lastMessageId) {
 					selectedPoops[userId] = null;
 					await sendInteractionReply(interaction, `Successfully latched on to poop ${targetUsername}, half their xp being funneled to you.`);
 					eventEmitter.emit('notifyFesterTarget', interaction.user.username, targetUsername);
-					await client.emit('festeringStatusChanged');
+					client.emit('festeringStatusChanged');
 				} catch (err) {
 					return showErrorMsg(err);
 				}

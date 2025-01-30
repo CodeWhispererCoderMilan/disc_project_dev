@@ -39,6 +39,74 @@ let swarmInLastPhase = false;
 let swarmParticipants = new Set();
 
 async function setupCockroachBotEvents(client, lastMessageId) {
+	client.on("guildMemberRemove", async (member) => {
+		try {
+			const hadRoleBeforeMaggot = member.roles.cache.has(
+				process.env.ROLEID_MAGGOT
+			);
+			const hadRoleBeforeCockroach = member.roles.cache.has(
+				process.env.ROLEID_COCKROACH
+			);
+			const hadRoleBeforeSubHuman = member.roles.cache.has(
+				process.env.ROLEID_SUBHUMAN
+			);
+			if(hadRoleBeforeMaggot){
+				for (let userId in selectedMaggots) {
+					if (selectedMaggots[userId] && selectedMaggots[userId].id === member.id) {
+						delete selectedMaggots[userId];
+						console.log(`Removed ${member.user.username} from selected 
+							Maggots for infanticide`);
+					}
+				}			
+				if (lastMessageId) {
+					try {
+						updateMessage(client,lastMessageId);
+					} catch (err) {
+						console.error(err);
+					}
+				}
+			}
+			if(hadRoleBeforeCockroach){
+				if(selectedSubhumans[member.id]) delete selectedSubhumans[member.id];
+				if (swarmActive && swarmParticipants.has(member.id)) {
+					swarmParticipants.delete(member.id);
+			
+						if (member.id === swarmInitiatorId) {
+							const initiatorUsername = swarmInitiatorUsername;
+							await resetSwarm(client, lastMessageId);
+							client.emit("SwarmInitiatorRoleChanged", initiatorUsername);
+						} else {
+							// Update the swarm count
+							if (swarmInLastPhase) {
+								await resetSwarm(client, lastMessageId);
+								client.emit(
+									"SwarmParticipantDied",
+									member.user.username
+								);
+							} else {
+								await updateMessage(client, lastMessageId);
+							}
+						}
+					}
+			}
+			// Update select menus if member was potential target
+			if (hadRoleBeforeSubHuman) {
+				for (let userId in selectedSubhumans) {
+					if (selectedSubhumans[userId] && selectedSubhumans[userId].id === member.id) {
+						delete selectedSubhumans[userId];
+					}
+				}
+				if(swarmActive && swarmTargetId === member.id && lastMessageId){
+					client.emit("SwarmTargetChangedRoles", member.user.username);	
+					resetSwarm(client, lastMessageId);
+				}else if(!swarmActive){
+					await updateMessage(client, lastMessageId);
+				}
+			}
+		} catch (err) {
+			showErrorMsg(err);
+		}
+	});
 	client.on("guildMemberUpdate", async (oldMember, newMember) => {
 		const hadRoleBeforeMaggot = oldMember.roles.cache.has(process.env.ROLEID_MAGGOT);
 		const hasRoleNowMaggot = newMember.roles.cache.has(process.env.ROLEID_MAGGOT);
@@ -64,12 +132,12 @@ async function setupCockroachBotEvents(client, lastMessageId) {
 							// If the initiator lost the role, reset the swarm
 							const initiatorUsername = swarmInitiatorUsername;
 							await resetSwarm(client, lastMessageId);
-							await client.emit("SwarmInitiatorRoleChanged", initiatorUsername);
+							client.emit("SwarmInitiatorRoleChanged", initiatorUsername);
 						} else {
 							// Update the swarm count
 							if (swarmInLastPhase) {
 								await resetSwarm(client, lastMessageId);
-								await client.emit(
+								client.emit(
 									"SwarmParticipantDied",
 									newMember.user.username
 								);
@@ -83,24 +151,7 @@ async function setupCockroachBotEvents(client, lastMessageId) {
 				}
 			}
 		}
-		if (hadRoleBeforeMaggot || hasRoleNowMaggot ) {
-			if (lastMessageId) {
-				try {
-					updateMessage(client,lastMessageId);
-				} catch (err) {
-					console.error(err);
-				}
-			}
-		}
-		if (hadRoleBeforeSubHuman || hasRoleNowSubhuman ) {
-			if (lastMessageId && !swarmActive) {
-				try {
-					updateMessage(client,lastMessageId);
-				} catch (err) {
-					console.error(err);
-				}
-			}
-		}
+
 		if(hadRoleBeforeMaggot){
 			for (let userId in selectedMaggots) {
 				if (selectedMaggots[userId] && selectedMaggots[userId].id === oldMember.id) {
@@ -120,6 +171,24 @@ async function setupCockroachBotEvents(client, lastMessageId) {
 			if(swarmTargetId === oldMember.id && lastMessageId){
 				client.emit("SwarmTargetChangedRoles", oldMember.user.username);	
 				resetSwarm(client, lastMessageId);
+			}
+		}
+		if (hadRoleBeforeMaggot || hasRoleNowMaggot ) {
+			if (lastMessageId) {
+				try {
+					updateMessage(client,lastMessageId);
+				} catch (err) {
+					console.error(err);
+				}
+			}
+		}
+		if (hadRoleBeforeSubHuman || hasRoleNowSubhuman ) {
+			if (lastMessageId && !swarmActive) {
+				try {
+					updateMessage(client,lastMessageId);
+				} catch (err) {
+					console.error(err);
+				}
 			}
 		}
 

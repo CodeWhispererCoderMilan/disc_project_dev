@@ -50,6 +50,86 @@ let rats = [];
 let ratsSize = 0;
 
 async function setupRatBotEvents(client, lastMessageId) {
+	  client.on("guildMemberRemove", async (member) => {
+		  try {
+			  const hadRoleBeforeRat = member.roles.cache.has(
+				  process.env.ROLEID_RAT
+			  );
+			  const hadRoleBeforeCockroach = member.roles.cache.has(
+				  process.env.ROLEID_COCKROACH
+			  );
+			  const hadRoleBeforeMaggot = member.roles.cache.has(
+				  process.env.ROLEID_MAGGOT
+			  );		
+			  const hadRoleBeforeSubhuman = member.roles.cache.has(
+				  process.env.ROLEID_SUBHUMAN
+			  );
+			  const hadRoleBeforePeasant = member.roles.cache.has(
+				  process.env.ROLEID_PEASANT
+			  );
+			  const hadRoleBeforeMerchant = member.roles.cache.has(
+				  process.env.ROLEID_MERCHANT
+			  );
+			  const hadRoleBeforeScholar = member.roles.cache.has(
+				  process.env.ROLEID_SCHOLAR
+			  );
+			  const hadRoleBeforeKnight = member.roles.cache.has(
+				  process.env.ROLEID_KNIGHT
+			  );
+			  // If member was plague participant
+			  if (hadRoleBeforeRat && plagueActive) {
+				  const guild = await client.guilds.fetch(process.env.GUILDID);
+				  await guild.members.fetch();
+				  rats = guild.members.cache.filter((member) =>
+					  member.roles.cache.has(process.env.ROLEID_RAT)
+				  );
+				  ratsSize = rats.size;
+
+				  if (
+					  Object.keys(plagueParticipants).findIndex(
+						  (key) => key === member.id
+					  ) > -1
+				  ) {
+					  delete plagueParticipants[member.id];
+					  if (secondPhase) {
+						  if (Object.keys(plagueParticipants).length <= PLAGUETHREADSHOLD) {
+							  ceasePlague(client, lastMessageId);
+							  return;
+						  }else{ 
+							  await updateMessage(client, lastMessageId);
+						  }
+					  }
+
+				  }
+				  await updateMessage(client, lastMessageId);
+			  }
+
+			  if (hadRoleBeforeMaggot || hadRoleBeforeCockroach) {
+				  for (let userId in selectedTargets) {
+					  if (selectedTargets[userId] && selectedTargets[userId].id === member.id) {
+						  selectedTargets[userId] = null;
+					  }
+				  }
+				  await updateMessage(client, lastMessageId);
+			  }
+
+			  // Clear from plague targets if they were selected
+			  if (hadRoleBeforeSubhuman ||
+				  hadRoleBeforePeasant ||
+				  hadRoleBeforeMerchant ||
+				  hadRoleBeforeScholar ||
+				  hadRoleBeforeKnight ) {
+				  for (let userId in selectedPlagueTargets) {
+					  if (selectedPlagueTargets[userId] && selectedPlagueTargets[userId].id === member.id) {
+						  selectedPlagueTargets[userId] = null;
+					  }
+				  }
+				  await updateMessage(client, lastMessageId);
+			  }
+		  } catch (err) {
+			  showErrorMsg(err);
+		  }
+	  });
 	client.on("guildMemberUpdate", async (oldMember, newMember) => {
 		const hadRoleBeforeRat = oldMember.roles.cache.has(process.env.ROLEID_RAT);
 		const hadRoleBeforeMaggot = oldMember.roles.cache.has(
@@ -97,6 +177,14 @@ async function setupRatBotEvents(client, lastMessageId) {
 		);
 
 		if (plagueActive && hadRoleBeforeRat) {
+
+			const guild = await client.guilds.fetch(process.env.GUILDID);
+			await guild.members.fetch();
+			rats = guild.members.cache.filter((member) =>
+				member.roles.cache.has(process.env.ROLEID_RAT)
+			);
+			ratsSize = rats.size;		
+
 			if (
 				Object.keys(plagueParticipants).findIndex(
 					(key) => key === newMember.id
@@ -126,6 +214,7 @@ async function setupRatBotEvents(client, lastMessageId) {
 					);
 				}
 			}
+			await updateMessage(client, lastMessageId);
 		}
 		if (plagueActive && hasRoleNowRat) {
 			const guild = await client.guilds.fetch(process.env.GUILDID);
@@ -138,8 +227,6 @@ async function setupRatBotEvents(client, lastMessageId) {
 			await updateMessage(client, lastMessageId);
 		}
 		if (
-			hadRoleBeforeCockroach ||
-			hadRoleBeforeMaggot ||
 			hadRoleBeforeSubhuman ||
 			hadRoleBeforePeasant ||
 			hadRoleBeforeMerchant ||
@@ -153,7 +240,18 @@ async function setupRatBotEvents(client, lastMessageId) {
 			hasRoleNowScholar ||
 			hasRoleNowKnight
 		) {
+			for (let userId in selectedPlagueTargets) {
+				if (selectedPlagueTargets[userId] &&
+					selectedPlagueTargets[userId].id === newMember.id) {
+
+					selectedPlagueTargets[userId] = null;
+				}
+			}
 			await updateMessage(client, lastMessageId);
+		}
+		if(hasRoleNowCockroach ||
+			hasRoleNowMaggot){
+			await updateMessage(client,lastMessageId);
 		}
 	});
 

@@ -184,6 +184,8 @@
 	"ButtonLabelManhunt" : "Manhunt",
 	"ButtonLabelDepravity" : "Depravity",
 	"ButtonLabelPickings" : "Pickings",
+	"ButtonLabelExile": "Exile",
+	"TextExileSelectMenu" : "Pick a townsman to exile",
 	"TextPickingsSelectMenu" : "Pick a maggot or rat to consume",
 	"TextDepravitySelectMenu" : "Depravity",
 	"TextManhuntSelectMenu" : "Manhunt",

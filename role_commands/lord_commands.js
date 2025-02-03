@@ -31,6 +31,10 @@ const {
 	TextEminentWritKnightSelectMenu,
 	TextEminentWritTargetSelectMenu,
 	TextElectionSelectMenu,
+	TextExileSelectMenu,
+	ButtonLabelExile,
+	ExileCooldown,
+	ExileCost,
 	ButtonLabelEminentWrit,
 	ButtonLabelElection,
 	ButtonLabelElectionVote,
@@ -42,6 +46,7 @@ const { eventEmitter } = require("../functions/eventEmitter.js");
 const { DBUpdateXP } = require("../apis/firebase/querys");
 
 let selectedElectionCandidates = {};
+let selectedExileUsers = {};
 let lords = [];
 let lordsSize = 0;
 let electionInitiatorId = null;
@@ -76,7 +81,9 @@ async function setupLordBotEvents(client, lastMessageId) {
 			oldMember.roles.cache.has(process.env.ROLEID_SCHOLAR) ||
 			oldMember.roles.cache.has(process.env.ROLEID_MERCHANT) ||
 			oldMember.roles.cache.has(process.env.ROLEID_NOBLE) ||
-			oldMember.roles.cache.has(process.env.ROLEID_KNIGHT) ||
+			oldMember.roles.cache.has(process.env.ROLEID_KNIGHT) ||	
+			oldMember.roles.cache.has(process.env.ROLEID_SUBHUMAN) ||
+			newMember.roles.cache.has(process.env.ROLEID_SUBHUMAN) ||
 			newMember.roles.cache.has(process.env.ROLEID_PEASANT) ||
 			newMember.roles.cache.has(process.env.ROLEID_KNIGHT) ||
 			newMember.roles.cache.has(process.env.ROLEID_SCHOLAR) ||
@@ -200,6 +207,47 @@ async function setupLordBotEvents(client, lastMessageId) {
 			!interaction.isButton()&& !interaction.isModalSubmit()) return;
 		const userId = interaction.user.id;
 
+		if (interaction.customId === "SelectExile") {
+			let selectedUserId = interaction.values[0];
+			try {
+				await interaction.deferUpdate();
+				selectedExileUsers[userId] = await interaction.guild.members.cache.get(selectedUserId);
+				
+			} catch (err) {
+				showErrorMsg(err);
+			}
+		}
+
+		if (interaction.customId === "Exile") {
+			try {
+
+				if (!selectedExileUsers[userId]){
+					await sendInteractionReply(interaction, `No peasant, scholar or merchant selected...`)
+					return;
+				}
+				const userXP = await CacheGetUserXP(userId);
+				if (userXP < ExileCost) {
+					await sendInteractionReply(interaction, `Not enough XP (current XP: ${userXP})`);
+					return;
+				} else {
+					const cooldown = await CacheGetCooldown("exile", userId);
+					if (cooldown){
+						await sendInteractionReply(interaction, "Exile is on cooldown and cannot be used");
+						return;
+					}
+					const targetUsername = selectedExileUsers[userId].user.username;
+					eventEmitter.emit('changeRole', selectedExileUsers[userId], 'Sub-human');
+					selectedExileUsers[userId] = null;
+					await DBUpdateXP(userId, -ExileCost, client);
+					await CacheSetCooldown("exile", userId, ExileCooldown);
+					eventEmitter.emit("ExileComplete", targetUsername, interaction.user.username);
+					const XPLeft = parseInt(userXP) - parseInt(ExileCost);
+					await sendInteractionReply(interaction, `(${XPLeft} XP left) Exile peasant committed successfully. \n${targetUsername} has been reduced to sub human`);
+				}
+			}catch (err) {
+				showErrorMsg(err);
+			}
+		}
 		if (interaction.customId === "SelectHuman") {
 			let selectedUserId = interaction.values[0];
 			try {
@@ -511,23 +559,34 @@ async function updateMessage(client, lastMessageId) {
 		const messageToEdit = await channel.messages.fetch(lastMessageId);
 
 		if (!electionActive) {
+
+			const actionRow_0 = new ActionRowBuilder()
+				.addComponents(await buildSelectMenu(
+					client,
+					["peasant", "scholar", "merchant"], 
+					"SelectExile",TextExileSelectMenu
+				));
 			const electionSelectMenu = await buildSelectMenu(
 				client,
 				["noble", "lord"],
 				"ElectionSelectMenu", TextElectionSelectMenu
 			);
-			const actionRow_0 = new ActionRowBuilder().addComponents(
+			const actionRow_1 = new ActionRowBuilder().addComponents(
 				electionSelectMenu
 			);
-			const actionRow_1 = new ActionRowBuilder()
+			const actionRow_2 = new ActionRowBuilder()
 				.addComponents(await buildSelectMenu(
 					client, ["peasant", "scholar", "merchant","noble"], "SelectHuman", TextEminentWritTargetSelectMenu
 				));
-			const actionRow_2 = new ActionRowBuilder()
+			const actionRow_3 = new ActionRowBuilder()
 				.addComponents(await buildSelectMenu(
 					client, ["knight"], "SelectKnight", TextEminentWritKnightSelectMenu
 				));
 			const buttonRow = new ActionRowBuilder().addComponents(
+				new ButtonBuilder()
+				.setCustomId("Exile")
+				.setLabel(ButtonLabelExile)
+				.setStyle(ButtonStyle.Primary),
 				new ButtonBuilder()
 				.setCustomId("Election")
 				.setLabel(ButtonLabelElection)
@@ -536,37 +595,42 @@ async function updateMessage(client, lastMessageId) {
 				new ButtonBuilder()
 				.setCustomId(ButtonLabelEminentWrit)
 				.setLabel("Writ")
-				.setStyle(ButtonStyle.Primary)
-			);
-			const infoBtnRow = new ActionRowBuilder().addComponents(
+				.setStyle(ButtonStyle.Primary),
 				new ButtonBuilder()
 				.setCustomId("ShowWrits")
 				.setLabel(ButtonLabelShowWrits)
 				.setStyle(ButtonStyle.Secondary)
-			);
+			);			
+
 			await messageToEdit.edit({
 				content: initContent,
-				components: [actionRow_0,actionRow_1,actionRow_2, buttonRow, infoBtnRow],
+				components: [actionRow_0, actionRow_1, actionRow_2, actionRow_3, buttonRow],
 			});
 		} else {
-			const actionRow_0 = ActionRowBuilder.from(
-				messageToEdit.components[0].toJSON()
+			const actionRow_0 = new ActionRowBuilder()
+				.addComponents(await buildSelectMenu(client, ["peasant", "scholar", "merchant"], "SelectExile",TextExileSelectMenu));
+			const actionRow_1 = ActionRowBuilder.from(
+				messageToEdit.components[1].toJSON()
 			);
 			const electionSelectMenu = StringSelectMenuBuilder.from(
-				actionRow_0.components[0].toJSON()
+				actionRow_1.components[1].toJSON()
 			)
 				.setDisabled(true)
 				.setPlaceholder(electionCandidate);
-			actionRow_0.components[0] = electionSelectMenu;
-			const actionRow_1 = new ActionRowBuilder()
+			actionRow_1.components[1] = electionSelectMenu;
+			const actionRow_2 = new ActionRowBuilder()
 				.addComponents(await buildSelectMenu(
 					client, ["peasant", "scholar", "merchant","noble"], "SelectHuman", TextEminentWritTargetSelectMenu
 				));
-			const actionRow_2 = new ActionRowBuilder()
+			const actionRow_3 = new ActionRowBuilder()
 				.addComponents(await buildSelectMenu(
 					client, ["knight"], "SelectKnight",TextEminentWritKnightSelectMenu
 				));
 			const buttonRow = new ActionRowBuilder().addComponents(
+				new ButtonBuilder()
+				.setCustomId("Exile")
+				.setLabel(ButtonLabelExile)
+				.setStyle(ButtonStyle.Primary),
 				new ButtonBuilder()
 				.setCustomId("Vote")
 				.setLabel(ButtonLabelElectionVote)
@@ -574,19 +638,18 @@ async function updateMessage(client, lastMessageId) {
 				new ButtonBuilder()
 				.setCustomId("EminentWrit")
 				.setLabel(ButtonLabelEminentWrit)
-				.setStyle(ButtonStyle.Primary)
-			);
-			const infoBtnRow = new ActionRowBuilder().addComponents(
+				.setStyle(ButtonStyle.Primary),
 				new ButtonBuilder()
 				.setCustomId("ShowWrits")
 				.setLabel(ButtonLabelShowWrits)
 				.setStyle(ButtonStyle.Secondary)
 			);
+
 			await messageToEdit.edit({
 				content:
 				initContent +
 				`\n@${electionInitiator} started election. Let's vote for ${electionType} @${electionCandidate}. (Joined ${electionParticipants.size} / ${lordsSize}.)`,
-				components: [actionRow_0,actionRow_1,actionRow_2, buttonRow,infoBtnRow],
+				components: [actionRow_0,actionRow_1,actionRow_2,actionRow_3, buttonRow],
 			});
 		}
 	} catch (err) {
@@ -604,23 +667,30 @@ async function messageLordCommands(client) {
 	}
 
 	try {
+		const actionRow_0 = new ActionRowBuilder().addComponents(
+			await buildSelectMenu(client, ["peasant", "scholar", "merchant"], "SelectExile", TextExileSelectMenu));
+
 		const electionSelectMenu = await buildSelectMenu(
 			client,
 			["noble", "lord"],
 			"ElectionSelectMenu", TextElectionSelectMenu
-		);
-		const actionRow_0 = new ActionRowBuilder().addComponents(
+		);		
+		const actionRow_1 = new ActionRowBuilder().addComponents(
 			electionSelectMenu
 		);
-		const actionRow_1 = new ActionRowBuilder()
+		const actionRow_2 = new ActionRowBuilder()
 			.addComponents(await buildSelectMenu(
 				client, ["peasant", "scholar", "merchant", "noble"], "SelectHuman", TextEminentWritTargetSelectMenu
 			));
-		const actionRow_2 = new ActionRowBuilder()
+		const actionRow_3 = new ActionRowBuilder()
 			.addComponents(await buildSelectMenu(
 				client, ["knight"], "SelectKnight", TextEminentWritKnightSelectMenu
 			));
-		const buttonRow = new ActionRowBuilder().addComponents(
+		const buttonRow = new ActionRowBuilder().addComponents(		
+			new ButtonBuilder()
+			.setCustomId("Exile")
+			.setLabel(ButtonLabelExile)
+			.setStyle(ButtonStyle.Primary),
 			new ButtonBuilder()
 			.setCustomId("Election")
 			.setLabel(ButtonLabelElection)
@@ -629,9 +699,7 @@ async function messageLordCommands(client) {
 			new ButtonBuilder()
 			.setCustomId("EminentWrit")
 			.setLabel(ButtonLabelEminentWrit)
-			.setStyle(ButtonStyle.Primary)
-		);
-		const infoBtnRow = new ActionRowBuilder().addComponents(
+			.setStyle(ButtonStyle.Primary),
 			new ButtonBuilder()
 			.setCustomId("ShowWrits")
 			.setLabel(ButtonLabelShowWrits)
@@ -639,7 +707,7 @@ async function messageLordCommands(client) {
 		);
 		const message = await channel.send({
 			content: initContent,
-			components: [actionRow_0,actionRow_1,actionRow_2,buttonRow,infoBtnRow],
+			components: [actionRow_0,actionRow_1,actionRow_2, actionRow_3, buttonRow],
 		});
 		return message;
 	} catch (err) {

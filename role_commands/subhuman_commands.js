@@ -29,6 +29,54 @@ function showErrorMsg(err) {
 	console.error("ERROR: subhuman_commands.js", err);
 }
 async function setupSubhumanBotEvents(client, lastMessageId) {
+	client.on("guildMemberRemove", async (member) => {
+    try {
+        const hadRoleBeforeSubhuman = member.roles.cache.has(
+            process.env.ROLEID_SUBHUMAN
+        );
+        const hadRoleBeforePeasant = member.roles.cache.has(
+            process.env.ROLEID_PEASANT
+        );
+        const hadRoleBeforeMaggot = member.roles.cache.has(
+            process.env.ROLEID_MAGGOT
+        );
+        const hadRoleBeforeRat = member.roles.cache.has(
+            process.env.ROLEID_RAT
+        );
+
+        // Clean up subhuman targets if leaving member was subhuman
+        if (hadRoleBeforeSubhuman) {
+            for (let userId in selectedSubHumans) {
+                if (selectedSubHumans[userId] && selectedSubHumans[userId].id === member.id) {
+                    delete selectedSubHumans[userId];
+                }
+            }
+            await updateSelectMenu(client, lastMessageId);
+        }
+
+        // Clean up peasant targets
+        if (hadRoleBeforePeasant) {
+            for (let userId in selectedPeasants) {
+                if (selectedPeasants[userId] && selectedPeasants[userId].id === member.id) {
+                    delete selectedPeasants[userId];
+                }
+            }
+            await updateSelectMenu(client, lastMessageId);
+        }
+
+        // Clean up picking targets
+        if (hadRoleBeforeMaggot || hadRoleBeforeRat) {
+            for (let userId in selectedPickings) {
+                if (selectedPickings[userId] && selectedPickings[userId].id === member.id) {
+                    delete selectedPickings[userId];
+                }
+            }
+            await updateSelectMenu(client, lastMessageId);
+        }
+    } catch (err) {
+        showErrorMsg(err);
+    }
+});
 	client.on("guildMemberUpdate", async (oldMember, newMember) => {
 		if (oldMember.roles.cache.has(process.env.ROLEID_SUBHUMAN)) {
 			for (let userId in selectedSubHumans) {

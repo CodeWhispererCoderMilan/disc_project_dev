@@ -69,6 +69,106 @@ async function setupPeasantBotEvents(client, lastMessageId) {
 		disableRevolution = false;
 		if(!revolutionActive && !coupActive) await updateMessage();
 	});
+	client.on("guildMemberRemove", async (member) => {
+		try {
+			const hadRoleBeforePeasant = member.roles.cache.has(
+				process.env.ROLEID_PEASANT
+			);
+			const hadRoleBeforeSubHuman = member.roles.cache.has(
+				process.env.ROLEID_SUBHUMAN
+			);
+			const hadRoleBeforeKnight = member.roles.cache.has(
+				process.env.ROLEID_KNIGHT
+			);
+			const hadRoleBeforeNoble = member.roles.cache.has(
+				process.env.ROLEID_NOBLE
+			);
+			const hadRoleBeforeLord = member.roles.cache.has(
+				process.env.ROLEID_LORD
+			);
+			const hadRoleBeforeKing = member.roles.cache.has(
+				process.env.ROLEID_KING
+			);
+			const hadRoleBeforeEmperor = member.roles.cache.has(
+				process.env.ROLEID_EMPEROR
+			);
+
+			// Handle mob flaying cleanup
+			if (hadRoleBeforePeasant) {
+				if (mobFlayingActive){
+					try{
+						const guild = await client.guilds.fetch(process.env.GUILDID);
+						peasants = guild.members.cache.filter((member) =>
+							member.roles.cache.has(process.env.ROLEID_PEASANT)
+						);
+						peasantsSize = peasants.size;
+						if(mobFlayingParticipants.has(member.id)) {
+							mobFlayingParticipants.delete(member.id);
+
+							const participationRate = mobFlayingParticipants.size / peasantsSize;
+							if (participationRate >= MobFlayingSuccessThreadshold) {
+								await ceaseMobFlaying(client, lastMessageId);
+							} else {
+								await updateMessage(client, lastMessageId);
+							}
+						}else{
+							await updateMessage(client, lastMessageId);
+						}
+					}catch(err){
+						showErrorMsg(err);
+					}
+				}
+
+
+				if (revolutionActive) {
+					const guild = await client.guilds.fetch(process.env.GUILDID);
+					peasants = guild.members.cache.filter((member) =>
+						member.roles.cache.has(process.env.ROLEID_PEASANT)
+					);
+					peasantsSize = peasants.size;
+
+					if (Object.keys(revolutionParticipants).findIndex(
+						(key) => key === member.id
+					) > -1) {
+						delete revolutionParticipants[member.id];
+						delete selectedRevolutionTargets[member.id];
+					}
+					eventEmitter.emit(
+						"SendRevolutionStatus",
+						"Peasant",
+						revolutionParticipants,
+						peasantsSize
+					);
+				}
+			}
+			if (mobFlayingActive && (hadRoleBeforePeasant || hadRoleBeforeSubHuman)) {
+				if (member.id === mobFlayingTargetId) {
+					const msg = `The role of the target @${mobFlayingTarget} has been changed.`;
+					eventEmitter.emit("NotifyPeasantChannel", msg);
+					await ceaseMobFlaying(client, lastMessageId);
+				}
+			}
+
+			// Clear mob flaying targets
+			if ((hadRoleBeforePeasant||hadRoleBeforeSubHuman) && !mobFlayingActive && !revolutionActive) {
+				for (let userId in selectedMobFlayingTargets) {
+					if (selectedMobFlayingTargets[userId] && selectedMobFlayingTargets[userId].id === member.id) {
+						selectedMobFlayingTargets[userId] = null;
+					}
+					await updateMessage(client,lastMessageId);
+				}
+			}
+
+			// Clear revolution targets
+			if (hadRoleBeforeKnight || hadRoleBeforeNoble || hadRoleBeforeLord || 
+				hadRoleBeforeKing || hadRoleBeforeEmperor) {
+
+				await updateMessage(client, lastMessageId);
+			}
+		} catch (err) {
+			showErrorMsg(err);
+		}
+	});
 	client.on("guildMemberUpdate", async (oldMember, newMember) => {
 		const hadRoleBeforeSubHuman = oldMember.roles.cache.has(
 			process.env.ROLEID_SUBHUMAN
@@ -138,6 +238,12 @@ async function setupPeasantBotEvents(client, lastMessageId) {
 					} catch (err) {
 						showErrorMsg(err);
 					}
+				} else{
+					try{
+						await updateMessage(client, lastMessageId)
+					}catch(err){
+						showErrorMsg(err);
+					}	
 				}
 			}
 			if (revolutionActive) {
@@ -190,12 +296,15 @@ async function setupPeasantBotEvents(client, lastMessageId) {
 			!mobFlayingActive &&
 			!revolutionActive
 		) {
-			if (lastMessageId) {
-				try {
-					await updateMessage(client, lastMessageId);
-				} catch (err) {
-					showErrorMsg(err);
+			for (let userId in selectedMobFlayingTargets) {
+				if (selectedMobFlayingTargets[userId] && selectedMobFlayingTargets[userId].id === member.id) {
+					selectedMobFlayingTargets[userId] = null;
 				}
+			}
+			try {
+				await updateMessage(client, lastMessageId);
+			} catch (err) {
+				showErrorMsg(err);
 			}
 		}
 	});

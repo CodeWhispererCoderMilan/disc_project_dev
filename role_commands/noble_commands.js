@@ -58,6 +58,96 @@ function showErrorMsg(err) {
 }
 
 async function setupNobleBotEvents(client, lastMessageId) {
+	client.on("guildMemberRemove", async (member) => {
+		try {	
+			const hadRoleBeforePeasant = member.roles.cache.has(
+				process.env.ROLEID_PEASANT
+			);
+			const hadRoleBeforeScholar = member.roles.cache.has(
+				process.env.ROLEID_SCHOLAR
+			);
+			const hadRoleBeforeMerchant = member.roles.cache.has(
+				process.env.ROLEID_MERCHANT
+			);
+			const hadRoleBeforeNoble = member.roles.cache.has(
+				process.env.ROLEID_NOBLE
+			);
+			const hadRoleBeforeKnight = member.roles.cache.has(
+				process.env.ROLEID_KNIGHT
+			);
+			const hadRoleBeforeLord = member.roles.cache.has(
+				process.env.ROLEID_LORD
+			);
+			if (hadRoleBeforePeasant || hadRoleBeforeScholar || 
+				hadRoleBeforeMerchant || hadRoleBeforeKnight){
+				await updateMessage(client, lastMessageId);
+				for(let userId in selectedHumans){
+					if(selectedHumans[userId] && selectedHumans[userId].id === member.id){
+						selectedHumans[userId] = null;
+					}
+				}
+				for(let userId in selectedKnights){
+					if(selectedKnights[userId] && selectedKnights[userId].id === member.id){
+						selectedKnights[userId] = null;
+					}
+				}
+			}
+
+			if (assassinationActive && hadRoleBeforeNoble) {
+				if(assassinationParticipants.has(member.id)){	
+					selectedTargets[member.id] = null;
+					assassinationParticipants.delete(member.id);
+					if (member.id === assassinationInitiatorId) {
+						const msg = `The initiator @${assassinationInitiator} is no longer a noble.`;
+						eventEmitter.emit("NotifyNobleChannel", msg);
+						assassinationActive = false;
+						await ceaseAssassination(client, lastMessageId);
+						return;
+					} 
+				}
+			}
+
+			if (assassinationActive &&(hadRoleBeforeKnight || hadRoleBeforeNoble || hadRoleBeforeLord)){
+				if(member.id === assassinationTargetId){
+
+					const msg = `The role of the target @${assassinationTarget} has been changed.`;
+					eventEmitter.emit("NotifyNobleChannel", msg);
+					assassinationActive = false;
+					await ceaseAssassination(client, lastMessageId);
+					return;
+				}
+			}
+
+			if (
+				hadRoleBeforeLord && !assassinationActive
+			) {
+				if (lastMessageId) {
+					await updateMessage(client, lastMessageId);
+				}
+			}	
+
+			if( hadRoleBeforeNoble ){
+				const guild = await client.guilds.fetch(process.env.GUILDID);
+				nobles = guild.members.cache.filter((member) =>
+					member.roles.cache.has(process.env.ROLEID_NOBLE)
+				);
+				noblesSize = nobles.size;
+				eventEmitter.emit("UpdateNobleSize", noblesSize);
+				if(noblesSize < MinimumNobleSize && !xpThresholdNobleOpen){
+					xpThresholdNobleOpen  = true;
+					eventEmitter.emit("OpenXpThresholdNoble");
+				}
+
+				if(noblesSize < MinimumNobleSizeForAssassination && disableAssassination === false){
+					disableAssassination = true;
+				}
+				await updateMessage(client,lastMessageId);
+			}
+
+		} catch (err) {
+			showErrorMsg(err);
+		}
+	});
 	client.on("guildMemberUpdate", async (oldMember, newMember) => {
 		const hadRoleBeforeNoble = oldMember.roles.cache.has(
 			process.env.ROLEID_NOBLE
@@ -92,33 +182,36 @@ async function setupNobleBotEvents(client, lastMessageId) {
 		}
 
 
-		if (assassinationActive && hadRoleBeforeNoble && assassinationParticipants.has(newMember.id)) {
-			try {
-				selectedTargets[newMember.id] = null;
-				assassinationParticipants.delete(newMember.id);
-				if (newMember.id === assassinationInitiatorId) {
-					const msg = `The initiator @${assassinationInitiator} is no longer a noble.`;
+		if (assassinationActive && hadRoleBeforeNoble) {
+			if(assassinationParticipants.has(newMember.id)){	
+				try {
+					selectedTargets[newMember.id] = null;
+					assassinationParticipants.delete(newMember.id);
+					if (newMember.id === assassinationInitiatorId) {
+						const msg = `The initiator @${assassinationInitiator} is no longer a noble.`;
+						eventEmitter.emit("NotifyNobleChannel", msg);
+						assassinationActive = false;
+						await ceaseAssassination(client, lastMessageId);
+						return;
+					} 
+				} catch (err) {
+					showErrorMsg(err);
+				}
+			}
+		}
+
+		if (assassinationActive &&(hadRoleBeforeKnight || hadRoleBeforeNoble || hadRoleBeforeLord)){
+			if(newMember.id === assassinationTargetId){
+
+				try {
+					const msg = `The role of the target @${assassinationTarget} has been changed.`;
 					eventEmitter.emit("NotifyNobleChannel", msg);
 					assassinationActive = false;
 					await ceaseAssassination(client, lastMessageId);
 					return;
-				} 
-			} catch (err) {
-				showErrorMsg(err);
-			}
-		}
-
-		if (assassinationActive &&(hadRoleBeforeKnight || hadRoleBeforeNoble || hadRoleBeforeLord) &&
-			(newMember.id === assassinationTargetId)){
-
-			try {
-				const msg = `The role of the target @${assassinationTarget} has been changed.`;
-				eventEmitter.emit("NotifyNobleChannel", msg);
-				assassinationActive = false;
-				await ceaseAssassination(client, lastMessageId);
-				return;
-			} catch (e) {
-				showErrorMsg(e);
+				} catch (e) {
+					showErrorMsg(e);
+				}
 			}
 		}
 

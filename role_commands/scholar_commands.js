@@ -60,6 +60,57 @@ async function setupScholarBotEvents(client, lastMessageId) {
 		disableRevolution = false;
 		if(!revolutionActive && !coupActive) await updateMessage();
 	});
+	client.on("guildMemberRemove", async(member) => {
+		const hadRoleBeforeScholar = member.roles.cache.has(
+			process.env.ROLEID_SCHOLAR
+		);
+		const hadRoleBeforeKnight = member.roles.cache.has(
+			process.env.ROLEID_KNIGHT
+		);
+		const hadRoleBeforeNoble = member.roles.cache.has(
+			process.env.ROLEID_NOBLE
+		);
+		const hadRoleBeforeLord = member.roles.cache.has(
+			process.env.ROLEID_LORD
+		);
+		const hadRoleBeforeKing = member.roles.cache.has(
+			process.env.ROLEID_KING
+		);
+		const hadRoleBeforeEmperor = member.roles.cache.has(
+			process.env.ROLEID_EMPEROR
+		);
+
+		if (revolutionActive && (hadRoleBeforeScholar)) {
+			const guild = await client.guilds.fetch(process.env.GUILDID);
+			scholars = guild.members.cache.filter((member) =>
+				member.roles.cache.has(process.env.ROLEID_SCHOLAR)
+			);
+			scholarsSize = scholars.size;
+			if (
+				Object.keys(revolutionParticipants).findIndex(
+					(key) => key === member.id
+				) > -1
+			) {
+				delete revolutionParticipants[member.id];
+				delete selectedRevolutionTargets[member.id];
+			}
+			eventEmitter.emit(
+				"SendRevolutionStatus",
+				"Scholar",
+				revolutionParticipants,
+				scholarsSize
+			);
+		}
+		if (
+			hadRoleBeforeKnight ||
+			hadRoleBeforeNoble ||
+			hadRoleBeforeLord ||
+			hadRoleBeforeKing ||
+			hadRoleBeforeEmperor 
+		) {
+			await updateMessage(client, lastMessageId);
+		}
+	});
 	client.on("guildMemberUpdate", async (oldMember, newMember) => {
 		const hadRoleBeforeScholar = oldMember.roles.cache.has(
 			process.env.ROLEID_SCHOLAR

@@ -75,6 +75,72 @@ async function setupMerchantBotEvents(client, lastMessageId) {
 		disableRevolution = false;
 		if(!revolutionActive && !coupActive) await updateMessage();
 	});
+	client.on("guildMemberRemove", async (member) => {
+		const hadRoleBeforeMerchant = member.roles.cache.has(
+			process.env.ROLEID_MERCHANT
+		);
+		const hadRoleBeforePeasant = member.roles.cache.has(
+			process.env.ROLEID_PEASANT
+		);
+		const hadRoleBeforeScholar = member.roles.cache.has(
+			process.env.ROLEID_SCHOLAR
+		);
+		const hadRoleBeforeKnight = member.roles.cache.has(
+			process.env.ROLEID_KNIGHT
+		);
+		const hadRoleBeforeNoble = member.roles.cache.has(
+			process.env.ROLEID_NOBLE
+		);
+		const hadRoleBeforeLord = member.roles.cache.has(
+			process.env.ROLEID_LORD
+		);
+		const hadRoleBeforeKing = member.roles.cache.has(
+			process.env.ROLEID_KING
+		);
+		const hadRoleBeforeEmperor = member.roles.cache.has(
+			process.env.ROLEID_EMPEROR
+		);
+		if(hadRoleBeforePeasant || hadRoleBeforeScholar || hadRoleBeforeKnight || hadRoleBeforeNoble){
+			await CacheClearTargetEndows(member.id);
+		}
+		if(hadRoleBeforeMerchant){
+			await CacheClearTargetEndows(member.id);
+			await CacheClearMerchantEndows(member.id);
+		}
+		if (revolutionActive && hadRoleBeforeMerchant) {
+			const guild = await client.guilds.fetch(process.env.GUILDID);
+			merchants = guild.members.cache.filter((member) =>
+				member.roles.cache.has(process.env.ROLEID_MERCHANT)
+			);
+			merchantsSize = merchants.size;
+			if (
+				Object.keys(revolutionParticipants).findIndex(
+					(key) => key === member.id
+				) > -1
+			) {
+				delete revolutionParticipants[member.id];
+				delete selectedRevolutionTargets[member.id];
+			}
+			eventEmitter.emit(
+				"SendRevolutionStatus",
+				"Merchant",
+				revolutionParticipants,
+				merchantsSize
+			);
+		}
+		if (
+			hadRoleBeforePeasant ||
+			hadRoleBeforeScholar ||
+			hadRoleBeforeMerchant ||
+			hadRoleBeforeKnight ||
+			hadRoleBeforeNoble ||
+			hadRoleBeforeLord ||
+			hadRoleBeforeKing ||
+			hadRoleBeforeEmperor
+		) {
+			await updateMessage(client, lastMessageId);
+		}
+	});
 	client.on("guildMemberUpdate", async (oldMember, newMember) => {
 		const hadRoleBeforeMerchant = oldMember.roles.cache.has(
 			process.env.ROLEID_MERCHANT

@@ -94,7 +94,139 @@ async function setupKnightBotEvents(client, lastMessageId) {
 	eventEmitter.on("EnableCoup", async () => {
 		disableCoup = false;
 		if(!revolutionActive && !coupActive) await updateMessage();
-	});	
+	});
+	client.on("guildMemberRemove", async (member) => {
+		const hadRoleBeforePeasant = member.roles.cache.has(
+			process.env.ROLEID_PEASANT
+		);
+		const hadRoleBeforeScholar = member.roles.cache.has(
+			process.env.ROLEID_SCHOLAR
+		);
+		const hadRoleBeforeMerchant = member.roles.cache.has(
+			process.env.ROLEID_MERCHANT
+		);
+		const hadRoleBeforeKnight = member.roles.cache.has(
+			process.env.ROLEID_KNIGHT
+		);
+		const hadRoleBeforeKing = member.roles.cache.has(
+			process.env.ROLEID_KING
+		);
+		const hadRoleBeforeNoble = member.roles.cache.has(
+			process.env.ROLEID_NOBLE
+		);
+		const hadRoleBeforeLord = member.roles.cache.has(
+			process.env.ROLEID_LORD
+		);
+		const hadRoleBeforeEmperor = member.roles.cache.has(
+			process.env.ROLEID_EMPEROR
+		);
+
+		if( hadRoleBeforeKnight){
+			const guild = await client.guilds.fetch(process.env.GUILDID);
+			knights = guild.members.cache.filter((member) =>
+				member.roles.cache.has(process.env.ROLEID_KNIGHT)
+			);
+			knightsSize = knights.size;
+			eventEmitter.emit("UpdateKnightSize", knightsSize);
+			if(knightsSize < MinimumKnightSize && !xpThresholdKnightOpen){
+				xpThresholdKnightOpen  = true;
+				eventEmitter.emit("OpenXpThresholdKnight");
+			}
+
+		}
+		if (
+			hadRoleBeforePeasant ||
+			hadRoleBeforeScholar ||
+			hadRoleBeforeMerchant ||
+			hadRoleBeforeNoble ||
+			hadRoleBeforeLord ||
+			hadRoleBeforeKing
+		) {
+			await CacheCheckAndUpdateUserWrits(member.id);
+			for (let userId in selectedTargets) {
+				if (
+					selectedTargets[userId] &&
+					selectedTargets[userId].id === member.id
+				) {
+					delete selectedTargets[userId];
+					console.log(
+						`Removed ${member.user.username} from Cut Dowm targets`
+					);
+				}
+			}
+		}
+		if (
+			hadRoleBeforePeasant ||
+			hadRoleBeforeScholar ||
+			hadRoleBeforeMerchant ||
+			hadRoleBeforeNoble ||
+			hadRoleBeforeLord ||
+			hadRoleBeforeEmperor 
+		) {
+			await updateMessage(client, lastMessageId);
+		}
+
+		if (
+			(siegeActive || revolutionActive) &&
+			(hadRoleBeforeKnight)
+		) {
+			if (siegeActive) {
+				if (siegeParticipants.has(member.id)) {
+					try {
+						siegeParticipants.delete(member.id);
+					} catch (err) {
+						showErrorMsg(err);
+					}
+				}
+
+			}
+			if (revolutionActive) {
+				if (
+					Object.keys(revolutionParticipants).findIndex(
+						(key) => key === member.id
+					) > -1
+				) {
+					delete revolutionParticipants[member.id];
+					delete selectedRevolutionTargets[member.id];
+				}
+				eventEmitter.emit(
+					"SendRevolutionStatus",
+					"Knight",
+					revolutionParticipants,
+					knightsSize
+				);
+			}
+		}
+
+		if (siegeActive &&(hadRoleBeforeKnight || hadRoleBeforeKing)){
+			if (lastMessageId) {
+				try {
+					const kings = guild.members.cache.filter((member) =>
+						member.roles.cache.has(process.env.ROLEID_KING)
+					);
+					kingsSize = kings.size;
+						const siegeSuccess =
+							siegeParticipants.size >= knightsSize / kingsSize;
+						if (siegeSuccess) {
+							await ceaseSiege(client, lastMessageId);
+							return;
+						} else {
+							await updateMessage(client, lastMessageId);
+						}
+				} catch (err) {
+					showErrorMsg(err);
+				}
+			}
+		}
+		if(!siegeActive && (hadRoleBeforeKing || hadRoleBeforeKnight)){
+			try{
+				if(lastMessageId)await updateMessage(client,lastMessageId);
+			}catch(err){
+				showErrorMsg(err);
+			}
+		}
+	});
+
 	client.on("guildMemberUpdate", async (oldMember, newMember) => {
 		const hadRoleBeforePeasant = oldMember.roles.cache.has(
 			process.env.ROLEID_PEASANT
@@ -182,16 +314,12 @@ async function setupKnightBotEvents(client, lastMessageId) {
 			hadRoleBeforeMerchant ||
 			hadRoleBeforeNoble ||
 			hadRoleBeforeLord ||
-			hadRoleBeforeKing ||
 			hadRoleBeforeEmperor ||
-			hadRoleBeforeKnight ||
 			hasRoleNowPeasant ||
 			hasRoleNowScholar ||
 			hasRoleNowMerchant ||
 			hasRoleNowNoble ||
 			hasRoleNowLord ||
-			hasRoleNowKing ||
-			hasRoleNowKnight ||
 			hasRoleNowEmperor
 		) {
 			await updateMessage(client, lastMessageId);
@@ -255,6 +383,18 @@ async function setupKnightBotEvents(client, lastMessageId) {
 					showErrorMsg(err);
 				}
 			}
+		}
+		if (
+			!siegeActive &&
+			(hadRoleBeforeKnight ||
+				hasRoleNowKnight ||
+				hadRoleBeforeKing ||
+				hasRoleNowKing)){
+				try{
+					if(lastMessageId)await updateMessage(client, lastMessageId);
+				}catch(err){
+					showErrorMsg(err);
+				}
 		}
 	});
 	client.on("interactionCreate", async (interaction) => {

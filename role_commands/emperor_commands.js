@@ -55,11 +55,15 @@ async function setupEmperorBotEvents(client, lastMessageId) {
 	client.on("guildMemberRemove", async (member) => {
 		// If emperor leaves, need to handle succession/opening emperor role
 		if (member.roles.cache.has(process.env.ROLEID_EMPEROR)) {
+			selectedKing = null;
+			selectedLord = null;
+			selectedKnight = null;
+			selectedHuman = null;
 			xpThresholdEmperorOpen = true;
 			eventEmitter.emit("OpenXpThresholdEmperor");
 			// Could also notify channels about emperor vacancy
 			eventEmitter.emit("EmperorVanished", member.username);		}
-		await updateMessage(client, lastMessageId);
+			await updateMessage(client, lastMessageId);
 	});
 	client.on("guildMemberUpdate", async (oldMember, newMember) => {
 		let hasRoleEmperor = newMember.roles.cache.has(process.env.ROLEID_EMPEROR);

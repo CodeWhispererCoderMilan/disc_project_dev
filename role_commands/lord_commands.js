@@ -69,6 +69,127 @@ function showErrorMsg(err) {
 }
 
 async function setupLordBotEvents(client, lastMessageId) {
+		client.on("guildMemberRemove", async (member) => {
+		const hadRoleBeforeNoble = member.roles.cache.has(
+			process.env.ROLEID_NOBLE
+		);
+		const hadRoleBeforeLord = member.roles.cache.has(
+			process.env.ROLEID_LORD
+		);
+		const hadRoleBeforePeasant = member.roles.cache.has(process.env.ROLEID_PEASANT);
+		const hadRoleBeforeScholar = member.roles.cache.has(process.env.ROLEID_SCHOLAR);
+		const hadRoleBeforeMerchant = member.roles.cache.has(process.env.ROLEID_MERCHANT);
+		const hadRoleBeforeKnight = member.roles.cache.has(process.env.ROLEID_KNIGHT);	
+		const hadRoleBeforeSubhuman = member.roles.cache.has(process.env.ROLEID_SUBHUMAN); 
+		if (hadRoleBeforePeasant || hadRoleBeforeScholar || hadRoleBeforeMerchant ||
+			hadRoleBeforeNoble ||hadRoleBeforeKnight || hadRoleBeforeSubhuman
+			) {
+			if(member.id != electionCandidateId) await updateMessage(client, lastMessageId);
+			for(let userId in selectedHumans){
+				if(selectedHumans[userId] && selectedHumans[userId].id === member.id){
+					selectedHumans[userId] = null;
+				}
+			}
+			for(let userId in selectedKnights){
+				if(selectedKnights[userId] && selectedKnights[userId].id === member.id){
+					selectedKnights[userId] = null;
+				}
+			}
+		}
+		if( hadRoleBeforeLord){
+			try{
+				const guild = await client.guilds.fetch(process.env.GUILDID);
+				lords = guild.members.cache.filter((member) =>
+					member.roles.cache.has(process.env.ROLEID_LORD)
+				);
+				lordsSize = lords.size;
+				eventEmitter.emit("UpdateLordSize", lordsSize);
+				if(lordsSize < MinimumLordSize && !xpThresholdLordOpen){
+					xpThresholdLordOpen  = true;
+					eventEmitter.emit("OpenXpThresholdLord");
+				}
+				
+				if(lordsSize < MinimumLordSizeForElection && disableElection === false){
+					disableElection = true;
+					if(!electionActive && lastMessageId) await updateMessage(client,lastMessageId);
+				}
+				
+			}catch(err){
+				showErrorMsg(err);
+			}
+		}
+
+		if (electionActive && hadRoleBeforeLord ) {
+			if(electionParticipants.has(member.id)){
+				try {
+					selectedElectionCandidates[member.id] = null;
+					electionParticipants.delete(member.id);
+
+					const participationRate = electionParticipants.size / lordsSize;
+
+					if (member.id === electionInitiatorId) {
+						const msg = `The initiator ${electionInitiator} is no longer a lord.`;
+						eventEmitter.emit("NotifyLordChannel", msg);
+						electionActive = false;
+						await ceaseElection(client, lastMessageId);
+						return;
+					} else if (
+						electionType === "Noble" &&
+						participationRate >= NobleLordElectionSuccessThreadshold
+					) {
+						ceaseElection(client, lastMessageId);
+						return;
+					} else if (
+						electionType === "Lord" &&
+						participationRate >= LordKingElectionSuccessThreadshold
+					) {
+						ceaseElection(client, lastMessageId);
+						return;
+					} else {
+						await updateMessage(client, lastMessageId);
+					}
+				} catch (err) {
+					showErrorMsg(err);
+				}
+			}
+		}
+		if (electionActive && (hadRoleBeforeNoble || hadRoleBeforeLord)) {
+			if(member.id === electionCandidateId){
+				try {
+					const msg = `The role of the candidate @${electionCandidate} has been changed.`;
+					eventEmitter.emit("NotifyLordChannel", msg);
+					electionActive = false;
+					await ceaseElection(client, lastMessageId);
+					return;
+				} catch (e) {
+					showErrorMsg(e);
+				}
+			}
+		}
+		if (electionActive && hadRoleBeforeLord) {
+			if(!member.id === electionCandidateId && !electionParticipants.has(member.id)){	
+				try {
+					const participationRate = electionParticipants.size / lordsSize;
+					if (
+						electionType === "Noble" &&
+						participationRate >= NobleLordElectionSuccessThreadshold
+					) {
+						ceaseElection(client, lastMessageId);
+					} else if (
+						electionType === "Lord" &&
+						participationRate >= LordKingElectionSuccessThreadshold
+					) {
+						ceaseElection(client, lastMessageId);
+					} else {
+						updateMessage(client, lastMessageId);
+					}
+				} catch (e) {
+					showErrorMsg(e);
+				}
+			}
+		}
+
+	});
 	client.on("guildMemberUpdate", async (oldMember, newMember) => {
 		const hadRoleBeforeNoble = oldMember.roles.cache.has(
 			process.env.ROLEID_NOBLE
@@ -122,7 +243,7 @@ async function setupLordBotEvents(client, lastMessageId) {
 					if(!electionActive && lastMessageId) await updateMessage(client,lastMessageId);
 				}
 				if(lordsSize >= MinimumLordSizeForElection && disableElection === true){
-					disableElection = true;
+					disableElection = false;
 					if(!electionActive && lastMessageId) await updateMessage(client,lastMessageId);
 				}
 			}catch(err){

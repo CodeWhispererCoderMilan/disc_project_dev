@@ -70,6 +70,86 @@ function showErrorMsg(err) {
 }
 
 async function setupKingBotEvents(client, lastMessageId) {
+	client.on("guildMemberRemove", async (member) => {
+		const hadRoleBeforeKing = member.roles.cache.has(
+			process.env.ROLEID_KING
+		);
+		const hadRoleBeforeKnight = member.roles.cache.has(
+			process.env.ROLEID_KNIGHT
+		);
+		const hadRoleBeforePeasant = member.roles.cache.has(process.env.ROLEID_PEASANT);
+		const hadRoleBeforeScholar = member.roles.cache.has(process.env.ROLEID_SCHOLAR);
+		const hadRoleBeforeMerchant = member.roles.cache.has(process.env.ROLEID_MERCHANT);
+		const hadRoleBeforeNoble = member.roles.cache.has(process.env.ROLEID_NOBLE);
+		const hadRoleBeforeLord = member.roles.cache.has(process.env.ROLEID_LORD);
+	
+		if (siegeActive && hadRoleBeforeKing) {
+			if (member.id === siegeInitiatorId) {
+				const message = "The role of the initiator has been changed.";
+				eventEmitter.emit("NotifyKingChannel", message);
+				eventEmitter.emit("siegeResult", message, "early");
+				await resetComponents(client, lastMessageId);
+			} else if (member.id === siegeTargetId) {
+				const message = "The role of the target has been changed.";
+				eventEmitter.emit("NotifyKingChannel", message);
+				eventEmitter.emit("siegeResult", message, "early");
+				await resetComponents(client, lastMessageId);
+			}
+		}	
+
+		if( hadRoleBeforeKing || hadRoleBeforeKnight ){
+			try{
+				if(hadRoleBeforeKing ){
+					const guild = await client.guilds.fetch(process.env.GUILDID);
+					kings = guild.members.cache.filter((member) =>
+						member.roles.cache.has(process.env.ROLEID_KINGS)
+					);
+					kingSize = kings.size;
+					eventEmitter.emit("UpdateKingSize", kingSize);
+					if(kingSize < MinimumKingSize && !xpThresholdKingOpen){
+						xpThresholdKingOpen  = true;
+						eventEmitter.emit("OpenXpThresholdKing");
+					}
+
+				}
+				if(hadRoleBeforeKnight ){
+					const guild = await client.guilds.fetch(process.env.GUILDID);
+					knights = guild.members.cache.filter((member) =>
+						member.roles.cache.has(process.env.ROLEID_KNIGHT)
+					);
+					numberOfKnights = knights.size;
+				}	
+				if(numberOfKnights/kingSize > MinimumKnightToKingSiegeRatio && disableSiege === true){
+					disableSiege = false;
+				}
+				if(numberOfKnights/kingSize < MinimumKnightToKingSiegeRatio && disableSiege === false){
+					disableSiege = true;
+				}
+				if(!siegeActive && (hadRoleBeforeKing)) 
+					await updateMessage(client, lastMessageId);
+			}catch(err){
+				showErrorMsg(err);
+			}
+		}
+		if ( hadRoleBeforePeasant || hadRoleBeforeScholar || hadRoleBeforeMerchant||
+			hadRoleBeforeNoble || hadRoleBeforeKnight ||hadRoleBeforeLord) {
+			for(let userId in selectedWritHumans){
+				if(selectedWritHumans[userId] && selectedWritHumans[userId].id === member.id){
+					selectedWritHumans[userId] = null;
+				}
+			}
+			if(hadRoleBeforeKnight){
+				for(let userId in selectedKnights){
+					if(selectedKnights[userId] && selectedKnights[userId].id == member.id){
+						selectedKnights[userId] = null;
+					}
+				}
+			}
+			await updateMessage(client, lastMessageId);
+		}
+
+	});
+
 	client.on("guildMemberUpdate", async (oldMember, newMember) => {
 		const hadRoleBeforeKing = oldMember.roles.cache.has(
 			process.env.ROLEID_KING
@@ -126,7 +206,7 @@ async function setupKingBotEvents(client, lastMessageId) {
 				if(numberOfKnights/kingSize > MinimumKnightToKingSiegeRatio && disableSiege === true){
 					disableSiege = false;
 				}
-				if(numberOfKnights/kingSize > MinimumKnightToKingSiegeRatio && disableSiege === false){
+				if(numberOfKnights/kingSize < MinimumKnightToKingSiegeRatio && disableSiege === false){
 					disableSiege = true;
 				}
 				if(!siegeActive && (hasRoleNowKing || hadRoleBeforeKing)) 
@@ -147,7 +227,6 @@ async function setupKingBotEvents(client, lastMessageId) {
 			newMember.roles.cache.has(process.env.ROLEID_NOBLE) ||
 			newMember.roles.cache.has(process.env.ROLEID_LORD) ||
 			hasRoleNowKnight) {
-			await updateMessage(client, lastMessageId);
 			for(let userId in selectedWritHumans){
 				if(selectedWritHumans[userId] && selectedWritHumans[userId].id === oldMember.id){
 					selectedWritHumans[userId] = null;
@@ -160,6 +239,7 @@ async function setupKingBotEvents(client, lastMessageId) {
 					}
 				}
 			}
+			await updateMessage(client, lastMessageId);
 		}
 
 	});

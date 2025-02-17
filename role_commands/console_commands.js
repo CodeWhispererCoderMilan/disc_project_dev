@@ -91,19 +91,19 @@ function showErrorMsg(err) {
 async function setupConsoleBotEvents(client) {
 	eventEmitter.on("UpdateNobleSize", async (size)=>{
 		nobleSize = size;
-		await handleHigherRoleSizeChange();
+		await handleHigherRoleSizeChange(client);
 	});				
 	eventEmitter.on("UpdateLordSize", async (size)=>{
 		lordSize = size;
-		await handleHigherRoleSizeChange();
+		await handleHigherRoleSizeChange(client);
 	});
 	eventEmitter.on("UpdateKingSize", async (size)=>{
 		kingSize = size;
-		await handleHigherRoleSizeChange();
+		await handleHigherRoleSizeChange(client);
 	});
 	eventEmitter.on("UpdateKnightSize", async (size)=>{
 		knightSize = size;
-		await handleHigherRoleSizeChange();
+		await handleHigherRoleSizeChange(client);
 	});
 
 	eventEmitter.on("startXpBoost", async () => {
@@ -182,12 +182,12 @@ async function setupConsoleBotEvents(client) {
 			hasRoleNowMerchant || hadRoleBeforeMerchant ||
 			hasRoleNowKnight || hadRoleBeforeKnight){
 				
-				await handleHigherRoleSizeChange();
+				await handleHigherRoleSizeChange(client);
 		}
 
 	});
 	client.on("guildMemberRemove", async (member) => {
-		await handleHigherRoleSizeChange();
+		await handleHigherRoleSizeChange(client);
 		const isFesteredByMaggot = await CacheIsPoopBeingFestered(member.id);
 		if (isFesteredByMaggot) {
 			await DBClearFestering(isFesteredByMaggot.maggotId);
@@ -212,7 +212,7 @@ async function setupConsoleBotEvents(client) {
 	});
 	client.on("guildMemberAdd", async (member) => {
 		try {
-			await handleHigherRoleSizeChange();
+			await handleHigherRoleSizeChange(client);
 			await member.roles.add(
 				member.guild.roles.cache.find((r) => r.name === "Poop")
 			);
@@ -438,7 +438,7 @@ async function setupConsoleBotEvents(client) {
 
 
 }
-async function handleHigherRoleSizeChange(){
+async function handleHigherRoleSizeChange(client){
 	
 	let higherRoleSize = nobleSize + lordSize + kingSize;
 	const guild = await client.guilds.cache.get(process.env.GUILD_ID);

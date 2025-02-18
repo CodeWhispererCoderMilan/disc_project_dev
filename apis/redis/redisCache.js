@@ -21,7 +21,10 @@ function showErrorMsg(err) {
 }
 
 async function initializeRedis() {
-  client = redis.createClient();
+const url = process.env.REDIS_URL || 'redis://localhost:6379';
+  client = redis.createClient({
+	  url: url
+  });
   client.on("connect", async () => {
     if (!isInitialConnection) {
       console.log("Redis reconnected, synchronizing cache...");

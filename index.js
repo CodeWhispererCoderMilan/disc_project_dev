@@ -3,19 +3,60 @@ const { initializeRedis, closeRedisConnection } = require ('./apis/redis/redisCa
 const { CacheDataFromDB } = require ('./apis/firebase/querys.js');
 const { initializeBots } = require ('./botSetup.js');
 
+
+let isShuttingDown = false;
+let botClients = [];
 // Initialize the Redis client,cache DB and initialize all bots at the start of your application
-(async () => {
+async function startApp() {
 	try {
 		await initializeRedis();
 		await CacheDataFromDB();
-		initializeBots();
+		botClients= await initializeBots();
 		console.log('Application startup sequence complete. redis cache initialized with DB values, bot setup complete');
 	} catch (error) {
 		console.error('Initialization error:', error);
 		process.exit(1); 
 	}
-})();
-// node proccesses
-// Listening for app termination/restart events
-process.on('SIGINT', async ()=>{ await closeRedisConnection(); }); // Handles Ctrl+C
-process.on('SIGTERM',async ()=>{ await closeRedisConnection(); }); // Handles "terminate" signal
+}
+async function gracefulShutdown() {
+    if (isShuttingDown) return;
+    isShuttingDown = true;
+    
+    console.log('Graceful shutdown initiated...');
+    
+    // Destroy all bot clients
+    for (const client of botClients) {
+        if (client) {
+            try {
+                await client.destroy();
+                console.log(`Bot ${client.user.tag} successfully disconnected`);
+            } catch (err) {
+                console.error(`Error disconnecting bot ${client?.user?.tag}:`, err);
+            }
+        }
+    }
+
+    // Close Redis connection
+    try {
+        await closeRedisConnection();
+        console.log('Redis connection closed');
+    } catch (err) {
+        console.error('Error closing Redis connection:', err);
+    }
+
+    // Exit process
+    process.exit(0);
+}
+startApp();
+
+// Handle shutdown signals
+process.on('SIGTERM', gracefulShutdown);
+process.on('SIGINT', gracefulShutdown);
+process.on('uncaughtException', async (error) => {
+    console.error('Uncaught Exception:', error);
+    await gracefulShutdown();
+});
+process.on('unhandledRejection', async (reason, promise) => {
+    console.error('Unhandled Rejection at:', promise, 'reason:', reason);
+    await gracefulShutdown();
+});

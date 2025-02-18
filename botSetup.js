@@ -58,7 +58,7 @@ const {
 } = require("./role_commands/emperor_commands");
 
 
-function createBot(token, channelId, setupEventsFunction, messageCommands, isConsole) {
+async function createBot(token, channelId, setupEventsFunction, messageCommands, isConsole) {
 	const client = isConsole ? 
 		new Client({
 			intents: [
@@ -74,135 +74,140 @@ function createBot(token, channelId, setupEventsFunction, messageCommands, isCon
 				GatewayIntentBits.GuildMembers,
 			],
 		});
+	await new Promise((resolve, reject) => {
+		client.once("ready", async () => {
+			try{
+				// Fetch the channel and delete all previous messages
+				const channel = client.channels.cache.get(channelId);
+				if (!channel) {
+					console.error(`Failed to fetch channel with ID: ${channelId}`);
+					return;
+				}
+				let shouldContinue = true;
+				while (shouldContinue) {
+					const messages = await channel.messages.fetch({ limit: 1 });
+					const botMessages = messages.filter(
+						(msg) => msg.author.id === client.user.id
+					);
+					if (botMessages.size === 0) {
+						shouldContinue = false;
+						console.log(`${client.user.tag}: No more messages to delete.`);
+						break;
+					}
 
-	client.once("ready", async () => {
-		// Fetch the channel and delete all previous messages
-		const channel = client.channels.cache.get(channelId);
-		if (!channel) {
-			console.error(`Failed to fetch channel with ID: ${channelId}`);
-			return;
-		}
-		let shouldContinue = true;
-		while (shouldContinue) {
-			const messages = await channel.messages.fetch({ limit: 1 });
-			const botMessages = messages.filter(
-				(msg) => msg.author.id === client.user.id
-			);
-			if (botMessages.size === 0) {
-				shouldContinue = false;
-				console.log(`${client.user.tag}: No more messages to delete.`);
-				break;
+					for (const message of botMessages.values()) {
+						await message.delete().catch(console.error);
+					}
+
+					// Safety delay to respect rate limits - adjust as needed
+					await new Promise((resolve) => setTimeout(resolve, 1000));
+				}
+				const sentMessage = await messageCommands(client);
+				let lastMessageId = sentMessage.id;
+				await setupEventsFunction(client, lastMessageId);
+				if(isConsole) eventEmitter.emit("startXpBoost");
+				resolve();
+			} catch (err) {
+				console.error(err);
+				reject(err);
 			}
+		});
 
-			for (const message of botMessages.values()) {
-				await message.delete().catch(console.error);
-			}
-
-			// Safety delay to respect rate limits - adjust as needed
-			await new Promise((resolve) => setTimeout(resolve, 1000));
-		}
-		try {
-			const sentMessage = await messageCommands(client);
-			let lastMessageId = sentMessage.id;
-			await setupEventsFunction(client, lastMessageId);
-			if(isConsole) eventEmitter.emit("startXpBoost");
-		} catch (err) {
-			console.error(err);
-		}
+		client.login(token);
 	});
-
-	client.login(token);
-
 	return client;
 }
 
-function initializeBots() {
-	createBot(
+async function initializeBots() {
+	const clients = [];
+
+	clients.push(await createBot(
 		process.env.TOKEN_CONSOLE,
 		process.env.CHANNELIDCONSOLE,
 		setupConsoleBotEvents,
 		messageConsoleCommands,
 		true
-	);
+	));
 
-	createBot(
+	clients.push(await createBot(
 		process.env.TOKEN_POOP,
 		process.env.CHANNELIDPOOP,
 		setupPoopBotEvents,
 		messagePoopCommands
-	);
-	createBot(
+	));
+	clients.push(await createBot(
 		process.env.TOKEN_MAGGOT,
 		process.env.CHANNELIDMAGGOT,
 		setupMaggotBotEvents,
 		messageMaggotCommands
-	);
-	createBot(
+	));
+	clients.push(await createBot(
 		process.env.TOKEN_COCKROACH,
 		process.env.CHANNELIDCOCKROACH,
 		setupCockroachBotEvents,
 		messageCockroachCommands
-	);
-	createBot(
+	));
+	clients.push(await createBot(
 		process.env.TOKEN_RAT,
 		process.env.CHANNELIDRAT,
 		setupRatBotEvents,
 		messageRatCommands
-	);
-	createBot(
+	));
+	clients.push(await createBot(
 		process.env.TOKEN_SUBHUMAN,
 		process.env.CHANNELIDSUBHUMAN,
 		setupSubhumanBotEvents,
 		messageSubhumanCommands
-	);
-	createBot(
+	));
+	clients.push(await createBot(
 		process.env.TOKEN_PEASANT,
 		process.env.CHANNELIDPEASANT,
 		setupPeasantBotEvents,
 		messagePeasantCommands
-	);
-	createBot(
+	));
+	clients.push(await createBot(
 		process.env.TOKEN_MERCHANT,
 		process.env.CHANNELIDMERCHANT,
 		setupMerchantBotEvents,
 		messageMerchantCommands
-	);
-	createBot(
+	));
+	clients.push(await createBot(
 		process.env.TOKEN_SCHOLAR,
 		process.env.CHANNELIDSCHOLAR,
 		setupScholarBotEvents,
 		messageScholarCommands
-	);
-	createBot(
+	));
+	clients.push(await createBot(
 		process.env.TOKEN_KNIGHT,
 		process.env.CHANNELIDKNIGHT,
 		setupKnightBotEvents,
 		messageKnightCommands
-	);
-	createBot(
+	));
+	clients.push(await createBot(
 		process.env.TOKEN_NOBLE,
 		process.env.CHANNELIDNOBLE,
 		setupNobleBotEvents,
 		messageNobleCommands
-	);
-	createBot(
+	));
+	clients.push(await createBot(
 		process.env.TOKEN_LORD,
 		process.env.CHANNELIDLORD,
 		setupLordBotEvents,
 		messageLordCommands
-	);
-	createBot(
+	));
+	clients.push(await createBot(
 		process.env.TOKEN_KING,
 		process.env.CHANNELIDKING,
 		setupKingBotEvents,
 		messageKingCommands
-	);
-	createBot(
+	));
+	clients.push(await createBot(
 		process.env.TOKEN_EMPEROR,
 		process.env.CHANNELIDEMPEROR,
 		setupEmperorBotEvents,
 		messageEmperorCommands
-	);
+	));
+	return clients;
 }
 
 module.exports = { initializeBots };

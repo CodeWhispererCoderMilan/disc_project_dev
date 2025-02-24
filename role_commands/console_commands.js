@@ -89,21 +89,21 @@ function showErrorMsg(err) {
 }
 
 async function setupConsoleBotEvents(client) {
-	eventEmitter.on("UpdateNobleSize", async (size)=>{
+	eventEmitter.on("UpdateNobleSize", async (size, member)=>{
 		nobleSize = size;
-		await handleHigherRoleSizeChange(client);
+		await handleHigherRoleSizeChange(member);
 	});				
-	eventEmitter.on("UpdateLordSize", async (size)=>{
+	eventEmitter.on("UpdateLordSize", async (size, member)=>{
 		lordSize = size;
-		await handleHigherRoleSizeChange(client);
+		await handleHigherRoleSizeChange(member);
 	});
-	eventEmitter.on("UpdateKingSize", async (size)=>{
+	eventEmitter.on("UpdateKingSize", async (size, member)=>{
 		kingSize = size;
-		await handleHigherRoleSizeChange(client);
+		await handleHigherRoleSizeChange(member);
 	});
-	eventEmitter.on("UpdateKnightSize", async (size)=>{
+	eventEmitter.on("UpdateKnightSize", async (size, member)=>{
 		knightSize = size;
-		await handleHigherRoleSizeChange(client);
+		await handleHigherRoleSizeChange(member);
 	});
 
 	eventEmitter.on("startXpBoost", async () => {
@@ -182,12 +182,12 @@ async function setupConsoleBotEvents(client) {
 			hasRoleNowMerchant || hadRoleBeforeMerchant ||
 			hasRoleNowKnight || hadRoleBeforeKnight){
 				
-				await handleHigherRoleSizeChange(client);
+				await handleHigherRoleSizeChange(oldMember);
 		}
 
 	});
 	client.on("guildMemberRemove", async (member) => {
-		await handleHigherRoleSizeChange(client);
+		await handleHigherRoleSizeChange(member);
 		const isFesteredByMaggot = await CacheIsPoopBeingFestered(member.id);
 		if (isFesteredByMaggot) {
 			await DBClearFestering(isFesteredByMaggot.maggotId);
@@ -212,7 +212,7 @@ async function setupConsoleBotEvents(client) {
 	});
 	client.on("guildMemberAdd", async (member) => {
 		try {
-			await handleHigherRoleSizeChange(client);
+			await handleHigherRoleSizeChange(member);
 			await member.roles.add(
 				member.guild.roles.cache.find((r) => r.name === "Poop")
 			);
@@ -438,11 +438,10 @@ async function setupConsoleBotEvents(client) {
 
 
 }
-async function handleHigherRoleSizeChange(client){
+async function handleHigherRoleSizeChange(member){
 	
 	let higherRoleSize = nobleSize + lordSize + kingSize;
-	const guild = await client.guilds.cache.get(process.env.GUILD_ID);
-	const playerCount = guild.memberCount - 2;
+	const playerCount = member.guild.memberCount - 2;
 
 	if (((higherRoleSize >= MinimumHigherRoleSizeForRevolution) &&
 		(higherRoleSize/playerCount >=MinimumHigherRoleRatioForRevolution)) &&

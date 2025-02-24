@@ -105,7 +105,7 @@ async function setupKingBotEvents(client, lastMessageId) {
 						member.roles.cache.has(process.env.ROLEID_KINGS)
 					);
 					kingSize = kings.size;
-					eventEmitter.emit("UpdateKingSize", kingSize);
+					eventEmitter.emit("UpdateKingSize", kingSize, member);
 					if(kingSize < MinimumKingSize && !xpThresholdKingOpen){
 						xpThresholdKingOpen  = true;
 						eventEmitter.emit("OpenXpThresholdKing");
@@ -186,7 +186,7 @@ async function setupKingBotEvents(client, lastMessageId) {
 						member.roles.cache.has(process.env.ROLEID_KINGS)
 					);
 					kingSize = kings.size;
-					eventEmitter.emit("UpdateKingSize", kingSize);
+					eventEmitter.emit("UpdateKingSize", kingSize, newMember);
 					if(kingSize < MinimumKingSize && !xpThresholdKingOpen){
 						xpThresholdKingOpen  = true;
 						eventEmitter.emit("OpenXpThresholdKing");

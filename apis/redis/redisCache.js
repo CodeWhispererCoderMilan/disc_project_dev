@@ -97,6 +97,10 @@ async function CacheGetUserXP(userId) {
 
 async function CacheSetFestering(maggotId, poopId, endTime) {
 	try {
+		if(!maggotId || !poopId || !endTime) 
+			throw new Error('parameters undefined in Set Festering');
+		if(endTime <= Date.now()) 
+			throw new Error('Invalid endTime passed to CacheSetFestering');
 		await client.set(`festering:${maggotId}`, poopId);
 		const startTime = endTime - FesteringDuration;
 		await CacheSetFesterCooldown(maggotId, startTime);
@@ -437,7 +441,7 @@ async function CacheCheckAndUpdateUserWrits(userId) {
 			console.log(`No writs found for userId: ${userId}`);
 			return false;
 		}
-
+		let writCount = allKeys.length;
 		console.log(`Total unique keys found: ${allKeys.length}`);
 
 		const multi = client.multi();
@@ -472,11 +476,11 @@ async function CacheCheckAndUpdateUserWrits(userId) {
 
 		if (updatedCount > 0) {
 			await updatedMulti.exec();
-			console.log(`Updated ${updatedCount} writs for userId: ${userId}`);
+			console.log(`Updated ${updatedCount}/${writCount} writs for userId: ${userId}`);
 			return true;
 		} else {
-			console.log(`No writs needed updating for userId: ${userId}`);
-			return false;
+			console.log(`No writs needed updating for userId: ${userId}, ${writCount} writs found`);
+			return true;
 		}
 	} catch (err) {
 		console.error("Error checking and updating user writs:", err);

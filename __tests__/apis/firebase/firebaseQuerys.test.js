@@ -37,13 +37,59 @@ jest.mock('../../../apis/redis/redisCache', () => ({
   CacheGetEndows: jest.fn().mockResolvedValue([])
 }));
 
-// Mock the eventEmitter
-jest.mock('../../../functions/eventEmitter', () => ({
-  eventEmitter: {
-    emit: jest.fn(),
-    on: jest.fn()
-  }
+// Mock the game_config.json
+jest.mock('../../../game_config.json', () => ({
+  roleXpThresholds: {
+    'Poop': 370,
+    'Maggot': 370,
+    'Cockroach': 740,
+    'Rat': 960,
+    'Sub-human': 1050,
+    'Peasant': 1350,
+    'Scholar': 1600,
+    'Merchant': 1850,
+    'Knight': 2100,
+    'Noble': 2400,
+    'Lord': 2900,
+    'King': 3500,
+    'Emperor': 4000
+  },
+  FesteringDuration: 120000,
+  XpBoostPoop: 40,
+  XpBoostMaggot: 60,
+  XpBoostCoockroach: 80,
+  XpBoostRat: 100,
+  XpBoostSubhuman: 120,
+  XpBoostPeasant: 160,
+  XpBoostScholar: 200,
+  XpBoostMerchant: 240,
+  XpBoostKnight: 300,
+  XpBoostNoble: 360,
+  XpBoostLord: 420,
+  XpBoostKing: 500,
+  XpBoostEmperor: 600
 }));
+
+// Mock the eventEmitter
+jest.mock('../../../functions/eventEmitter', () => {
+  // Create a mock event emitter with on and emit functions
+  const eventHandlers = {};
+  
+  return {
+    eventEmitter: {
+      emit: jest.fn((event, ...args) => {
+        const handlers = eventHandlers[event] || [];
+        handlers.forEach(handler => handler(...args));
+      }),
+      on: jest.fn((event, handler) => {
+        if (!eventHandlers[event]) {
+          eventHandlers[event] = [];
+        }
+        eventHandlers[event].push(handler);
+      })
+    }
+  };
+});
 
 // Import the modules we're testing
 const { 
@@ -73,6 +119,7 @@ const {
   CacheGetEndows
 } = require('../../../apis/redis/redisCache');
 const { eventEmitter } = require('../../../functions/eventEmitter');
+const gameConfig = require('../../../game_config.json');
 
 describe('Firebase Query Functions', () => {
   beforeEach(() => {
@@ -250,6 +297,115 @@ describe('Firebase Query Functions', () => {
       expect(db.ref).toHaveBeenCalledWith('users/merchant123');
       expect(_mockSet).toHaveBeenCalledWith(550);
     });
+    
+    // New test for XP threshold upgrade when role advancement is available
+    test('upgrades user role when XP exceeds threshold and role upgrade is available', async () => {
+      // Mock user data
+      _mockOnce.mockResolvedValueOnce({
+        val: () => ({ XP: 350, role: 'Poop' }),
+        exists: () => true
+      });
+      
+      const userId = 'user123';
+      const xpChange = 50; // This will take user above the Poop->Maggot threshold (370)
+      const client = {};
+      
+      await DBUpdateXP(userId, xpChange, client);
+      
+      // XP should be set to (350 + 50 - 370) = 30 (remainder after upgrade)
+      expect(_mockSet).toHaveBeenCalledWith(30);
+      
+      // Should emit changeRole event with new role
+      expect(eventEmitter.emit).toHaveBeenCalledWith('changeRole', userId, 'Maggot');
+    });
+    
+    // New test for XP threshold when role advancement is blocked
+    test('does not upgrade user role when upgrade path is closed', async () => {
+      // Mock user data for Knight role
+      _mockOnce.mockResolvedValueOnce({
+        val: () => ({ XP: 2080, role: 'Knight' }),
+        exists: () => true
+      });
+      
+      // Trigger the event to close Knight -> Noble progression
+      eventEmitter.emit('CloseXpThresholdNoble');
+      
+      const userId = 'user123';
+      const xpChange = 100; // Would exceed Knight threshold (2100) if upgrade was available
+      const client = {};
+      
+      await DBUpdateXP(userId, xpChange, client);
+      
+      // XP should just accumulate instead of triggering a role change
+      expect(_mockSet).toHaveBeenCalledWith(2180);
+      
+      // Should NOT emit changeRole event
+      expect(eventEmitter.emit).not.toHaveBeenCalledWith('changeRole', userId, 'Noble');
+    });
+    
+    // Test for reactivating role progression
+    test('enables role upgrade after reopening progression path', async () => {
+      // First close the path
+      eventEmitter.emit('CloseXpThresholdNoble');
+      
+      // Mock first user data check - upgrade blocked
+      _mockOnce.mockResolvedValueOnce({
+        val: () => ({ XP: 2380, role: 'Knight' }),
+        exists: () => true
+      });
+      
+      const userId = 'user123';
+      const xpChange = 50;
+      const client = {};
+      
+      // First update with closed progression
+      await DBUpdateXP(userId, xpChange, client);
+      // XP just accumulates
+      expect(_mockSet).toHaveBeenCalledWith(2430);
+      expect(eventEmitter.emit).not.toHaveBeenCalledWith('changeRole', userId, 'Noble');
+      
+      // Clear mocks for second test
+      jest.clearAllMocks();
+      
+      // Now reopen the path
+      eventEmitter.emit('OpenXpThresholdNoble');
+      
+      // Mock second user data check - upgrade now allowed
+      _mockOnce.mockResolvedValueOnce({
+        val: () => ({ XP: 2430, role: 'Knight' }),
+        exists: () => true
+      });
+      
+      // Second update with open progression
+      await DBUpdateXP(userId, 0, client); // Even a 0 XP update should trigger role check
+      
+      // Since XP is already above threshold, should trigger role change
+      expect(eventEmitter.emit).toHaveBeenCalledWith('changeRole', userId, 'Noble');
+      // New XP should be remainder after upgrade
+      expect(_mockSet).toHaveBeenCalledWith(30); // 2430 - 2400
+    });
+    
+    // Test for multiple role upgrades when far exceeding thresholds
+    test('handles multiple role upgrades if XP gain far exceeds thresholds', async () => {
+      // Mock user data
+      _mockOnce.mockResolvedValueOnce({
+        val: () => ({ XP: 360, role: 'Poop' }),
+        exists: () => true
+      });
+      
+      const userId = 'user123';
+      const xpChange = 800; // Enough to go from Poop through Maggot (370) and into Cockroach
+      const client = {};
+      
+      await DBUpdateXP(userId, xpChange, client);
+      
+      // User should skip through Maggot and be set to Cockroach
+      expect(eventEmitter.emit).toHaveBeenCalledWith('changeRole', userId, 'Cockroach');
+      
+      // XP should be set to remainder after upgrades
+      // (360 + 800 - 370 - 370) = 420
+      expect(_mockSet).toHaveBeenCalledWith(420);
+    });
   });
 
   describe('DBSetRole', () => {
@@ -323,6 +479,111 @@ describe('Firebase Query Functions', () => {
       // Check database calls
       expect(db.ref).toHaveBeenCalledWith('LastXpBoost');
       expect(_mockSet).toHaveBeenCalledWith(timestamp);
+    });
+  });
+  
+  describe('DBBoostXPForAllUsers', () => {
+    test('applies role-specific XP boost amounts to users', async () => {
+      // Mock users data with various roles
+      _mockOnce.mockResolvedValueOnce({
+        val: () => ({
+          'user1': { XP: 100, role: 'Poop' },
+          'user2': { XP: 200, role: 'Maggot' },
+          'user3': { XP: 300, role: 'Peasant' },
+          'user4': { XP: 400, role: 'Knight' },
+          'user5': { XP: 500, role: 'Emperor' }
+        })
+      });
+      
+      // Mock individual user data for the XP updates
+      // Need to mock 5 calls to DBUpdateXP which means 5 user fetches
+      _mockOnce.mockResolvedValueOnce({
+        val: () => ({ XP: 100, role: 'Poop' }),
+        exists: () => true
+      });
+      _mockOnce.mockResolvedValueOnce({
+        val: () => ({ XP: 200, role: 'Maggot' }),
+        exists: () => true
+      });
+      _mockOnce.mockResolvedValueOnce({
+        val: () => ({ XP: 300, role: 'Peasant' }),
+        exists: () => true
+      });
+      _mockOnce.mockResolvedValueOnce({
+        val: () => ({ XP: 400, role: 'Knight' }),
+        exists: () => true
+      });
+      _mockOnce.mockResolvedValueOnce({
+        val: () => ({ XP: 500, role: 'Emperor' }),
+        exists: () => true
+      });
+      
+      const client = {};
+      const boostCount = 1;
+      
+      await DBBoostXPForAllUsers(boostCount, client);
+      
+      // Should fetch users
+      expect(db.ref).toHaveBeenCalledWith('users');
+      
+      // Should update each user with the correct role-specific boost amount
+      expect(db.ref).toHaveBeenCalledWith('users/user1/XP');
+      expect(_mockSet).toHaveBeenCalledWith(100 + gameConfig.XpBoostPoop);
+      
+      expect(db.ref).toHaveBeenCalledWith('users/user2/XP');
+      expect(_mockSet).toHaveBeenCalledWith(200 + gameConfig.XpBoostMaggot);
+      
+      expect(db.ref).toHaveBeenCalledWith('users/user3/XP');
+      expect(_mockSet).toHaveBeenCalledWith(300 + gameConfig.XpBoostPeasant);
+      
+      expect(db.ref).toHaveBeenCalledWith('users/user4/XP');
+      expect(_mockSet).toHaveBeenCalledWith(400 + gameConfig.XpBoostKnight);
+      
+      expect(db.ref).toHaveBeenCalledWith('users/user5/XP');
+      expect(_mockSet).toHaveBeenCalledWith(500 + gameConfig.XpBoostEmperor);
+      
+      // Should update the last boost time
+      expect(db.ref).toHaveBeenCalledWith('LastXpBoost');
+      expect(_mockSet).toHaveBeenCalledWith(expect.any(Number));
+    });
+    
+    test('applies multiple XP boosts correctly when recovering from downtime', async () => {
+      // Mock users data with various roles
+      _mockOnce.mockResolvedValueOnce({
+        val: () => ({
+          'user1': { XP: 100, role: 'Poop' },
+          'user2': { XP: 200, role: 'Knight' }
+        })
+      });
+      
+      // Mock individual user data for the XP updates
+      _mockOnce.mockResolvedValueOnce({
+        val: () => ({ XP: 100, role: 'Poop' }),
+        exists: () => true
+      });
+      _mockOnce.mockResolvedValueOnce({
+        val: () => ({ XP: 200, role: 'Knight' }),
+        exists: () => true
+      });
+      
+      const client = {};
+      const boostCount = 3; // Simulating 3 missed boosts
+      
+      await DBBoostXPForAllUsers(boostCount, client);
+      
+      // Should fetch users
+      expect(db.ref).toHaveBeenCalledWith('users');
+      
+      // Should update each user with the correct role-specific boost amount multiplied by boostCount
+      expect(db.ref).toHaveBeenCalledWith('users/user1/XP');
+      expect(_mockSet).toHaveBeenCalledWith(100 + (gameConfig.XpBoostPoop * 3));
+      
+      expect(db.ref).toHaveBeenCalledWith('users/user2/XP');
+      expect(_mockSet).toHaveBeenCalledWith(200 + (gameConfig.XpBoostKnight * 3));
+      
+      // Should update the last boost time
+      expect(db.ref).toHaveBeenCalledWith('LastXpBoost');
+      expect(_mockSet).toHaveBeenCalledWith(expect.any(Number));
     });
   });
 });

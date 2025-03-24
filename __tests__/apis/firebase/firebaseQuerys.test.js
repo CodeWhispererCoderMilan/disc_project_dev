@@ -403,8 +403,8 @@ describe('Firebase Query Functions', () => {
       expect(eventEmitter.emit).toHaveBeenCalledWith('changeRole', userId, 'Cockroach');
       
       // XP should be set to remainder after upgrades
-      // (360 + 800 - 370 - 370) = 420
-      expect(_mockSet).toHaveBeenCalledWith(420);
+      // (360 + 800 - 370) 
+      expect(_mockSet).toHaveBeenCalledWith(50);
     });
   });
 

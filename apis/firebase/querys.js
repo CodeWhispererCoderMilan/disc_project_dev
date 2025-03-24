@@ -181,20 +181,18 @@ async function DBUpdateXP(userId, xpChange, client) {
     if ((parseInt(userData.XP) + parseInt(xpChange)) < 0) {
         throw new Error(`User with id ${userId} does not have enough XP for xp change`);
     }
-    let newXP = (userData.XP || 0) + xpChange;
+    let newXP = (userData.XP || 0)  + xpChange;
     let newRole = userData.role;
     let remainderXP = newXP;
     // Determine if a role upgrade is needed
     const roles = Object.keys(roleXpThresholds);
     for (let i = 0; i < roles.length; i++) {
-        if (newRole === roles[i] && newXP >= roleXpThresholds[roles[i]]) {
-            if (i + 1 < roles.length && roleUpgradeAvailable[i]) {
+        if (newRole === roles[i] && newXP >= roleXpThresholds[roles[i+1]]) {
+            if (i + 1 < roles.length && roleUpgradeAvailable[i+1]) {
                 newRole = roles[i + 1];
-                remainderXP = newXP - roleXpThresholds[roles[i]]; // Calculate remainder XP
+                remainderXP = newXP - roleXpThresholds[roles[i+1]]; // Calculate remainder XP
                 newXP = remainderXP; // Reset XP to remainder
-            }
-	    if(!roleUpgradeAvailable[i+1]) break;
-            if (remainderXP < roleXpThresholds[roles[i + 1]]) break;
+            } else break;
         }
     }
 

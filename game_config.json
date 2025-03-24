@@ -98,7 +98,7 @@
 	"CoupKillKing": 0,
 	"CoupKillEmperor": 1,
 	"roleXpThresholds": {
-		"Poop": 370,
+		"Poop": 0,
 		"Maggot": 370,
 		"Cockroach": 740,
 		"Rat": 960,

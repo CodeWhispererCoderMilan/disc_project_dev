@@ -163,8 +163,12 @@ async function revokeAstralRealmAccess(member, client) {
 module.exports = {
 	scheduledXpBoost,
 	stopBoosting,
-	checkAndApplyMissedXPBoost,
 	buildSelectMenu,
 	sendInteractionReply,
 	grantAstralRealmAccess,
+	revokeAstralRealmAccess,
+	_test: { 
+		wait,
+		keepBoosting,
+	}
 };

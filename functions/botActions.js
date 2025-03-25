@@ -160,5 +160,6 @@ module.exports = {
 	buildSelectMenu,
 	sendInteractionReply,
 	grantAstralRealmAccess,
-	revokeAstralRealmAccess
+	revokeAstralRealmAccess,
+	checkAndApplyMissedXPBoost
 };

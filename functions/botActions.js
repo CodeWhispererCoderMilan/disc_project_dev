@@ -11,18 +11,12 @@ function wait(ms) {
 	});
 }
 
-//XP handling
 
-let keepBoosting = true;
-
-function stopBoosting() {
-	keepBoosting = false;
-}
 
 async function scheduledXpBoost(timeUntilNextBoost, client) {
 	console.log(`waiting ${timeUntilNextBoost / 1000} sec to sync XP boost`);
 	await wait(timeUntilNextBoost);
-	while (keepBoosting) {
+	while (true) {
 		console.log("Synced! Applying XP boost to all users...");
 		try {
 			await DBBoostXPForAllUsers(1, client);
@@ -161,14 +155,11 @@ async function revokeAstralRealmAccess(member, client) {
 }
 // Call this function at the end of your bot initialization process
 module.exports = {
+	wait,
 	scheduledXpBoost,
-	stopBoosting,
+	resumeBoosting,
 	buildSelectMenu,
 	sendInteractionReply,
 	grantAstralRealmAccess,
-	revokeAstralRealmAccess,
-	_test: { 
-		wait,
-		keepBoosting,
-	}
+	revokeAstralRealmAccess
 };

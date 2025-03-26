@@ -12,19 +12,20 @@ function wait(ms) {
 }
 
 
-
-async function scheduledXpBoost(timeUntilNextBoost, client) {
+async function scheduledXpBoost(timeUntilNextBoost, client, iterations = Infinity) {
+	
 	console.log(`waiting ${timeUntilNextBoost / 1000} sec to sync XP boost`);
 	await wait(timeUntilNextBoost);
-	while (true) {
+	let i = 0;
+	while (i<iterations) {
 		console.log("Synced! Applying XP boost to all users...");
 		try {
 			await DBBoostXPForAllUsers(1, client);
+			await wait(XpBoostInterval);
+			i++;
 		} catch (err) {
 			console.error(`error boosting XP for all users ${err.message}`);
-			// throw err;
 		}
-		await wait(XpBoostInterval);
 	}
 }
 

@@ -62,6 +62,7 @@ describe('Redis Cache Functions', () => {
 
     afterAll(async () => {
         // Close Redis connection after all tests
+	  await new Promise((resolve) => setTimeout(resolve, 1000));
         await closeRedisConnection();
     });
 

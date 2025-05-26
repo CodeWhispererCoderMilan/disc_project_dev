@@ -696,8 +696,9 @@ async function handleEmperorElectionEnd() {
 		const target = maxCandidates[0];
 		eventEmitter.emit("changeRole", target, "Emperor");
 		notifyRevolutionResult(
-			`Congrats! @${target.user.username} has been elected as a new emperor.`
+			`Congrats! @${target.user.username} has been elected as a new emperor. `
 		);
+		eventEmitter.emit("ElectionEnthronement", target.user.username);
 		eventEmitter.emit(`${struggleMethod}Finished`);
 		await resetRevolution();
 	} else if (maxCandidates.length > 1) {
@@ -833,7 +834,7 @@ async function handleAdminRoleChange(client, message, args) {
 		console.error("Error in handleAdminRoleChange:", error);
 		message.reply("An error occurred while processing the command.");
 	}
-} 
+}
 async function messageConsoleCommands(client) {
 	try {
 		const channel = await client.channels.fetch(process.env.CHANNELIDCONSOLE);

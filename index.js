@@ -3,7 +3,6 @@ const { initializeRedis, closeRedisConnection } = require ('./apis/redis/redisCa
 const { CacheDataFromDB } = require ('./apis/firebase/querys.js');
 const { initializeBots } = require ('./botSetup.js');
 
-
 let isShuttingDown = false;
 let botClients = [];
 // Initialize the Redis client,cache DB and initialize all bots at the start of your application

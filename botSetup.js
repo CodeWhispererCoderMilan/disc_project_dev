@@ -1,5 +1,6 @@
 const { GatewayIntentBits, Client } = require("discord.js");
 const { eventEmitter } = require("./functions/eventEmitter.js");
+
 const {
 	setupConsoleBotEvents,
 	messageConsoleCommands,
@@ -105,7 +106,10 @@ async function createBot(token, channelId, setupEventsFunction, messageCommands,
 				const sentMessage = await messageCommands(client);
 				let lastMessageId = sentMessage.id;
 				await setupEventsFunction(client, lastMessageId);
-				if(isConsole) eventEmitter.emit("startXpBoost");
+				if(isConsole){
+					await evaluateEmperorThreshold(client);
+					eventEmitter.emit("startXpBoost");
+				}
 				resolve();
 			} catch (err) {
 				console.error(err);
@@ -117,7 +121,23 @@ async function createBot(token, channelId, setupEventsFunction, messageCommands,
 	});
 	return client;
 }
+async function evaluateEmperorThreshold(client) {
+	const guild = await client.guilds.fetch(process.env.GUILDID);
+	await guild.members.fetch();
 
+	const emperorCount = guild.members.cache.filter((m) =>
+		m.roles.cache.has(process.env.ROLEID_EMPEROR)
+	).size;
+
+	const shouldOpen = emperorCount === 0;
+
+	if (shouldOpen) {
+		eventEmitter.emit("OpenXpThresholdEmperor");
+
+	} else {
+		eventEmitter.emit("CloseXpThresholdEmperor");
+	}
+}
 async function initializeBots() {
 	const clients = [];
 

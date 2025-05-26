@@ -10,6 +10,7 @@ const {
 	CacheGetWriterWrits,
 	CacheSetWrit
 } = require("../apis/redis/redisCache");
+
 const { 
 	ActionRowBuilder,
 	ButtonBuilder,
@@ -38,14 +39,14 @@ const {
 	ButtonLabelImperialWrit,
 	ButtonLabelShowWrits
 } = require("../game_config.json");
-const { DBUpdateXP } = require("../apis/firebase/querys");
+const { isEmperorThresholdOpen,DBUpdateXP } = require("../apis/firebase/querys");
 
 const content = TextEmperorMessageContent;
 let selectedKing = null;
 let selectedLord = null;
 let selectedKnight = null;
 let selectedHuman = null;
-let xpThresholdEmperorOpen = true;
+let xpThresholdEmperorOpen;
 
 function showErrorMsg(err) {
 	console.error("ERROR: emperor_commands.js", err);
@@ -61,14 +62,12 @@ async function setupEmperorBotEvents(client, lastMessageId) {
 			selectedHuman = null;
 			xpThresholdEmperorOpen = true;
 			eventEmitter.emit("OpenXpThresholdEmperor");
-			// Could also notify channels about emperor vacancy
 			eventEmitter.emit("EmperorVanished", member.username);		}
 			await updateMessage(client, lastMessageId);
 	});
 	client.on("guildMemberUpdate", async (oldMember, newMember) => {
 		let hasRoleEmperor = newMember.roles.cache.has(process.env.ROLEID_EMPEROR);
-		if( xpThresholdEmperorOpen === true && hasRoleEmperor){
-			xpThresholdEmperorOpen = false;
+		if( hasRoleEmperor && isEmperorThresholdOpen() ){
 			eventEmitter.emit("CloseXpThresholdEmperor");
 			eventEmitter.emit("FirstEnthronement", newMember.username);
 		}
@@ -368,6 +367,23 @@ async function setupEmperorBotEvents(client, lastMessageId) {
 			showErrorMsg(err);
 		}
 	});
+	eventEmitter.on("ElectionEnthronement", async (emperorUsername) => {
+		try {
+			selectedLord = null;
+			selectedKing = null;
+			selectedHuman = null;
+			selectedKnight = null;
+			const channel = await client.channels.fetch(process.env.CHANNELIDEMPEROR);
+			const tmpMessage = await channel.send(
+				`Hail our new Emperor! ${heirUsername}, youy have risen to the mountain spring in the spray of revolution, may your rule last 1000 years!`
+			);
+			setTimeout(() => {
+				tmpMessage.delete().catch(showErrorMsg);
+			}, 30000);
+		} catch (err) {
+			showErrorMsg(err);
+		}
+	});
 }
 function buildImperialWritModal(){
 	const modal = new ModalBuilder()
@@ -437,7 +453,7 @@ async function updateSelectMenu(client, lastMessageId) {
 		);
 		const actionRow_2 = new ActionRowBuilder()
 			.addComponents(await buildSelectMenu(
-				client, ["peasant", "scholar", "merchant","knight","noble","lord","king"],					"SelectHuman",TextImperialWritTargetSelectMenu));
+				client, ["peasant", "scholar", "merchant","knight","noble","lord","king"],"SelectHuman",TextImperialWritTargetSelectMenu));
 		const actionRow_3 = new ActionRowBuilder()
 			.addComponents(await buildSelectMenu(
 				client, ["knight"], "SelectKnight",TextImperialWritKnightSelectMenu
@@ -456,6 +472,26 @@ async function updateSelectMenu(client, lastMessageId) {
 	}
 }
 
+async function evaluateEmperorThreshold(client) {
+	const guild = await client.guilds.fetch(process.env.GUILDID);
+	await guild.members.fetch();
+
+	const emperorCount = guild.members.cache.filter((m) =>
+		m.roles.cache.has(process.env.ROLEID_EMPEROR)
+	).size;
+
+	const shouldOpen = emperorCount === 0;
+
+	if (shouldOpen) {
+		eventEmitter.emit("OpenXpThresholdEmperor");
+		xpThresholdEmperorOpen = true;
+		console.log("Emperor XP threshold: OPEN");
+	} else {
+		eventEmitter.emit("CloseXpThresholdEmperor");
+		xpThresholdEmperorOpen = false;
+		console.log("Emperor XP threshold: CLOSED");
+	}
+}
 async function messageEmperorCommands(client) {
 	let channel = null;
 	try {
@@ -504,4 +540,4 @@ async function messageEmperorCommands(client) {
 	}
 }
 
-module.exports = { setupEmperorBotEvents, messageEmperorCommands };
+module.exports = { setupEmperorBotEvents, messageEmperorCommands, evaluateEmperorThreshold };

@@ -20,7 +20,6 @@ const { CacheRemoveUser, CacheAddUser, CacheSetUserXP, CacheSetFestering, CacheC
 const { eventEmitter } = require('../../functions/eventEmitter.js');
 
 const roleUpgradeAvailable = Array(13).fill(true); //array that opens or blocks leveling up between roles.
-
 eventEmitter.on("CloseXpThresholdKnight", () => {
 	roleUpgradeAvailable[8] = false;
 });
@@ -52,6 +51,9 @@ eventEmitter.on("OpenXpThresholdEmperor", () => {
 	roleUpgradeAvailable[12] = true;
 });
 
+function isEmperorThresholdOpen() {
+	return roleUpgradeAvailable[12];
+}
 async function CacheDataFromDB() {
     try {
         await CacheAllUserXP();
@@ -421,4 +423,4 @@ async function DBGetActiveFestering() {
     return snapshot.val() || {};
 }
 
-module.exports = { CacheDataFromDB, CacheAllUserXP, CacheFesteringUsers , DBGetUsers, DBGetUserById, DBAddUser, DBRemoveUser, DBUpdateXP, DBSetRole, DBGetLastXPBoostTime, DBSetLastXPBoostTime, DBBoostXPForAllUsers, DBResetXP, DBSetFestering, DBGetActiveFestering, DBClearFestering, DBGetFestering };
+module.exports = { CacheDataFromDB, CacheAllUserXP, CacheFesteringUsers , DBGetUsers, DBGetUserById, DBAddUser, DBRemoveUser, DBUpdateXP, DBSetRole, DBGetLastXPBoostTime, DBSetLastXPBoostTime, DBBoostXPForAllUsers, DBResetXP, DBSetFestering, DBGetActiveFestering, DBClearFestering, DBGetFestering, isEmperorThresholdOpen };

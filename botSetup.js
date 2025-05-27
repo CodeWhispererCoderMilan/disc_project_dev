@@ -57,7 +57,8 @@ const {
 	setupEmperorBotEvents,
 	messageEmperorCommands,
 } = require("./role_commands/emperor_commands");
-
+const { isThresholdOpen } = require("./apis/firebase/querys.js");
+const {MinimumKingSize} = require("./game_config.json");
 
 async function createBot(token, channelId, setupEventsFunction, messageCommands, isConsole) {
 	const client = isConsole ? 
@@ -107,7 +108,7 @@ async function createBot(token, channelId, setupEventsFunction, messageCommands,
 				let lastMessageId = sentMessage.id;
 				await setupEventsFunction(client, lastMessageId);
 				if(isConsole){
-					await evaluateEmperorThreshold(client);
+					await evaluateThresholds(client);
 					eventEmitter.emit("startXpBoost");
 				}
 				resolve();
@@ -121,22 +122,68 @@ async function createBot(token, channelId, setupEventsFunction, messageCommands,
 	});
 	return client;
 }
-async function evaluateEmperorThreshold(client) {
+async function evaluateThresholds(client) {
 	const guild = await client.guilds.fetch(process.env.GUILDID);
 	await guild.members.fetch();
-
+	
 	const emperorCount = guild.members.cache.filter((m) =>
 		m.roles.cache.has(process.env.ROLEID_EMPEROR)
 	).size;
 
 	const shouldOpen = emperorCount === 0;
 
-	if (shouldOpen) {
+	if (shouldOpen && !isThresholdOpen(12)) {
 		eventEmitter.emit("OpenXpThresholdEmperor");
 
-	} else {
+	} else if(!shouldOpen && isThresholdOpen(12)) {
 		eventEmitter.emit("CloseXpThresholdEmperor");
-	}
+	}	
+	const kingCount = guild.members.cache.filter((m) =>
+		m.roles.cache.has(process.env.ROLEID_KING)
+	).size;
+
+
+	if (kingCount < MinimumKingSize && !isThresholdOpen(11)) {
+		eventEmitter.emit("OpenXpThresholdKing");
+
+	} else if (kingCount >= MinimumKingSize && isThresholdOpen(11)) {
+		eventEmitter.emit("CloseXpThresholdKing");
+	}	
+	const lordCount = guild.members.cache.filter((m) =>
+		m.roles.cache.has(process.env.ROLEID_LORD)
+	).size;
+
+
+	if (lordCount < MinimumLordSize && !isThresholdOpen(10)) {
+		eventEmitter.emit("OpenXpThresholdLord");
+
+	} else if (lordCount >= MinimumLordSize && isThresholdOpen(10)) {
+		eventEmitter.emit("CloseXpThresholdLord");
+	}	
+	const nobleCount = guild.members.cache.filter((m) =>
+		m.roles.cache.has(process.env.ROLEID_NOBLE)
+	).size;
+
+
+	if (nobleCount < MinimumNobleSize && !isThresholdOpen(10)) {
+		eventEmitter.emit("OpenXpThresholdNoble");
+
+	} else if (lordCount >= MinimumLordSize && isThresholdOpen(10)) {
+		eventEmitter.emit("CloseXpThresholdNoble");
+	}	
+
+	const knightCount = guild.members.cache.filter((m) =>
+		m.roles.cache.has(process.env.ROLEID_KNIGHT)
+	).size;
+
+
+	if (knightCount < MinimumKnightSize && !isThresholdOpen(8)) {
+		eventEmitter.emit("OpenXpThresholdKnight");
+
+	} else if (knightCount >= MinimumKnightSize && isThresholdOpen(8)) {
+		eventEmitter.emit("CloseXpThresholdKnight");
+	}	
+
 }
 async function initializeBots() {
 	const clients = [];

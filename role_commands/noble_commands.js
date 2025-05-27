@@ -36,7 +36,7 @@ const {
 	MinimumNobleSizeForAssassination
 } = require("../game_config.json");
 const { eventEmitter } = require("../functions/eventEmitter.js");
-const { DBUpdateXP } = require("../apis/firebase/querys");
+const { DBUpdateXP, isThresholdOpen } = require("../apis/firebase/querys");
 
 let selectedTargets = {};
 let nobles = [];
@@ -51,7 +51,6 @@ let assassinationTimeout;
 const selectedHumans = {};
 const selectedKnights = {};
 let disableAssassination = false; 
-let xpThresholdNobleOpen = true;
 const initContent = TextNobleMessageContent;
 function showErrorMsg(err) {
 	console.error("ERROR: noble_commands.js", err);
@@ -133,8 +132,7 @@ async function setupNobleBotEvents(client, lastMessageId) {
 				);
 				noblesSize = nobles.size;
 				eventEmitter.emit("UpdateNobleSize", noblesSize, member);
-				if(noblesSize < MinimumNobleSize && !xpThresholdNobleOpen){
-					xpThresholdNobleOpen  = true;
+				if(noblesSize < MinimumNobleSize && !isThresholdOpen(9)){
 					eventEmitter.emit("OpenXpThresholdNoble");
 				}
 
@@ -236,12 +234,10 @@ async function setupNobleBotEvents(client, lastMessageId) {
 				);
 				noblesSize = nobles.size;
 				eventEmitter.emit("UpdateNobleSize", noblesSize, newMember);
-				if(noblesSize < MinimumNobleSize && !xpThresholdNobleOpen){
-					xpThresholdNobleOpen  = true;
+				if(noblesSize < MinimumNobleSize && !isThresholdOpen(9)){
 					eventEmitter.emit("OpenXpThresholdNoble");
 				}
-				if(noblesSize > MinimumNobleSize && xpThresholdNobleOpen ){
-					xpThresholdNobleOpen = false;
+				if(noblesSize > MinimumNobleSize && isThresholdOpen(9)){
 					eventEmitter.emit("CloseXpThresholdNoble");
 				}
 				if(noblesSize < MinimumNobleSizeForAssassination && disableAssassination === false){

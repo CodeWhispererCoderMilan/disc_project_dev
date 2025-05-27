@@ -39,14 +39,13 @@ const {
 	ButtonLabelImperialWrit,
 	ButtonLabelShowWrits
 } = require("../game_config.json");
-const { isEmperorThresholdOpen,DBUpdateXP } = require("../apis/firebase/querys");
+const { isThresholdOpen,DBUpdateXP } = require("../apis/firebase/querys");
 
 const content = TextEmperorMessageContent;
 let selectedKing = null;
 let selectedLord = null;
 let selectedKnight = null;
 let selectedHuman = null;
-let xpThresholdEmperorOpen;
 
 function showErrorMsg(err) {
 	console.error("ERROR: emperor_commands.js", err);
@@ -60,14 +59,13 @@ async function setupEmperorBotEvents(client, lastMessageId) {
 			selectedLord = null;
 			selectedKnight = null;
 			selectedHuman = null;
-			xpThresholdEmperorOpen = true;
 			eventEmitter.emit("OpenXpThresholdEmperor");
 			eventEmitter.emit("EmperorVanished", member.username);		}
 			await updateMessage(client, lastMessageId);
 	});
 	client.on("guildMemberUpdate", async (oldMember, newMember) => {
 		let hasRoleEmperor = newMember.roles.cache.has(process.env.ROLEID_EMPEROR);
-		if( hasRoleEmperor && isEmperorThresholdOpen() ){
+		if( hasRoleEmperor && isThresholdOpen(12) ){
 			eventEmitter.emit("CloseXpThresholdEmperor");
 			eventEmitter.emit("FirstEnthronement", newMember.username);
 		}
@@ -420,7 +418,7 @@ async function handleShowWrits(interaction) {
 		}));
 
 		const response = `Your issued writs:\n\n${writDescriptions.join('\n')}`;
-
+https://drive.google.com/drive/folders/18wx1dylyms37ABAtqNXmhxHh-QCHrfVT?usp=sharing
 		await sendInteractionReply(interaction, response);
 	} catch (error) {
 		console.error('Error in handleShowWrits:', error);
@@ -472,26 +470,7 @@ async function updateSelectMenu(client, lastMessageId) {
 	}
 }
 
-async function evaluateEmperorThreshold(client) {
-	const guild = await client.guilds.fetch(process.env.GUILDID);
-	await guild.members.fetch();
 
-	const emperorCount = guild.members.cache.filter((m) =>
-		m.roles.cache.has(process.env.ROLEID_EMPEROR)
-	).size;
-
-	const shouldOpen = emperorCount === 0;
-
-	if (shouldOpen) {
-		eventEmitter.emit("OpenXpThresholdEmperor");
-		xpThresholdEmperorOpen = true;
-		console.log("Emperor XP threshold: OPEN");
-	} else {
-		eventEmitter.emit("CloseXpThresholdEmperor");
-		xpThresholdEmperorOpen = false;
-		console.log("Emperor XP threshold: CLOSED");
-	}
-}
 async function messageEmperorCommands(client) {
 	let channel = null;
 	try {
@@ -540,4 +519,4 @@ async function messageEmperorCommands(client) {
 	}
 }
 
-module.exports = { setupEmperorBotEvents, messageEmperorCommands, evaluateEmperorThreshold };
+module.exports = { setupEmperorBotEvents, messageEmperorCommands };

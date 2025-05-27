@@ -44,7 +44,7 @@ const {
 	ButtonLabelJoinRevolution,
 	ButtonLabelShowWrits,
 } = require("../game_config.json");
-const { DBUpdateXP } = require("../apis/firebase/querys.js");
+const { DBUpdateXP, isThresholdOpen } = require("../apis/firebase/querys.js");
 const { eventEmitter } = require("../functions/eventEmitter.js");
 
 let selectedTargets = {};
@@ -68,7 +68,6 @@ let candidates = null;
 let coupActive = false;
 let selectedCoupTargets = {};
 let disableCoup = true;
-let xpThresholdKnightOpen = true;
 let disableRevolution = true;
 const initContent = TextKnightMessageContent;
 let siegeStatusMsg = "";
@@ -128,8 +127,7 @@ async function setupKnightBotEvents(client, lastMessageId) {
 			);
 			knightsSize = knights.size;
 			eventEmitter.emit("UpdateKnightSize", knightsSize, member);
-			if(knightsSize < MinimumKnightSize && !xpThresholdKnightOpen){
-				xpThresholdKnightOpen  = true;
+			if(knightsSize < MinimumKnightSize && !isThresholdOpen(8)){
 				eventEmitter.emit("OpenXpThresholdKnight");
 			}
 
@@ -278,12 +276,10 @@ async function setupKnightBotEvents(client, lastMessageId) {
 			);
 			knightsSize = knights.size;
 			eventEmitter.emit("UpdateKnightSize", knightsSize, newMember);
-			if(knightsSize < MinimumKnightSize && !xpThresholdKnightOpen){
-				xpThresholdKnightOpen  = true;
+			if(knightsSize < MinimumKnightSize && !isThresholdOpen(8)){
 				eventEmitter.emit("OpenXpThresholdKnight");
 			}
-			if(knightsSize > MinimumKnightSize && xpThresholdKnightOpen ){
-				xpThresholdKnightOpen = false;
+			if(knightsSize > MinimumKnightSize && isThresholdOpen(8)){
 				eventEmitter.emit("CloseXpThresholdKnight");
 			}
 		}

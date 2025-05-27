@@ -51,8 +51,8 @@ eventEmitter.on("OpenXpThresholdEmperor", () => {
 	roleUpgradeAvailable[12] = true;
 });
 
-function isEmperorThresholdOpen() {
-	return roleUpgradeAvailable[12];
+function isThresholdOpen(thresholdnr) {
+	return roleUpgradeAvailable[thresholdnr];
 }
 async function CacheDataFromDB() {
     try {
@@ -423,4 +423,4 @@ async function DBGetActiveFestering() {
     return snapshot.val() || {};
 }
 
-module.exports = { CacheDataFromDB, CacheAllUserXP, CacheFesteringUsers , DBGetUsers, DBGetUserById, DBAddUser, DBRemoveUser, DBUpdateXP, DBSetRole, DBGetLastXPBoostTime, DBSetLastXPBoostTime, DBBoostXPForAllUsers, DBResetXP, DBSetFestering, DBGetActiveFestering, DBClearFestering, DBGetFestering, isEmperorThresholdOpen };
+module.exports = { CacheDataFromDB, CacheAllUserXP, CacheFesteringUsers , DBGetUsers, DBGetUserById, DBAddUser, DBRemoveUser, DBUpdateXP, DBSetRole, DBGetLastXPBoostTime, DBSetLastXPBoostTime, DBBoostXPForAllUsers, DBResetXP, DBSetFestering, DBGetActiveFestering, DBClearFestering, DBGetFestering, isThresholdOpen };

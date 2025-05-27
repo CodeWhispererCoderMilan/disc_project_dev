@@ -42,7 +42,7 @@ const {
 	MinimumKnightToKingSiegeRatio
 } = require("../game_config.json");
 const { eventEmitter } = require("../functions/eventEmitter.js");
-const { DBUpdateXP } = require("../apis/firebase/querys");
+const { DBUpdateXP, isThresholdOpen } = require("../apis/firebase/querys");
 
 let selectedHumans = {};
 let selectedKnights = {};
@@ -59,7 +59,6 @@ let siegeTargetId = null;
 let siegeTarget = null;
 let siegeActive = false;
 let disableSiege = true;
-let xpThresholdKingOpen = true;
 const selectedWritHumans = {};
 
 
@@ -106,8 +105,7 @@ async function setupKingBotEvents(client, lastMessageId) {
 					);
 					kingSize = kings.size;
 					eventEmitter.emit("UpdateKingSize", kingSize, member);
-					if(kingSize < MinimumKingSize && !xpThresholdKingOpen){
-						xpThresholdKingOpen  = true;
+					if(kingSize < MinimumKingSize && !isThresholdOpen(11)){
 						eventEmitter.emit("OpenXpThresholdKing");
 					}
 
@@ -187,12 +185,10 @@ async function setupKingBotEvents(client, lastMessageId) {
 					);
 					kingSize = kings.size;
 					eventEmitter.emit("UpdateKingSize", kingSize, newMember);
-					if(kingSize < MinimumKingSize && !xpThresholdKingOpen){
-						xpThresholdKingOpen  = true;
+					if(kingSize < MinimumKingSize && !isThresholdOpen(11)){
 						eventEmitter.emit("OpenXpThresholdKing");
 					}
-					if(kingSize > MinimumKingSize && xpThresholdKingOpen ){
-						xpThresholdKingOpen = false;
+					if(kingSize > MinimumKingSize && isThresholdOpen(11)){
 						eventEmitter.emit("CloseXpThresholdKnight");
 					}
 				}

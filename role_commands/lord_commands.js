@@ -43,7 +43,7 @@ const {
 	MinimumLordSizeForElection
 } = require("../game_config.json");
 const { eventEmitter } = require("../functions/eventEmitter.js");
-const { DBUpdateXP } = require("../apis/firebase/querys");
+const { DBUpdateXP, isThresholdOpen } = require("../apis/firebase/querys");
 
 let selectedElectionCandidates = {};
 let selectedExileUsers = {};
@@ -57,7 +57,6 @@ let electionActive = false;
 let electionParticipants = new Set();
 let electionTimeout;
 let electionType = "";
-let xpThresholdLordOpen = true;
 let disableElection = true;
 const selectedHumans = {};
 const selectedKnights = {};
@@ -104,8 +103,7 @@ async function setupLordBotEvents(client, lastMessageId) {
 				);
 				lordsSize = lords.size;
 				eventEmitter.emit("UpdateLordSize", lordsSize, member);
-				if(lordsSize < MinimumLordSize && !xpThresholdLordOpen){
-					xpThresholdLordOpen  = true;
+				if(lordsSize < MinimumLordSize && !isThresholdOpen(10)){
 					eventEmitter.emit("OpenXpThresholdLord");
 				}
 				
@@ -230,12 +228,10 @@ async function setupLordBotEvents(client, lastMessageId) {
 				);
 				lordsSize = lords.size;
 				eventEmitter.emit("UpdateLordSize", lordsSize, newMember);
-				if(lordsSize < MinimumLordSize && !xpThresholdLordOpen){
-					xpThresholdLordOpen  = true;
+				if(lordsSize < MinimumLordSize && !isThresholdOpen(10)){
 					eventEmitter.emit("OpenXpThresholdLord");
 				}
-				if(lordsSize > MinimumLordSize && xpThresholdLordOpen ){
-					xpThresholdLordOpen = false;
+				if(lordsSize > MinimumLordSize && isThresholdOpen(10)){
 					eventEmitter.emit("CloseXpThresholdLord");
 				}
 				if(lordsSize < MinimumLordSizeForElection && disableElection === false){

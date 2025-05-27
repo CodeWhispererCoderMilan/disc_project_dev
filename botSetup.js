@@ -58,7 +58,7 @@ const {
 	messageEmperorCommands,
 } = require("./role_commands/emperor_commands");
 const { isThresholdOpen } = require("./apis/firebase/querys.js");
-const {MinimumKingSize} = require("./game_config.json");
+const {MinimumKingSize, MinimumLordSize, MinimumNobleSize, MinimumKnightSize} = require("./game_config.json");
 
 async function createBot(token, channelId, setupEventsFunction, messageCommands, isConsole) {
 	const client = isConsole ? 

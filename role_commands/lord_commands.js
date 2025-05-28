@@ -231,7 +231,7 @@ async function setupLordBotEvents(client, lastMessageId) {
 				if(lordsSize < MinimumLordSize && !isThresholdOpen(10)){
 					eventEmitter.emit("OpenXpThresholdLord");
 				}
-				if(lordsSize > MinimumLordSize && isThresholdOpen(10)){
+				if(lordsSize >= MinimumLordSize && isThresholdOpen(10)){
 					eventEmitter.emit("CloseXpThresholdLord");
 				}
 				if(lordsSize < MinimumLordSizeForElection && disableElection === false){

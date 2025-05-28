@@ -279,7 +279,7 @@ async function setupKnightBotEvents(client, lastMessageId) {
 			if(knightsSize < MinimumKnightSize && !isThresholdOpen(8)){
 				eventEmitter.emit("OpenXpThresholdKnight");
 			}
-			if(knightsSize > MinimumKnightSize && isThresholdOpen(8)){
+			if(knightsSize >= MinimumKnightSize && isThresholdOpen(8)){
 				eventEmitter.emit("CloseXpThresholdKnight");
 			}
 		}

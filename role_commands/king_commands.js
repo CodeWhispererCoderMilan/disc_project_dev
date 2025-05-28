@@ -188,7 +188,7 @@ async function setupKingBotEvents(client, lastMessageId) {
 					if(kingSize < MinimumKingSize && !isThresholdOpen(11)){
 						eventEmitter.emit("OpenXpThresholdKing");
 					}
-					if(kingSize > MinimumKingSize && isThresholdOpen(11)){
+					if(kingSize >= MinimumKingSize && isThresholdOpen(11)){
 						eventEmitter.emit("CloseXpThresholdKnight");
 					}
 				}

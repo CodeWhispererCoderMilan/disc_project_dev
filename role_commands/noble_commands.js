@@ -237,7 +237,7 @@ async function setupNobleBotEvents(client, lastMessageId) {
 				if(noblesSize < MinimumNobleSize && !isThresholdOpen(9)){
 					eventEmitter.emit("OpenXpThresholdNoble");
 				}
-				if(noblesSize > MinimumNobleSize && isThresholdOpen(9)){
+				if(noblesSize >= MinimumNobleSize && isThresholdOpen(9)){
 					eventEmitter.emit("CloseXpThresholdNoble");
 				}
 				if(noblesSize < MinimumNobleSizeForAssassination && disableAssassination === false){

@@ -3,6 +3,8 @@ const { XpBoostInterval, ScholarAstralRealmAccessDuration, EmperorAstralRealmAcc
 const {
 	DBGetLastXPBoostTime,
 	DBBoostXPForAllUsers,
+	startupOpenEmperorThreshold,
+	evaluateThresholds
 } = require("../apis/firebase/querys.js");
 
 function wait(ms) {
@@ -44,6 +46,8 @@ async function checkAndApplyMissedXPBoost(client) {
 			console.log("Missed XP boost window detected, applying boost...");
 			let boostsMissed = Math.trunc(missedTime / XpBoostInterval);
 			try {
+				await startupOpenEmperorThreshold(client);
+				await evaluateThresholds(client);
 				await DBBoostXPForAllUsers(boostsMissed, client);
 			} catch (err) {
 				console.error("DB: XPboost failed");
@@ -154,6 +158,7 @@ async function revokeAstralRealmAccess(member, client) {
 		return false;
 	}
 }
+
 // Call this function at the end of your bot initialization process
 module.exports = {
 	wait,
@@ -162,5 +167,5 @@ module.exports = {
 	sendInteractionReply,
 	grantAstralRealmAccess,
 	revokeAstralRealmAccess,
-	checkAndApplyMissedXPBoost
+	checkAndApplyMissedXPBoost,
 };

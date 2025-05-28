@@ -17,6 +17,7 @@ const {
 	DBClearFestering,
 	DBSetRole,
 	DBResetXP,
+	changeRole
 } = require("../apis/firebase/querys.js");
 const {
 	CacheIsPoopBeingFestered,
@@ -749,57 +750,7 @@ async function notifyRevolutionResult(message) {
 	eventEmitter.emit("NotifyMerchantChannel", message);
 	eventEmitter.emit("NotifyScholarChannel", message);
 }
-async function changeRole(member, roleName, keepXP) {
-	console.log(`Change Role called for ${member.id} with role ${roleName}`);
-	const memberRoleArr = member.roles.cache.filter(
-		(r) => r.name !== "@everyone"
-	);
 
-	if (!(memberRoleArr.size === 1)) {
-		console.error(`user "${member.displayName}" has multiple roles`);
-	}
-	const role = member.guild.roles.cache.find((r) => r.name === roleName);
-	if (!role) {
-		console.error(`Role "${roleName}" not found`);
-	}
-	const memberRole = memberRoleArr.first();
-	try {
-		DBSetRole(member, roleName);
-	} catch (err) {
-		throw {
-			name: "unable to write role to DB",
-			message: `error settig new role to ${member.id}`,
-		};
-	};
-	if(!keepXP){
-		try {
-			await DBResetXP(member.id);
-		} catch (err) {
-			throw {
-				name: "RoleChangeError",
-				message: `Couldn't reset XP for user ${member.displayName}:${err.message}`,
-			};
-		}
-	};
-	try {
-		await member.roles.remove(memberRole);
-	} catch (err) {
-		throw {
-			name: "RoleChangeError",
-			message: `Error removing ${memberRole.name} role for user ${member.displayName}: ${err.message}`,
-		};
-	}
-	try {
-		await member.roles.add(role);
-	} catch (err) {
-		throw {
-			name: "RoleChangeError",
-			message: `Error adding ${roleName} role for user ${member.displayName}: ${err.message}`,
-		};
-	}
-
-	console.log(`Assigned "${roleName}" role to ${member.displayName}`);
-}
 
 async function handleAdminRoleChange(client, message, args) {
 	// Check if the user has admin privileges

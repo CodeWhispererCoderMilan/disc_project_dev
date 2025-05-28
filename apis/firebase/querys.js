@@ -1,5 +1,6 @@
 const { db } = require('./firebaseDb.js');
-const { 
+const { MinimumLordSize, MinimumNobleSize, MinimumKnightSize,
+	MinimumKingSize,
 	roleXpThresholds,
 	FesteringDuration,
 	XpBoostPoop,
@@ -211,7 +212,17 @@ async function DBUpdateXP(userId, xpChange, client) {
     if (newRole !== userData.role) {
 	try{	
 		console.log(`role update event triggerred for ${userId} with role ${newRole}`)
-		eventEmitter.emit('changeRole', userId, newRole );
+		const guild = await client.guilds.fetch(process.env.GUILDID);
+		if (!guild) {
+			console.error("Guild not found");
+			return;
+		}
+		const member = await guild.members.fetch(userId);
+		if (!member) {
+			console.error("Member not found");
+			return;
+		}
+		await changeRole(member, newRole, true);
     		console.log(`Event emitted for role update for user with ID:${userId}`);
 	}catch(err){
 		console.error(`failed to emmit role update event for user with ID: ${userId}`);
@@ -422,5 +433,138 @@ async function DBGetActiveFestering() {
     const snapshot = await db.ref(`festering`).once('value');
     return snapshot.val() || {};
 }
+async function changeRole(member, roleName, keepXP) {
+	console.log(`Change Role called for ${member.id} with role ${roleName}`);
+	const memberRoleArr = member.roles.cache.filter(
+		(r) => r.name !== "@everyone"
+	);
 
-module.exports = { CacheDataFromDB, CacheAllUserXP, CacheFesteringUsers , DBGetUsers, DBGetUserById, DBAddUser, DBRemoveUser, DBUpdateXP, DBSetRole, DBGetLastXPBoostTime, DBSetLastXPBoostTime, DBBoostXPForAllUsers, DBResetXP, DBSetFestering, DBGetActiveFestering, DBClearFestering, DBGetFestering, isThresholdOpen };
+	if (!(memberRoleArr.size === 1)) {
+		console.error(`user "${member.displayName}" has multiple roles`);
+	}
+	const role = member.guild.roles.cache.find((r) => r.name === roleName);
+	if (!role) {
+		console.error(`Role "${roleName}" not found`);
+	}
+	const memberRole = memberRoleArr.first();
+	try {
+		DBSetRole(member, roleName);
+	} catch (err) {
+		throw {
+			name: "unable to write role to DB",
+			message: `error settig new role to ${member.id}`,
+		};
+	};
+	if(!keepXP){
+		try {
+			await DBResetXP(member.id);
+		} catch (err) {
+			throw {
+				name: "RoleChangeError",
+				message: `Couldn't reset XP for user ${member.displayName}:${err.message}`,
+			};
+		}
+	};
+	try {
+		await member.roles.remove(memberRole);
+	} catch (err) {
+		throw {
+			name: "RoleChangeError",
+			message: `Error removing ${memberRole.name} role for user ${member.displayName}: ${err.message}`,
+		};
+	}
+	try {
+		await member.roles.add(role);
+	} catch (err) {
+		throw {
+			name: "RoleChangeError",
+			message: `Error adding ${roleName} role for user ${member.displayName}: ${err.message}`,
+		};
+	}
+	if(roleName === "Emperor" || roleName === "King" || roleName === "Lord" || roleName === "Noble" || roleName === "Knight") {
+		try{
+			await evaluateThresholds(member.client);
+		}catch(err) {
+			console.error(`Error evaluating thresholds after role change: ${err.message}`);
+		}
+	}
+
+	console.log(`Assigned "${roleName}" role to ${member.displayName}`);
+}
+async function startupOpenEmperorThreshold(client) {
+	const guild = await client.guilds.fetch(process.env.GUILDID);
+	await guild.members.fetch();
+	
+	const emperorCount = guild.members.cache.filter((m) =>
+		m.roles.cache.has(process.env.ROLEID_EMPEROR)
+	).size;
+
+	const shouldOpen = emperorCount === 0;
+
+	if (shouldOpen && !isThresholdOpen(12)) {
+		eventEmitter.emit("OpenXpThresholdEmperor");
+
+	}
+}
+async function evaluateThresholds(client) {
+	const guild = await client.guilds.fetch(process.env.GUILDID);
+	await guild.members.fetch();
+	
+	const emperorCount = guild.members.cache.filter((m) =>
+		m.roles.cache.has(process.env.ROLEID_EMPEROR)
+	).size;
+
+	const shouldOpen = emperorCount === 0;
+
+
+	if(!shouldOpen && isThresholdOpen(12)) {
+		eventEmitter.emit("CloseXpThresholdEmperor");
+	}	
+	const kingCount = guild.members.cache.filter((m) =>
+		m.roles.cache.has(process.env.ROLEID_KING)
+	).size;
+
+
+	if (kingCount < MinimumKingSize && !isThresholdOpen(11)) {
+		eventEmitter.emit("OpenXpThresholdKing");
+
+	} else if (kingCount >= MinimumKingSize && isThresholdOpen(11)) {
+		eventEmitter.emit("CloseXpThresholdKing");
+	}	
+	const lordCount = guild.members.cache.filter((m) =>
+		m.roles.cache.has(process.env.ROLEID_LORD)
+	).size;
+
+
+	if (lordCount < MinimumLordSize && !isThresholdOpen(10)) {
+		eventEmitter.emit("OpenXpThresholdLord");
+
+	} else if (lordCount >= MinimumLordSize && isThresholdOpen(10)) {
+		eventEmitter.emit("CloseXpThresholdLord");
+	}	
+	const nobleCount = guild.members.cache.filter((m) =>
+		m.roles.cache.has(process.env.ROLEID_NOBLE)
+	).size;
+
+
+	if (nobleCount < MinimumNobleSize && !isThresholdOpen(10)) {
+		eventEmitter.emit("OpenXpThresholdNoble");
+
+	} else if (lordCount >= MinimumLordSize && isThresholdOpen(10)) {
+		eventEmitter.emit("CloseXpThresholdNoble");
+	}	
+
+	const knightCount = guild.members.cache.filter((m) =>
+		m.roles.cache.has(process.env.ROLEID_KNIGHT)
+	).size;
+
+
+	if (knightCount < MinimumKnightSize && !isThresholdOpen(8)) {
+		eventEmitter.emit("OpenXpThresholdKnight");
+
+	} else if (knightCount >= MinimumKnightSize && isThresholdOpen(8)) {
+		eventEmitter.emit("CloseXpThresholdKnight");
+	}	
+
+}
+module.exports = { CacheDataFromDB, CacheAllUserXP, CacheFesteringUsers , DBGetUsers, DBGetUserById, DBAddUser, DBRemoveUser, DBUpdateXP, DBSetRole, DBGetLastXPBoostTime, DBSetLastXPBoostTime, DBBoostXPForAllUsers, DBResetXP, DBSetFestering, DBGetActiveFestering, DBClearFestering, DBGetFestering, isThresholdOpen,changeRole, startupOpenEmperorThreshold, evaluateThresholds };

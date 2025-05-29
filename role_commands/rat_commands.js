@@ -28,7 +28,7 @@ const {
 	TextNibbleSelectMenu,
 	TextPlagueTargetSelectMenu
 } = require("../game_config.json");
-const { DBUpdateXP } = require("../apis/firebase/querys");
+const { DBUpdateXP, changeRole } = require("../apis/firebase/querys");
 
 const initContent = TextRatMessageContent;
 
@@ -307,7 +307,7 @@ async function setupRatBotEvents(client, lastMessageId) {
 						);
 						return;
 					} else {
-						eventEmitter.emit("changeRole", selectedTargets[userId], "Poop", false);
+						await changeRole(selectedTargets[userId], "Poop", false);
 						await DBUpdateXP(userId, -NibbleCost, client);
 						await CacheSetCooldown("nibble", userId, NibbleCooldown);
 						eventEmitter.emit(
@@ -503,7 +503,7 @@ async function handleSecondPhasePlagueEnd(client, lastMessageId) {
 		if (killTarget) {
 			const guild = await client.guilds.fetch(process.env.GUILDID);
 			const target = await guild.members.fetch(targetId);
-			eventEmitter.emit("changeRole", target, "Poop", false);
+			await changeRole(target, "Poop", false);
 			eventEmitter.emit(
 				"NotifyRatChannel",
 				`@${target.user.username} has been killed of plague.`

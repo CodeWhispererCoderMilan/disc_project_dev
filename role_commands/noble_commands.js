@@ -36,7 +36,7 @@ const {
 	MinimumNobleSizeForAssassination
 } = require("../game_config.json");
 const { eventEmitter } = require("../functions/eventEmitter.js");
-const { DBUpdateXP, isThresholdOpen } = require("../apis/firebase/querys");
+const { DBUpdateXP, isThresholdOpen, changeRole, openThreshold, closeThreshold } = require("../apis/firebase/querys");
 
 let selectedTargets = {};
 let nobles = [];
@@ -133,7 +133,7 @@ async function setupNobleBotEvents(client, lastMessageId) {
 				noblesSize = nobles.size;
 				eventEmitter.emit("UpdateNobleSize", noblesSize, member);
 				if(noblesSize < MinimumNobleSize && !isThresholdOpen(9)){
-					eventEmitter.emit("OpenXpThresholdNoble");
+					openThreshold(9);
 				}
 
 				if(noblesSize < MinimumNobleSizeForAssassination && disableAssassination === false){
@@ -235,10 +235,10 @@ async function setupNobleBotEvents(client, lastMessageId) {
 				noblesSize = nobles.size;
 				eventEmitter.emit("UpdateNobleSize", noblesSize, newMember);
 				if(noblesSize < MinimumNobleSize && !isThresholdOpen(9)){
-					eventEmitter.emit("OpenXpThresholdNoble");
+					openThreshold(9);
 				}
 				if(noblesSize >= MinimumNobleSize && isThresholdOpen(9)){
-					eventEmitter.emit("CloseXpThresholdNoble");
+					closeThreshold(9);
 				}
 				if(noblesSize < MinimumNobleSizeForAssassination && disableAssassination === false){
 					disableAssassination = true;
@@ -463,7 +463,7 @@ async function handleAssassinationEnd(client, lastMessageId) {
 		assassinationParticipants.size >= AssassinationThreadshold
 	) {
 		const target = selectedTargets[assassinationInitiatorId];
-		if (target) eventEmitter.emit("changeRole", target, "Poop", false);
+		if (target) await changeRole(target, "Poop", false);
 		const msg = `Assassination successful! @${assassinationTarget} has become a poop by @${assassinationInitiator}.`;
 		eventEmitter.emit("NotifyNobleChannel", msg);
 	} else {

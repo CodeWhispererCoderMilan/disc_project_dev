@@ -122,14 +122,14 @@ async function createBot(token, channelId, setupEventsFunction, messageCommands,
 
 async function initializeBots() {
 	const clients = [];
-
+	
 	clients.push(await createBot(
-		process.env.TOKEN_CONSOLE,
-		process.env.CHANNELIDCONSOLE,
-		setupConsoleBotEvents,
-		messageConsoleCommands,
-		true
+		process.env.TOKEN_EMPEROR,
+		process.env.CHANNELIDEMPEROR,
+		setupEmperorBotEvents,
+		messageEmperorCommands
 	));
+	
 
 	clients.push(await createBot(
 		process.env.TOKEN_POOP,
@@ -203,11 +203,13 @@ async function initializeBots() {
 		setupKingBotEvents,
 		messageKingCommands
 	));
+	
 	clients.push(await createBot(
-		process.env.TOKEN_EMPEROR,
-		process.env.CHANNELIDEMPEROR,
-		setupEmperorBotEvents,
-		messageEmperorCommands
+		process.env.TOKEN_CONSOLE,
+		process.env.CHANNELIDCONSOLE,
+		setupConsoleBotEvents,
+		messageConsoleCommands,
+		true
 	));
 	return clients;
 }

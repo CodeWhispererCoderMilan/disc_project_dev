@@ -44,7 +44,7 @@ const {
 	ButtonLabelJoinRevolution,
 	ButtonLabelShowWrits,
 } = require("../game_config.json");
-const { DBUpdateXP, isThresholdOpen } = require("../apis/firebase/querys.js");
+const { DBUpdateXP, isThresholdOpen, changeRole, openThreshold, closeThreshold } = require("../apis/firebase/querys.js");
 const { eventEmitter } = require("../functions/eventEmitter.js");
 
 let selectedTargets = {};
@@ -128,7 +128,7 @@ async function setupKnightBotEvents(client, lastMessageId) {
 			knightsSize = knights.size;
 			eventEmitter.emit("UpdateKnightSize", knightsSize, member);
 			if(knightsSize < MinimumKnightSize && !isThresholdOpen(8)){
-				eventEmitter.emit("OpenXpThresholdKnight");
+				openThreshold(8);
 			}
 
 		}
@@ -277,10 +277,10 @@ async function setupKnightBotEvents(client, lastMessageId) {
 			knightsSize = knights.size;
 			eventEmitter.emit("UpdateKnightSize", knightsSize, newMember);
 			if(knightsSize < MinimumKnightSize && !isThresholdOpen(8)){
-				eventEmitter.emit("OpenXpThresholdKnight");
+				openThreshold(8);
 			}
 			if(knightsSize >= MinimumKnightSize && isThresholdOpen(8)){
-				eventEmitter.emit("CloseXpThresholdKnight");
+				closeThreshold(8);
 			}
 		}
 		if (
@@ -1119,7 +1119,7 @@ function getWritType(type) {
 
 async function performCutDown(interaction, targetId) {
 	const target = await interaction.guild.members.fetch(targetId);
-	eventEmitter.emit("changeRole", target, "Poop", false);
+	await changeRole(target, "Poop", false);
 	eventEmitter.emit(
 		"CutDownComplete",
 		target.user.username,

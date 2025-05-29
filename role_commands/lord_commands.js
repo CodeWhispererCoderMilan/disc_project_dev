@@ -43,7 +43,7 @@ const {
 	MinimumLordSizeForElection
 } = require("../game_config.json");
 const { eventEmitter } = require("../functions/eventEmitter.js");
-const { DBUpdateXP, isThresholdOpen } = require("../apis/firebase/querys");
+const { DBUpdateXP, isThresholdOpen, changeRole, openThreshold, closeThreshold } = require("../apis/firebase/querys");
 
 let selectedElectionCandidates = {};
 let selectedExileUsers = {};
@@ -104,7 +104,7 @@ async function setupLordBotEvents(client, lastMessageId) {
 				lordsSize = lords.size;
 				eventEmitter.emit("UpdateLordSize", lordsSize, member);
 				if(lordsSize < MinimumLordSize && !isThresholdOpen(10)){
-					eventEmitter.emit("OpenXpThresholdLord");
+					openThreshold(10);
 				}
 				
 				if(lordsSize < MinimumLordSizeForElection && disableElection === false){
@@ -229,10 +229,10 @@ async function setupLordBotEvents(client, lastMessageId) {
 				lordsSize = lords.size;
 				eventEmitter.emit("UpdateLordSize", lordsSize, newMember);
 				if(lordsSize < MinimumLordSize && !isThresholdOpen(10)){
-					eventEmitter.emit("OpenXpThresholdLord");
+					openThreshold(10);
 				}
 				if(lordsSize >= MinimumLordSize && isThresholdOpen(10)){
-					eventEmitter.emit("CloseXpThresholdLord");
+					closeThreshold(10);
 				}
 				if(lordsSize < MinimumLordSizeForElection && disableElection === false){
 					disableElection = true;
@@ -353,7 +353,7 @@ async function setupLordBotEvents(client, lastMessageId) {
 						return;
 					}
 					const targetUsername = selectedExileUsers[userId].user.username;
-					eventEmitter.emit('changeRole', selectedExileUsers[userId], 'Sub-human');
+					await changeRole( selectedExileUsers[userId], 'Sub-human', false);
 					selectedExileUsers[userId] = null;
 					await DBUpdateXP(userId, -ExileCost, client);
 					await CacheSetCooldown("exile", userId, ExileCooldown);
@@ -594,11 +594,11 @@ async function handleElectionEnd(client, lastMessageId) {
 		const target = selectedElectionCandidates[electionInitiatorId];
 		if (target) {
 			if (electionType === "Noble") {
-				eventEmitter.emit("changeRole", target, "Lord", true);
+				await changeRole(target, "Lord", true);
 				msg = `Election successful! @${electionCandidate} has become a lord by @${electionInitiator}.`;
 			}
 			if (electionType === "Lord") {
-				eventEmitter.emit("changeRole", target, "King", true);
+				await changeRole(target, "King", true);
 				msg = `Election successful! @${electionCandidate} has become a king by @${electionInitiator}.`;
 			}
 		}

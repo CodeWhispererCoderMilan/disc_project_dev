@@ -2,7 +2,7 @@ const {eventEmitter} = require('../functions/eventEmitter.js');
 const {sendInteractionReply, buildSelectMenu} = require("../functions/botActions");
 const { CacheGetUserXP, CacheGetCooldown, CacheSetCooldown} = require("../apis/redis/redisCache");
 const {ActionRowBuilder, ButtonBuilder, ButtonStyle} = require("discord.js");
-const {DBUpdateXP} = require("../apis/firebase/querys");
+const {DBUpdateXP, changeRole} = require("../apis/firebase/querys");
 const {
 	DepravityCost,
 	DepravityCooldown, 
@@ -167,7 +167,7 @@ async function setupSubhumanBotEvents(client, lastMessageId) {
 					}else {
 
 						const targetUsername = selectedSubHumans[userId].user.username;
-						eventEmitter.emit('changeRole',selectedSubHumans[userId],'Poop',false);
+						await changeRole(selectedSubHumans[userId],'Poop',false);
 						selectedSubHumans[userId] = null;
 						await DBUpdateXP(userId, -DepravityCost, client);
 						await CacheSetCooldown("depravity", userId, DepravityCooldown);
@@ -198,7 +198,7 @@ async function setupSubhumanBotEvents(client, lastMessageId) {
 					}
 					else {
 						targetUsername = selectedPeasants[userId].user.username;
-						eventEmitter.emit('changeRole', selectedPeasants[userId], 'Poop',false);
+						await changeRole(selectedPeasants[userId], 'Poop',false);
 						selectedSubHumans[userId] = null;
 						await DBUpdateXP(userId, -ManhuntCost, client);
 						await CacheSetCooldown("manhunt", userId, ManhuntCooldown);
@@ -228,7 +228,7 @@ async function setupSubhumanBotEvents(client, lastMessageId) {
 						return;
 					}else {
 						const targetUsername = selectedPickings[userId].user.username
-						eventEmitter.emit('changeRole', selectedPickings[userId],'Poop',false);
+						await changeRole (selectedPickings[userId],'Poop',false);
 						selectedPickings[userId] = null;
 						await DBUpdateXP(userId, -PickingCost, client);
 						await CacheSetCooldown("picking", userId, PickingCooldown);

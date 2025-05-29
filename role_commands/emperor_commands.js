@@ -39,7 +39,7 @@ const {
 	ButtonLabelImperialWrit,
 	ButtonLabelShowWrits
 } = require("../game_config.json");
-const { isThresholdOpen,DBUpdateXP } = require("../apis/firebase/querys");
+const { isThresholdOpen,DBUpdateXP, changeRole, openThreshold, closeThreshold } = require("../apis/firebase/querys");
 
 const content = TextEmperorMessageContent;
 let selectedKing = null;
@@ -59,14 +59,14 @@ async function setupEmperorBotEvents(client, lastMessageId) {
 			selectedLord = null;
 			selectedKnight = null;
 			selectedHuman = null;
-			eventEmitter.emit("OpenXpThresholdEmperor");
+			openThreshold(12);
 			eventEmitter.emit("EmperorVanished", member.username);		}
-			await updateMessage(client, lastMessageId);
+			await updateSelectMenu(client, lastMessageId);
 	});
 	client.on("guildMemberUpdate", async (oldMember, newMember) => {
 		let hasRoleEmperor = newMember.roles.cache.has(process.env.ROLEID_EMPEROR);
 		if( hasRoleEmperor && isThresholdOpen(12) ){
-			eventEmitter.emit("CloseXpThresholdEmperor");
+			closeThreshold(12);
 			eventEmitter.emit("FirstEnthronement", newMember.username);
 		}
 		if (oldMember.roles.cache.has(process.env.ROLEID_KING)) {
@@ -215,7 +215,7 @@ async function setupEmperorBotEvents(client, lastMessageId) {
 						);
 						return;
 					} else {
-						eventEmitter.emit("changeRole", selectedLord, "King", true);
+						await changeRole( selectedLord, "King", true);
 						const targetUsername = selectedLord.user.username;
 						selectedLord = null;
 						await DBUpdateXP(userId, -CoronationCost, client);
@@ -258,7 +258,7 @@ async function setupEmperorBotEvents(client, lastMessageId) {
 						);
 						return;
 					} else {
-						eventEmitter.emit("changeRole", selectedKing, "Lord", false);
+						await changeRole( selectedKing, "Lord", false);
 						const targetUsername = selectedKing.user.username;
 						selectedKing = null;
 						await DBUpdateXP(userId, -DethroneCost, client);
@@ -306,7 +306,7 @@ async function setupEmperorBotEvents(client, lastMessageId) {
 							interaction,
 							`(${XPLeft} XP left) Heir to the Throne chosen, your rule has ended,  enthronement in progress...`
 						);
-						eventEmitter.emit("changeRole", interaction.user.id, "King", true);
+						await changeRole( interaction.member, "King", true);
 						await DBUpdateXP(userId, -HeirCost, client);
 						await CacheSetCooldown("heirSuccession", null, HeirCooldown);
 						const selectedHeir = selectedKing;
@@ -329,7 +329,7 @@ async function setupEmperorBotEvents(client, lastMessageId) {
 			selectedHuman = null;
 			selectedKnight = null;
 			const channel = await client.channels.fetch(process.env.CHANNELIDEMPEROR);
-			eventEmitter.emit("changeRole", selectedHeir.id, "Emperor", true);
+			await changeRole( selectedHeir, "Emperor", true);
 			const heirUsername = selectedHeir.user.username;
 			const tmpMessage = await channel.send(
 				`Hail our new Emperor! ${heirUsername} heir to ${initiatorUsername}, may your rule last 1000 years !`

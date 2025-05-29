@@ -24,7 +24,7 @@ const {
 	ButtonLabelInfanticide
 } = require(`../game_config.json`);
 const { buildSelectMenu } = require(`../functions/botActions.js`);
-const { DBUpdateXP } = require("../apis/firebase/querys.js");
+const { DBUpdateXP, changeRole } = require("../apis/firebase/querys.js");
 const { eventEmitter } = require("../functions/eventEmitter.js");
 
 const content = TextCockroachMessageContent;
@@ -311,7 +311,7 @@ async function setupCockroachBotEvents(client, lastMessageId) {
 							const subhumanMember = await interaction.guild.members.fetch(
 								subhumanId
 							);
-							eventEmitter.emit("changeRole", subhumanMember, "Poop", false);
+							await changeRole( subhumanMember, "Poop", false);
 							eventEmitter.emit(
 								"SwarmComplete",
 								selectedSubhumans[swarmInitiatorId].user.username,
@@ -365,7 +365,7 @@ async function setupCockroachBotEvents(client, lastMessageId) {
 					}
 				} else {
 					try {
-						eventEmitter.emit("changeRole",selectedMaggots[userId],"Poop",false);
+						await changeRole( selectedMaggots[userId],"Poop",false);
 						await DBUpdateXP(userId, -InfanticideCost, client);
 						await CacheSetCooldown("infanticide", userId, InfanticideCooldown);
 					} catch (err) {

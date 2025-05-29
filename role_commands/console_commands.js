@@ -239,23 +239,7 @@ async function setupConsoleBotEvents(client) {
 			await handleAdminRoleChange(client, message, args);
 		}
 	});
-	eventEmitter.on("changeRole", async (memberId, roleName, keepXP) => {
-		try {
-			const guild = await client.guilds.fetch(process.env.GUILDID);
-			if (!guild) {
-				console.error("Guild not found");
-				return;
-			}
-			const member = await guild.members.fetch(memberId);
-			if (!member) {
-				console.error("Member not found");
-				return;
-			}
-			await changeRole(member, roleName, keepXP);
-		} catch (err) {
-			throw err;
-		}
-	});
+	
 	client.on("interactionCreate", async (interaction) => {
 		if (!interaction.isButton()) return;
 		if(interaction.customId === "CheckXP"){
@@ -624,7 +608,7 @@ async function handleSecondPhaseRevolutionEnd() {
 
 		if (killTarget) {
 			const target = refinedTargets[targetId].target;
-			eventEmitter.emit("changeRole", target, "Poop");
+			await changeRole( target, "Poop", false);
 			await notifyRevolutionResult(
 				`@${target.user.username} has been killed by ${struggleMethod}.`
 			);
@@ -695,7 +679,7 @@ async function handleEmperorElectionEnd() {
 
 	if (maxCandidates.length === 1) {
 		const target = maxCandidates[0];
-		eventEmitter.emit("changeRole", target, "Emperor");
+		await changeRole( target, "Emperor", true);
 		notifyRevolutionResult(
 			`Congrats! @${target.user.username} has been elected as a new emperor. `
 		);
@@ -779,7 +763,7 @@ async function handleAdminRoleChange(client, message, args) {
 			message.reply("role or member ID does not exist");
 			return;
 		}
-		eventEmitter.emit("changeRole", userId, newRoleName);
+		await changeRole( member, newRoleName, false);
 		message.reply(`changing role for user ${userId} to ${newRoleName}...`);
 	} catch (error) {
 		console.error("Error in handleAdminRoleChange:", error);

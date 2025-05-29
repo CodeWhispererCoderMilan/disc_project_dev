@@ -21,37 +21,13 @@ const { CacheRemoveUser, CacheAddUser, CacheSetUserXP, CacheSetFestering, CacheC
 const { eventEmitter } = require('../../functions/eventEmitter.js');
 
 const roleUpgradeAvailable = Array(13).fill(true); //array that opens or blocks leveling up between roles.
-eventEmitter.on("CloseXpThresholdKnight", () => {
-	roleUpgradeAvailable[8] = false;
-});
-eventEmitter.on("OpenXpThresholdKnight", () => {
-	roleUpgradeAvailable[8] = true;
-});
-eventEmitter.on("CloseXpThresholdNoble", () => {
-	roleUpgradeAvailable[9] = false;
-});
-eventEmitter.on("OpenXpThresholdNoble", () => {
-	roleUpgradeAvailable[9] = true;
-});
-eventEmitter.on("CloseXpThresholdLord", () => {
-	roleUpgradeAvailable[10] = false;
-});
-eventEmitter.on("OpenXpThresholdLord", () => {
-	roleUpgradeAvailable[10] = true;
-});
-eventEmitter.on("CloseXpThresholdKing", () => {
-	roleUpgradeAvailable[11] = false;
-});
-eventEmitter.on("OpenXpThresholdKing", () => {
-	roleUpgradeAvailable[11] = true;
-});
-eventEmitter.on("CloseXpThresholdEmperor", () => {
-	roleUpgradeAvailable[12] = false;
-});
-eventEmitter.on("OpenXpThresholdEmperor", () => {
-	roleUpgradeAvailable[12] = true;
-});
 
+async function closeThreshold(thresholdnr) {
+	roleUpgradeAvailable[thresholdnr] = false;
+}
+async function openThreshold(thresholdnr) {
+	roleUpgradeAvailable[thresholdnr] = true;
+}
 function isThresholdOpen(thresholdnr) {
 	return roleUpgradeAvailable[thresholdnr];
 }
@@ -502,7 +478,7 @@ async function startupOpenEmperorThreshold(client) {
 	const shouldOpen = emperorCount === 0;
 
 	if (shouldOpen && !isThresholdOpen(12)) {
-		eventEmitter.emit("OpenXpThresholdEmperor");
+		openThreshold(12);
 
 	}
 }
@@ -518,7 +494,9 @@ async function evaluateThresholds(client) {
 
 
 	if(!shouldOpen && isThresholdOpen(12)) {
-		eventEmitter.emit("CloseXpThresholdEmperor");
+		closeThreshold(12);
+		eventEmitter.emit("FirstEnthronement", newMember.username);
+
 	}	
 	const kingCount = guild.members.cache.filter((m) =>
 		m.roles.cache.has(process.env.ROLEID_KING)
@@ -526,10 +504,10 @@ async function evaluateThresholds(client) {
 
 
 	if (kingCount < MinimumKingSize && !isThresholdOpen(11)) {
-		eventEmitter.emit("OpenXpThresholdKing");
+		openThreshold(11);
 
 	} else if (kingCount >= MinimumKingSize && isThresholdOpen(11)) {
-		eventEmitter.emit("CloseXpThresholdKing");
+		closeThreshold(11);
 	}	
 	const lordCount = guild.members.cache.filter((m) =>
 		m.roles.cache.has(process.env.ROLEID_LORD)
@@ -537,21 +515,21 @@ async function evaluateThresholds(client) {
 
 
 	if (lordCount < MinimumLordSize && !isThresholdOpen(10)) {
-		eventEmitter.emit("OpenXpThresholdLord");
+		openThreshold(10);
 
 	} else if (lordCount >= MinimumLordSize && isThresholdOpen(10)) {
-		eventEmitter.emit("CloseXpThresholdLord");
+		closeThreshold(10);
 	}	
 	const nobleCount = guild.members.cache.filter((m) =>
 		m.roles.cache.has(process.env.ROLEID_NOBLE)
 	).size;
 
 
-	if (nobleCount < MinimumNobleSize && !isThresholdOpen(10)) {
-		eventEmitter.emit("OpenXpThresholdNoble");
+	if (nobleCount < MinimumNobleSize && !isThresholdOpen(9)) {
+		openThreshold(9);
 
-	} else if (lordCount >= MinimumLordSize && isThresholdOpen(10)) {
-		eventEmitter.emit("CloseXpThresholdNoble");
+	} else if (lordCount >= MinimumLordSize && isThresholdOpen(9)) {
+		closeThreshold(9);
 	}	
 
 	const knightCount = guild.members.cache.filter((m) =>
@@ -560,11 +538,11 @@ async function evaluateThresholds(client) {
 
 
 	if (knightCount < MinimumKnightSize && !isThresholdOpen(8)) {
-		eventEmitter.emit("OpenXpThresholdKnight");
+		openThreshold(8);
 
 	} else if (knightCount >= MinimumKnightSize && isThresholdOpen(8)) {
-		eventEmitter.emit("CloseXpThresholdKnight");
+		closeThreshold(8);
 	}	
 
 }
-module.exports = { CacheDataFromDB, CacheAllUserXP, CacheFesteringUsers , DBGetUsers, DBGetUserById, DBAddUser, DBRemoveUser, DBUpdateXP, DBSetRole, DBGetLastXPBoostTime, DBSetLastXPBoostTime, DBBoostXPForAllUsers, DBResetXP, DBSetFestering, DBGetActiveFestering, DBClearFestering, DBGetFestering, isThresholdOpen,changeRole, startupOpenEmperorThreshold, evaluateThresholds };
+module.exports = { CacheDataFromDB, CacheAllUserXP, CacheFesteringUsers , DBGetUsers, DBGetUserById, DBAddUser, DBRemoveUser, DBUpdateXP, DBSetRole, DBGetLastXPBoostTime, DBSetLastXPBoostTime, DBBoostXPForAllUsers, DBResetXP, DBSetFestering, DBGetActiveFestering, DBClearFestering, DBGetFestering, isThresholdOpen,changeRole, startupOpenEmperorThreshold, evaluateThresholds, openThreshold, closeThreshold }

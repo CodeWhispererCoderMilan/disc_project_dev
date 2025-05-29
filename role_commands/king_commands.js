@@ -42,7 +42,7 @@ const {
 	MinimumKnightToKingSiegeRatio
 } = require("../game_config.json");
 const { eventEmitter } = require("../functions/eventEmitter.js");
-const { DBUpdateXP, isThresholdOpen } = require("../apis/firebase/querys");
+const { DBUpdateXP, isThresholdOpen, changeRole, openThreshold, closeThreshold } = require("../apis/firebase/querys");
 
 let selectedHumans = {};
 let selectedKnights = {};
@@ -106,7 +106,7 @@ async function setupKingBotEvents(client, lastMessageId) {
 					kingSize = kings.size;
 					eventEmitter.emit("UpdateKingSize", kingSize, member);
 					if(kingSize < MinimumKingSize && !isThresholdOpen(11)){
-						eventEmitter.emit("OpenXpThresholdKing");
+						openThreshold(11);
 					}
 
 				}
@@ -186,10 +186,10 @@ async function setupKingBotEvents(client, lastMessageId) {
 					kingSize = kings.size;
 					eventEmitter.emit("UpdateKingSize", kingSize, newMember);
 					if(kingSize < MinimumKingSize && !isThresholdOpen(11)){
-						eventEmitter.emit("OpenXpThresholdKing");
+						openThreshold(11);
 					}
 					if(kingSize >= MinimumKingSize && isThresholdOpen(11)){
-						eventEmitter.emit("CloseXpThresholdKnight");
+						closeThreshold(11);
 					}
 				}
 				if(hadRoleBeforeKnight || hasRoleNowKnight){
@@ -341,8 +341,7 @@ async function setupKingBotEvents(client, lastMessageId) {
 						);
 						return;
 					} else {
-						eventEmitter.emit(
-							"changeRole",
+						await changeRole(
 							selectedKnights[userId],
 							"Merchant",
 							false
@@ -522,8 +521,7 @@ async function setupKingBotEvents(client, lastMessageId) {
 			const success = siegeParticipants >= knights / kingSize;
 			let message = "";
 			if (success) {
-				eventEmitter.emit(
-					"changeRole",
+				await changeRole(
 					selectedKings[siegeInitiatorId],
 					"Poop",
 					false

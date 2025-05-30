@@ -133,7 +133,7 @@ async function setupNobleBotEvents(client, lastMessageId) {
 				noblesSize = nobles.size;
 				eventEmitter.emit("UpdateNobleSize", noblesSize, member);
 				if(noblesSize < MinimumNobleSize && !isThresholdOpen(9)){
-					openThreshold(9);
+					await openThreshold(9, client);
 				}
 
 				if(noblesSize < MinimumNobleSizeForAssassination && disableAssassination === false){
@@ -235,7 +235,7 @@ async function setupNobleBotEvents(client, lastMessageId) {
 				noblesSize = nobles.size;
 				eventEmitter.emit("UpdateNobleSize", noblesSize, newMember);
 				if(noblesSize < MinimumNobleSize && !isThresholdOpen(9)){
-					openThreshold(9);
+					await openThreshold(9, client);
 				}
 				if(noblesSize >= MinimumNobleSize && isThresholdOpen(9)){
 					closeThreshold(9);

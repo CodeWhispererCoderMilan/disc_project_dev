@@ -128,7 +128,7 @@ async function setupKnightBotEvents(client, lastMessageId) {
 			knightsSize = knights.size;
 			eventEmitter.emit("UpdateKnightSize", knightsSize, member);
 			if(knightsSize < MinimumKnightSize && !isThresholdOpen(8)){
-				openThreshold(8);
+				await openThreshold(8, client);
 			}
 
 		}
@@ -277,7 +277,7 @@ async function setupKnightBotEvents(client, lastMessageId) {
 			knightsSize = knights.size;
 			eventEmitter.emit("UpdateKnightSize", knightsSize, newMember);
 			if(knightsSize < MinimumKnightSize && !isThresholdOpen(8)){
-				openThreshold(8);
+				await openThreshold(8, client);
 			}
 			if(knightsSize >= MinimumKnightSize && isThresholdOpen(8)){
 				closeThreshold(8);

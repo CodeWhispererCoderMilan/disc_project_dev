@@ -24,9 +24,11 @@ const roleUpgradeAvailable = Array(13).fill(true); //array that opens or blocks 
 
 async function closeThreshold(thresholdnr) {
 	roleUpgradeAvailable[thresholdnr] = false;
+
 }
-async function openThreshold(thresholdnr) {
+async function openThreshold(thresholdnr, client) {
 	roleUpgradeAvailable[thresholdnr] = true;
+	await DBBoostXPForAllUsers(0, client);
 }
 function isThresholdOpen(thresholdnr) {
 	return roleUpgradeAvailable[thresholdnr];
@@ -478,7 +480,7 @@ async function startupOpenEmperorThreshold(client) {
 	const shouldOpen = emperorCount === 0;
 
 	if (shouldOpen && !isThresholdOpen(12)) {
-		openThreshold(12);
+		await openThreshold(12, client);
 
 	}
 }
@@ -504,7 +506,7 @@ async function evaluateThresholds(client) {
 
 
 	if (kingCount < MinimumKingSize && !isThresholdOpen(11)) {
-		openThreshold(11);
+		await openThreshold(11, client);
 
 	} else if (kingCount >= MinimumKingSize && isThresholdOpen(11)) {
 		closeThreshold(11);
@@ -515,7 +517,7 @@ async function evaluateThresholds(client) {
 
 
 	if (lordCount < MinimumLordSize && !isThresholdOpen(10)) {
-		openThreshold(10);
+		await openThreshold(10, client);
 
 	} else if (lordCount >= MinimumLordSize && isThresholdOpen(10)) {
 		closeThreshold(10);
@@ -526,7 +528,7 @@ async function evaluateThresholds(client) {
 
 
 	if (nobleCount < MinimumNobleSize && !isThresholdOpen(9)) {
-		openThreshold(9);
+		await openThreshold(9, client);
 
 	} else if (lordCount >= MinimumLordSize && isThresholdOpen(9)) {
 		closeThreshold(9);
@@ -538,7 +540,7 @@ async function evaluateThresholds(client) {
 
 
 	if (knightCount < MinimumKnightSize && !isThresholdOpen(8)) {
-		openThreshold(8);
+		await openThreshold(client);
 
 	} else if (knightCount >= MinimumKnightSize && isThresholdOpen(8)) {
 		closeThreshold(8);

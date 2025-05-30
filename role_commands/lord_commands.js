@@ -104,7 +104,7 @@ async function setupLordBotEvents(client, lastMessageId) {
 				lordsSize = lords.size;
 				eventEmitter.emit("UpdateLordSize", lordsSize, member);
 				if(lordsSize < MinimumLordSize && !isThresholdOpen(10)){
-					openThreshold(10);
+					await openThreshold(10, client);
 				}
 				
 				if(lordsSize < MinimumLordSizeForElection && disableElection === false){
@@ -229,7 +229,7 @@ async function setupLordBotEvents(client, lastMessageId) {
 				lordsSize = lords.size;
 				eventEmitter.emit("UpdateLordSize", lordsSize, newMember);
 				if(lordsSize < MinimumLordSize && !isThresholdOpen(10)){
-					openThreshold(10);
+					await openThreshold(10,client);
 				}
 				if(lordsSize >= MinimumLordSize && isThresholdOpen(10)){
 					closeThreshold(10);

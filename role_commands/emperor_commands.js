@@ -59,7 +59,7 @@ async function setupEmperorBotEvents(client, lastMessageId) {
 			selectedLord = null;
 			selectedKnight = null;
 			selectedHuman = null;
-			openThreshold(12);
+			await openThreshold(12, client);
 			eventEmitter.emit("EmperorVanished", member.username);		}
 			await updateSelectMenu(client, lastMessageId);
 	});

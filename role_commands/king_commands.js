@@ -106,7 +106,7 @@ async function setupKingBotEvents(client, lastMessageId) {
 					kingSize = kings.size;
 					eventEmitter.emit("UpdateKingSize", kingSize, member);
 					if(kingSize < MinimumKingSize && !isThresholdOpen(11)){
-						openThreshold(11);
+						await openThreshold(11, client);
 					}
 
 				}
@@ -186,7 +186,7 @@ async function setupKingBotEvents(client, lastMessageId) {
 					kingSize = kings.size;
 					eventEmitter.emit("UpdateKingSize", kingSize, newMember);
 					if(kingSize < MinimumKingSize && !isThresholdOpen(11)){
-						openThreshold(11);
+						await openThreshold(11, client);
 					}
 					if(kingSize >= MinimumKingSize && isThresholdOpen(11)){
 						closeThreshold(11);

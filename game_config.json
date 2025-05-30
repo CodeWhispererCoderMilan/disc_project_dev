@@ -11,7 +11,7 @@
 	"XpBoostMerchant" : 240,
 	"XpBoostKnight" : 300,
 	"XpBoostNoble" : 360,
-	"XpBoostLord" : 420,
+	"XpBoostLord" : 1000,
 	"XpBoostKing" : 500,
 	"XpBoostEmperor" : 600,
 	"MinimumKnightSize" : 3,

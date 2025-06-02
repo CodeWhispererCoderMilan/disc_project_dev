@@ -530,7 +530,7 @@ async function evaluateThresholds(client) {
 	if (nobleCount < MinimumNobleSize && !isThresholdOpen(9)) {
 		await openThreshold(9, client);
 
-	} else if (lordCount >= MinimumLordSize && isThresholdOpen(9)) {
+	} else if (nobleCount >= MinimumNobleSize && isThresholdOpen(9)) {
 		closeThreshold(9);
 	}	
 

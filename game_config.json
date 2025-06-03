@@ -146,6 +146,7 @@
 	"MinimumHigherRoleSizeForCoup" : 5,
 	"MinimumHigherRoleRatioForRevolution" : 0.4,
 	"MinimumHigherRoleRatioForCoup" : 0.3,
+	"EndowPenalty" : 0.5,
 	"ButtonLabelCheckXP": "Count Drops",
 	"ButtonLabelDivination": "Divination",
 	"ButtonLabelSwarm":"Swarm",

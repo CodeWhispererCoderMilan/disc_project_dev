@@ -15,9 +15,10 @@ const { MinimumLordSize, MinimumNobleSize, MinimumKnightSize,
 	XpBoostNoble,
 	XpBoostLord,
 	XpBoostKing,
-	XpBoostEmperor
+	XpBoostEmperor,
+	EndowPenalty
 } = require('../../game_config.json');
-const { CacheRemoveUser, CacheAddUser, CacheSetUserXP, CacheSetFestering, CacheClearFestering, CacheIsPoopBeingFestered, CacheGetEndows} = require('../redis/redisCache.js');
+const { CacheRemoveUser, CacheAddUser, CacheSetUserXP, CacheSetFestering, CacheClearFestering, CacheIsPoopBeingFestered, CacheGetEndows, CacheGetUserXP, CacheClearEndow} = require('../redis/redisCache.js');
 const { eventEmitter } = require('../../functions/eventEmitter.js');
 
 const roleUpgradeAvailable = Array(13).fill(true); //array that opens or blocks leveling up between roles.
@@ -437,10 +438,20 @@ async function changeRole(member, roleName, keepXP) {
 		try {
 			await DBResetXP(member.id);
 		} catch (err) {
-			throw {
-				name: "RoleChangeError",
-				message: `Couldn't reset XP for user ${member.displayName}:${err.message}`,
-			};
+			console.error(`Error resetting XP for user ${member.displayName}: ${err.message}`);
+		}
+		try{
+			endowingMerchants = await CacheGetEndows(member.id);
+			if (endowingMerchants.length > 0) {
+			 	 for (const merchantId of endowingMerchants) {
+					const currentXP = await CacheGetUserXP(merchantId);
+					await DBUpdateXP(merchantId, EndowPenalty*currentXP, member.guild.client);
+					await CacheClearEndow(merchantId, member.id);
+					eventEmitter.emit("NotifyMerchantChannel", `The endow to ${member.displayName} has vaporized, they failed. The stream has given you a penalty of ${EndowPenalty*currentXP} drops.`);
+			 	}
+			}
+		}catch(err) {
+			console.error(`Error getting endowing merchants for user ${member.displayName}: ${err.message}`);
 		}
 	};
 	try {

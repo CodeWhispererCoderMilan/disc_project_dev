@@ -445,9 +445,10 @@ async function changeRole(member, roleName, keepXP) {
 			if (endowingMerchants.length > 0) {
 			 	 for (const merchantId of endowingMerchants) {
 					const currentXP = await CacheGetUserXP(merchantId);
-					await DBUpdateXP(merchantId, EndowPenalty*currentXP, member.guild.client);
+					await DBUpdateXP(merchantId, - EndowPenalty*currentXP, member.guild.client);
 					await CacheClearEndow(merchantId, member.id);
-					eventEmitter.emit("NotifyMerchantChannel", `The endow to ${member.displayName} has vaporized, they failed. The stream has given you a penalty of ${EndowPenalty*currentXP} drops.`);
+					merchantMember = await member.guild.members.cache.get(merchantId);
+					eventEmitter.emit("NotifyMerchantChannel", `The endow by to ${member.displayName} has vaporized, they failed. The stream has given ${merchantMember.displayName} a penalty of ${EndowPenalty*currentXP} drops.`);
 			 	}
 			}
 		}catch(err) {

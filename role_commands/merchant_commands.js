@@ -27,6 +27,7 @@ const {
 	RoleChangeMessageDisplayTime,
 	EndowDuration,
 	EndowCost,
+	EndowCooldown,
 	TextMerchantMessageContent,
 	TextRevolutionTargetSelectMenu,
 	TextEmperorCandidateSelectMenu,

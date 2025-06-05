@@ -26,7 +26,6 @@ const {
 	SiegeCoolDown,
 	SiegeCost,
 	RoleChangeMessageDisplayTime,
-	RoyalWritCost,
 	RoyalWritCooldown,
 	TextKingMessageContent,
 	TextDegradationRoyalWritSelectMenu,
@@ -261,17 +260,12 @@ async function setupKingBotEvents(client, lastMessageId) {
 					await sendInteractionReply(interaction, "No knight or target selected.");
 					return;
 				}
-				const userXP = await CacheGetUserXP(userId);
-				if (userXP < RoyalWritCost) {
-					await sendInteractionReply(interaction, `Not enough XP (current XP: ${userXP})`)
-				} else {
-					const cooldown = await CacheGetCooldown("RoyalWrit", userId);
-					if (cooldown)
-						await sendInteractionReply(interaction, "Royal Writ is on cooldown and cannot be used.");
-					else {
-						const modal = buildRoyalWritModal();
-						await interaction.showModal(modal);
-					}
+				const cooldown = await CacheGetCooldown("RoyalWrit", userId);
+				if (cooldown)
+					await sendInteractionReply(interaction, "Royal Writ is on cooldown and cannot be used.");
+				else {
+					const modal = buildRoyalWritModal();
+					await interaction.showModal(modal);
 				}
 			} catch (err) {
 				showErrorMsg(err);
@@ -280,11 +274,20 @@ async function setupKingBotEvents(client, lastMessageId) {
 		if (interaction.customId === "RoyalWritModal"){
 			try{
 				const writMessage = interaction.fields.getTextInputValue('messageToKnight');
-				await CacheSetWrit(3, userId, selectedKnights[userId].id, selectedWritHumans[userId].id, 0, writMessage);
+				const writAmount = parseInt(interaction.fields.getTextInputValue('amountInput'));
+				if (isNaN(writAmount) || writAmount <= 0) {
+					await sendInteractionReply(interaction, "Invalid amount of drops. Please enter a positive number.");
+					return;
+				}
 				const userXP = await CacheGetUserXP(userId);
-				await DBUpdateXP(userId, RoyalWritCost, client);
+				if (userXP < writAmount) {
+					await sendInteractionReply(interaction, `You don't have enough drops. (drops left: ${userXP})`);
+					return;
+				}
+				await CacheSetWrit(3, userId, selectedKnights[userId].id, selectedWritHumans[userId].id, 0, writMessage);
+				await DBUpdateXP(userId, -writAmount, client);
 				await CacheSetCooldown("highWrit", userId, RoyalWritCooldown);
-				await sendInteractionReply(interaction, `Royal Writ of execution succesfully emitted! (XP left: ${userXP - RoyalWritCost})`);
+				await sendInteractionReply(interaction, `Royal Writ of execution succesfully emitted! (XP left: ${userXP - writAmount})`);
 			}catch(err){
 				showErrorMsg(err);
 			}
@@ -598,9 +601,17 @@ function buildRoyalWritModal(){
 		.setLabel("Message for your knight")
 		.setStyle(TextInputStyle.Paragraph)
 		.setRequired(true);
-	const actionRow = new ActionRowBuilder().addComponents(messageToKnight);
+	const amountInput = new TextInputBuilder()
+		.setCustomId('amountInput')
+		.setLabel("Amount of drops rewarded")
+		.setStyle(TextInputStyle.Short)
+		.setRequired(true);
 
-	modal.addComponents(actionRow);
+	const actionRow0 = new ActionRowBuilder().addComponents(messageToKnight);
+	const actionRow1 = new ActionRowBuilder().addComponents(amountInput);
+	modal.addComponents(actionRow0, actionRow1);
+
+
 	return modal;
 }
 

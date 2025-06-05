@@ -489,9 +489,8 @@ async function startupOpenEmperorThreshold(client) {
 		m.roles.cache.has(process.env.ROLEID_EMPEROR)
 	).size;
 
-	const shouldOpen = emperorCount === 0;
 
-	if (shouldOpen && !isThresholdOpen(12)) {
+	if (emperorCount === 0 && !isThresholdOpen(12)) {
 		await openThreshold(12, client);
 
 	}
@@ -500,16 +499,17 @@ async function evaluateThresholds(client) {
 	const guild = await client.guilds.fetch(process.env.GUILDID);
 	await guild.members.fetch();
 	
-	const emperorCount = guild.members.cache.filter((m) =>
+	const emperorMembers = await guild.members.cache.filter((m) =>
 		m.roles.cache.has(process.env.ROLEID_EMPEROR)
-	).size;
+	);
 
-	const shouldOpen = emperorCount === 0;
+	const shouldOpen = emperorMembers.size === 0;
 
 
 	if(!shouldOpen && isThresholdOpen(12)) {
 		closeThreshold(12);
-		eventEmitter.emit("FirstEnthronement", newMember.username);
+
+		eventEmitter.emit("FirstEnthronement", emperorMembers.first().displayName);
 
 	}	
 	const kingCount = guild.members.cache.filter((m) =>

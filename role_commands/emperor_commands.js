@@ -26,7 +26,6 @@ const {
 	DethroneCooldown,
 	HeirCost,
 	HeirCooldown,
-	ImperialWritCost,
 	ImperialWritCooldown,
 	TextEmperorMessageContent,
 	TextCoronationSelectMenu,
@@ -138,17 +137,12 @@ async function setupEmperorBotEvents(client, lastMessageId) {
 					await sendInteractionReply(interaction, "No knight or target selected.");
 					return;
 				}
-				const userXP = await CacheGetUserXP(userId);
-				if (userXP < ImperialWritCost) {
-					await sendInteractionReply(interaction, `Not enough XP (current XP: ${userXP})`)
-				} else {
-					const cooldown = await CacheGetCooldown("ImperialWrit", userId);
-					if (cooldown)
-						await sendInteractionReply(interaction, "Imperial Writ is on cooldown and cannot be used.");
-					else {
-						const modal = buildImperialWritModal();
-						await interaction.showModal(modal);
-					}
+				const cooldown = await CacheGetCooldown("ImperialWrit", userId);
+				if (cooldown)
+					await sendInteractionReply(interaction, "Imperial Writ is on cooldown and cannot be used.");
+				else {
+					const modal = buildImperialWritModal();
+					await interaction.showModal(modal);
 				}
 			} catch (err) {
 				showErrorMsg(err);
@@ -157,11 +151,20 @@ async function setupEmperorBotEvents(client, lastMessageId) {
 		if (interaction.customId === "ImperialWritModal"){
 			try{
 				const writMessage = interaction.fields.getTextInputValue('messageToKnight');
-				await CacheSetWrit(4, userId, selectedKnight.id, selectedHuman.id, 0, writMessage);
+				const writAmount = parseInt(interaction.fields.getTextInputValue('amountInput'));
+				if (isNaN(writAmount) || writAmount <= 0) {
+					await sendInteractionReply(interaction, "Invalid amount of drops. Please enter a positive number.");
+					return;
+				}
 				const userXP = await CacheGetUserXP(userId);
-				await DBUpdateXP(userId, ImperialWritCost, client);
+				if (userXP < writAmount) {
+					await sendInteractionReply(interaction, `You don't have enough drops. (drops left: ${userXP})`);
+					return;
+				}
+				await CacheSetWrit(4, userId, selectedKnight.id, selectedHuman.id, 0, writMessage);
+				await DBUpdateXP(userId, -writAmount, client);
 				await CacheSetCooldown("ImperialWrit", userId, ImperialWritCooldown);
-				await sendInteractionReply(interaction, `Imperial Writ of execution succesfully emitted! (XP left: ${userXP - ImperialWritCost})`);
+				await sendInteractionReply(interaction, `Imperial Writ of execution succesfully emitted! (XP left: ${userXP - writAmount})`);
 			}catch(err){
 				showErrorMsg(err);
 			}
@@ -394,9 +397,16 @@ function buildImperialWritModal(){
 		.setLabel("Message for your knight")
 		.setStyle(TextInputStyle.Paragraph)
 		.setRequired(true);
-	const actionRow = new ActionRowBuilder().addComponents(messageToKnight);
+	const amountInput = new TextInputBuilder()
+		.setCustomId('amountInput')
+		.setLabel("Amount of drops rewarded")
+		.setStyle(TextInputStyle.Short)
+		.setRequired(true);
 
-	modal.addComponents(actionRow);
+	const actionRow0 = new ActionRowBuilder().addComponents(messageToKnight);
+	const actionRow1 = new ActionRowBuilder().addComponents(amountInput);
+	modal.addComponents(actionRow0, actionRow1);
+
 	return modal;
 }
 
@@ -418,7 +428,7 @@ async function handleShowWrits(interaction) {
 		}));
 
 		const response = `Your issued writs:\n\n${writDescriptions.join('\n')}`;
-https://drive.google.com/drive/folders/18wx1dylyms37ABAtqNXmhxHh-QCHrfVT?usp=sharing
+		https://drive.google.com/drive/folders/18wx1dylyms37ABAtqNXmhxHh-QCHrfVT?usp=sharing
 		await sendInteractionReply(interaction, response);
 	} catch (error) {
 		console.error('Error in handleShowWrits:', error);

@@ -14,6 +14,7 @@ function wait(ms) {
 }
 
 
+
 async function scheduledXpBoost(timeUntilNextBoost, client, iterations = Infinity) {
 	
 	console.log(`waiting ${timeUntilNextBoost / 1000} sec to sync XP boost`);
@@ -47,10 +48,18 @@ async function checkAndApplyMissedXPBoost(client) {
 			let boostsMissed = Math.trunc(missedTime / XpBoostInterval);
 			try {
 				await startupOpenEmperorThreshold(client);
+			}catch (err) {
+				console.error("Error during startupOpenEmperorThreshold:", err.message);
+			}
+			try{
 				await evaluateThresholds(client);
+			} catch (err) {
+				console.error("Error during evaluateThresholds:", err.message);
+			}
+			try{
 				await DBBoostXPForAllUsers(boostsMissed, client);
 			} catch (err) {
-				console.error("DB: XPboost failed");
+				console.error("DB: XPboost failed", err.message);
 			}
 			console.log(
 				`updated XP for ${boostsMissed} boosts missed`

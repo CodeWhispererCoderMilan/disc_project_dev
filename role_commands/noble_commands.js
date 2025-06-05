@@ -23,7 +23,6 @@ const {
 	AssassinationThreadshold,
 	GlobalCoolDown,
 	RoleChangeMessageDisplayTime,
-	HighWritCost,
 	HighWritCooldown,
 	TextNobleMessageContent,
 	ButtonLabelShowWrits,
@@ -283,17 +282,12 @@ async function setupNobleBotEvents(client, lastMessageId) {
 					await sendInteractionReply(interaction, "No knight or target selected.");
 					return;
 				}
-				const userXP = await CacheGetUserXP(userId);
-				if (userXP < HighWritCost) {
-					await sendInteractionReply(interaction, `Not enough XP (current XP: ${userXP})`)
-				} else {
 					const cooldown = await CacheGetCooldown("highWrit", userId);
 					if (cooldown)
 						await sendInteractionReply(interaction, "High Writ is on cooldown and cannot be used.");
 					else {
 						const modal = buildHighWritModal();
 						await interaction.showModal(modal);
-					}
 				}
 			} catch (err) {
 				showErrorMsg(err);
@@ -302,11 +296,20 @@ async function setupNobleBotEvents(client, lastMessageId) {
 		if (interaction.customId === "HighWritModal"){
 			try{
 				const writMessage = interaction.fields.getTextInputValue('messageToKnight');
-				await CacheSetWrit(1, userId, selectedKnights[userId].id, selectedHumans[userId].id, 0, writMessage);
+				const writAmount = parseInt(interaction.fields.getTextInputValue('amountInput'));
+				if (isNaN(writAmount) || writAmount <= 0) {
+					await sendInteractionReply(interaction, "Invalid amount of drops. Please enter a positive number.");
+					return;
+				}
 				const userXP = await CacheGetUserXP(userId);
-				await DBUpdateXP(userId, HighWritCost, client);
+				if (userXP < writAmount) {
+					await sendInteractionReply(interaction, `You don't have enough drops. (drops left: ${userXP})`);
+					return;
+				}
+				await CacheSetWrit(1, userId, selectedKnights[userId].id, selectedHumans[userId].id, 0, writMessage);
+				await DBUpdateXP(userId,-writAmount, client);
 				await CacheSetCooldown("highWrit", userId, HighWritCooldown);
-				await sendInteractionReply(interaction, `High Writ of execution succesfully emitted! (XP left: ${userXP - HighWritCost})`);
+				await sendInteractionReply(interaction, `High Writ of execution succesfully emitted! (XP left: ${userXP - writAmount})`);
 			}catch(err){
 				showErrorMsg(err);
 			}
@@ -487,12 +490,18 @@ function buildHighWritModal(){
 	const messageToKnight = new TextInputBuilder()
 		.setMaxLength(300)
 		.setCustomId('messageToKnight')
-		.setLabel("Message for your knight")
+		.setLabel("Message to your knight")
 		.setStyle(TextInputStyle.Paragraph)
 		.setRequired(true);
-	const actionRow = new ActionRowBuilder().addComponents(messageToKnight);
-
-	modal.addComponents(actionRow);
+	const amountInput = new TextInputBuilder()
+		.setCustomId('amountInput')
+		.setLabel("Amount of drops rewarded")
+		.setStyle(TextInputStyle.Short)
+		.setRequired(true);
+		
+	const actionRow0 = new ActionRowBuilder().addComponents(messageToKnight);
+	const actionRow1 = new ActionRowBuilder().addComponents(amountInput);
+	modal.addComponents(actionRow0, actionRow1);
 	return modal;
 }
 

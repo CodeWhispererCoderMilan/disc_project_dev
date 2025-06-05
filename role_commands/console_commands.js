@@ -1,8 +1,9 @@
 const { eventEmitter } = require("../functions/eventEmitter.js");
 const {
-  ActionRowBuilder,
-  ButtonBuilder,
-  ButtonStyle
+	SlashCommandBuilder,
+	ActionRowBuilder,
+	ButtonBuilder,
+	ButtonStyle
 } = require("discord.js");
 
 const {
@@ -57,6 +58,15 @@ const {
 	MinimumHigherRoleRatioForCoup,
 	MinimumKnightSizeForCoup
 } = require("../game_config.json");
+
+
+const changeroleCommand = new SlashCommandBuilder()
+	.setName("changerole")
+	.setDescription("Force change a user's role")
+	.addUserOption(opt => opt.setName("user").setDescription("Target user").setRequired(true))
+	.addStringOption(opt => opt.setName("role").setDescription("New role name").setRequired(true))
+	.addBooleanOption(opt => opt.setName("keep_xp").setDescription("Preserve XP (default false)"));
+
 
 let revolutionarySize = 0;
 let peopleSize = 0;
@@ -125,6 +135,8 @@ async function setupConsoleBotEvents(client) {
 			throw err;
 		}
 	});
+	client.application.commands.create(changeroleCommand, process.env.GUILDID);
+
 	client.on("guildMemberUpdate", async (oldMember, newMember)=>{
 		const hadRoleBeforePeasant = oldMember.roles.cache.has(
 			process.env.ROLEID_PEASANT
@@ -182,8 +194,8 @@ async function setupConsoleBotEvents(client) {
 			hasRoleNowScholar || hadRoleBeforeScholar ||
 			hasRoleNowMerchant || hadRoleBeforeMerchant ||
 			hasRoleNowKnight || hadRoleBeforeKnight){
-				
-				await handleHigherRoleSizeChange(oldMember);
+
+			await handleHigherRoleSizeChange(oldMember);
 		}
 
 	});
@@ -230,17 +242,26 @@ async function setupConsoleBotEvents(client) {
 			console.error(`An error occurred: ${error.message}`);
 		}
 	});
-	client.on("messageCreate", async (message) => {
-		// Ignore messages from bots
-		if (message.author.bot) return;
-		// Check if the message starts with the command prefix
-		if (message.content.startsWith("!changerole")) {
-			const args = message.content.split(" ").slice(1);
-			await handleAdminRoleChange(client, message, args);
-		}
-	});
-	
+
 	client.on("interactionCreate", async (interaction) => {
+		
+		if (interaction.isChatInputCommand() &&
+			interaction.commandName === "changerole") {
+			try {
+				const target = interaction.options.getMember("user");
+				const roleName = interaction.options.getString("role");
+				const keepXP = interaction.options.getBoolean("keep_xp") || false;
+
+				if (!target || !roleName) {
+					await interaction.reply({ content: "Missing user or role", ephemeral: true });
+					return;
+				}
+				await handleAdminRoleChange(client, interaction, target.id, roleName, keepXP);	
+			} catch (err) {
+				console.error("Error in /changerole command:", err);
+				await interaction.reply({ content: "Error while processing role change.", ephemeral: true });
+			}
+		}
 		if (!interaction.isButton()) return;
 		if(interaction.customId === "CheckXP"){
 			try{
@@ -424,7 +445,7 @@ async function setupConsoleBotEvents(client) {
 
 }
 async function handleHigherRoleSizeChange(member){
-	
+
 	let higherRoleSize = nobleSize + lordSize + kingSize;
 	const playerCount = member.guild.memberCount - 2;
 
@@ -736,39 +757,26 @@ async function notifyRevolutionResult(message) {
 }
 
 
-async function handleAdminRoleChange(client, message, args) {
-	// Check if the user has admin privileges
-	if (!message.member.permissions.has("ADMINISTRATOR")) {
+async function handleAdminRoleChange(client, interaction, targetId, roleName, keepXP) {
+
+	if (!interaction.member.permissions.has("ADMINISTRATOR")) {
 		return message.reply("You do not have permission to use this command.");
 	}
-
-	// Check if the command has the correct number of arguments
-	if (args.length !== 2) {
-		return message.reply("Usage: !changerole <user_id> <new_role_name>");
+	const guild = await client.guilds.fetch(process.env.GUILDID);
+	if (!guild) {
+		console.error("Guild not found");
+		return;
 	}
-
-	const [userId, newRoleName] = args;
-
-	try {
-		const guild = await client.guilds.fetch(process.env.GUILDID);
-		if (!guild) {
-			console.error("Guild not found");
-			return;
-		}
-		const member = await guild.members.fetch(userId);
-		const role = await guild.roles.cache.some(
-			(role) => role.name === newRoleName
-		);
-		if (!role && !member) {
-			message.reply("role or member ID does not exist");
-			return;
-		}
-		await changeRole( member, newRoleName, false);
-		message.reply(`changing role for user ${userId} to ${newRoleName}...`);
-	} catch (error) {
-		console.error("Error in handleAdminRoleChange:", error);
-		message.reply("An error occurred while processing the command.");
+	const member = await guild.members.fetch(targetId);
+	const role = await guild.roles.cache.some(
+		(role) => role.name === roleName
+	);
+	if (!role && !member) {
+		interaction.reply("role or member ID does not exist");
+		return;
 	}
+	await changeRole( member, roleName, keepXP);
+	interaction.reply(`Role changed to ${roleName} for ${member.user.username}.`);
 }
 async function messageConsoleCommands(client) {
 	try {

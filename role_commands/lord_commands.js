@@ -25,7 +25,6 @@ const {
 	LordKingElectionSuccessThreadshold,
 	LordElectionCoolDown,
 	RoleChangeMessageDisplayTime,
-	EminentWritCost,
 	EminentWritCooldown,
 	TextLordMessageContent,
 	TextEminentWritKnightSelectMenu,
@@ -392,17 +391,12 @@ async function setupLordBotEvents(client, lastMessageId) {
 					await sendInteractionReply(interaction, "No knight or target selected.");
 					return;
 				}
-				const userXP = await CacheGetUserXP(userId);
-				if (userXP < EminentWritCost) {
-					await sendInteractionReply(interaction, `Not enough XP (current XP: ${userXP})`)
-				} else {
-					const cooldown = await CacheGetCooldown("eminentWrit", userId);
-					if (cooldown)
-						await sendInteractionReply(interaction, "Eminent Writ is on cooldown and cannot be used.");
-					else {
-						const modal = buildEminentWritModal();
-						await interaction.showModal(modal);
-					}
+				const cooldown = await CacheGetCooldown("eminentWrit", userId);
+				if (cooldown)
+					await sendInteractionReply(interaction, "Eminent Writ is on cooldown and cannot be used.");
+				else {
+					const modal = buildEminentWritModal();
+					await interaction.showModal(modal);
 				}
 			} catch (err) {
 				showErrorMsg(err);
@@ -411,11 +405,20 @@ async function setupLordBotEvents(client, lastMessageId) {
 		if (interaction.customId === "EminentWritModal"){
 			try{
 				const writMessage = interaction.fields.getTextInputValue('messageToKnight');
-				await CacheSetWrit(2, userId, selectedKnights[userId].id, selectedHumans[userId].id, 0, writMessage);
+				const writAmount = parseInt(interaction.fields.getTextInputValue('amountInput'));
+				if (isNaN(writAmount) || writAmount <= 0) {
+					await sendInteractionReply(interaction, "Invalid amount of drops. Please enter a positive number.");
+					return;
+				}
 				const userXP = await CacheGetUserXP(userId);
-				await DBUpdateXP(userId, EminentWritCost, client);
+				if (userXP < writAmount) {
+					await sendInteractionReply(interaction, `You don't have enough drops. (drops left: ${userXP})`);
+					return;
+				}
+				await CacheSetWrit(2, userId, selectedKnights[userId].id, selectedHumans[userId].id, 0, writMessage);
+				await DBUpdateXP(userId, -writAmount, client);
 				await CacheSetCooldown("eminentWrit", userId, EminentWritCooldown);
-				await sendInteractionReply(interaction, `Eminent Writ of execution succesfully emitted! (XP left: ${userXP - EminentWritCost})`);
+				await sendInteractionReply(interaction, `Eminent Writ of execution succesfully emitted! (XP left: ${userXP - writAmount})`);
 			}catch(err){
 				showErrorMsg(err);
 			}
@@ -628,9 +631,16 @@ function buildEminentWritModal(){
 		.setLabel("Message for your knight")
 		.setStyle(TextInputStyle.Paragraph)
 		.setRequired(true);
-	const actionRow = new ActionRowBuilder().addComponents(messageToKnight);
+	const amountInput = new TextInputBuilder()
+		.setCustomId('amountInput')
+		.setLabel("Amount of drops rewarded")
+		.setStyle(TextInputStyle.Short)
+		.setRequired(true);
 
-	modal.addComponents(actionRow);
+	const actionRow0 = new ActionRowBuilder().addComponents(messageToKnight);
+	const actionRow1 = new ActionRowBuilder().addComponents(amountInput);
+	modal.addComponents(actionRow0, actionRow1);
+
 	return modal;
 }
 

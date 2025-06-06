@@ -20,10 +20,6 @@ const {
 const {
 	CutDownCost,
 	CutDownCooldown,
-	HighWritReward,
-	EminentWritReward,
-	RoyalWritReward,
-	ImperialWritReward,
 	SiegeTime,
 	RevolutionCoolDown,
 	CoupCoolDown,
@@ -937,6 +933,11 @@ async function setupKnightBotEvents(client, lastMessageId) {
 			}
 		}
 	);
+
+	eventEmitter.on('ReturnWritReward', async (userId, writAmount) => {
+		await DBUpdateXP(userId, writAmount, client); 
+	});
+
 }
 
 async function startSiege(client, lastMessageId, timeout) {
@@ -975,7 +976,7 @@ async function handleShowWrits(interaction) {
 				writ.targetId
 			}>, Status: ${getWritStatus(writ.writStatus)}, Message: ${
 				writ.writMessage
-			}`;
+			}, Reward: ${writ.writAmount} drops`;
 		});
 
 		const response = `Your active writs:\n\n${writDescriptions.join("\n")}`;
@@ -1057,25 +1058,7 @@ async function executeCutDown(interaction, userId, targetId, userXP, client) {
 	// Calculate total XP reward
 	let totalXpReward = 0;
 	for (const writ of relevantWrits) {
-		let xpReward;
-		switch (writ.writType) {
-			case 1:
-				xpReward = HighWritReward;
-				break;
-			case 2:
-				xpReward = EminentWritReward;
-				break;
-			case 3:
-				xpReward = RoyalWritReward;
-				break;
-			case 4:
-				xpReward = ImperialWritReward;
-				break;
-			default:
-				showErrorMsg("Writ type incorrect");
-		}
-		totalXpReward += xpReward;
-
+		totalXpReward += writ.writAmount;
 		// Update writ status
 		await CacheUpdateWritStatus(
 			writ.writType,

@@ -284,7 +284,7 @@ async function setupKingBotEvents(client, lastMessageId) {
 					await sendInteractionReply(interaction, `You don't have enough drops. (drops left: ${userXP})`);
 					return;
 				}
-				await CacheSetWrit(3, userId, selectedKnights[userId].id, selectedWritHumans[userId].id, 0, writMessage);
+				await CacheSetWrit(3, userId, selectedKnights[userId].id, selectedWritHumans[userId].id, 0, writMessage, writAmount);
 				await DBUpdateXP(userId, -writAmount, client);
 				await CacheSetCooldown("highWrit", userId, RoyalWritCooldown);
 				await sendInteractionReply(interaction, `Royal Writ of execution succesfully emitted! (XP left: ${userXP - writAmount})`);
@@ -629,7 +629,7 @@ async function handleShowWrits(interaction) {
 		const writDescriptions = await Promise.all(writs.map(async (writ, index) => {
 			const knight = await interaction.client.users.fetch(writ.knightId).catch(() => ({ username: 'Unknown Knight' }));
 			const target = await interaction.client.users.fetch(writ.targetId).catch(() => ({ username: 'Unknown Target' }));
-			return `${index + 1}. Knight: ${knight.username}, Target: ${target.username}, Status: ${getWritStatus(writ.writStatus)}, Message: ${writ.writMessage}`;
+			return `${index + 1}. Knight: ${knight.username}, Target: ${target.username}, Status: ${getWritStatus(writ.writStatus)}, Message: ${writ.writMessage}, Reward: ${writ.writAmount} drops`;
 		}));
 
 		const response = `Your issued writs:\n\n${writDescriptions.join('\n')}`;
@@ -645,8 +645,8 @@ function getWritStatus(status) {
 	switch (status) {
 		case 0: return 'To be executed';
 		case 1: return 'Executed';
-		case 2: return 'Failed';
-		case 3: return 'Annulled, knight or target have changed roles';
+		case 2: return 'Failed, your drops will be returned';
+		case 3: return 'Annulled, knight or target have changed roles, your drops will be returned';
 		default: return 'Unknown';
 	}
 }
@@ -741,6 +741,70 @@ async function updateMessage(client, lastMessageId) {
 				new ButtonBuilder()
 				.setCustomId("Knight")
 				.setLabel(ButtonLabelKnight)
+async function evaluateThresholds(client) {
+	const guild = await client.guilds.fetch(process.env.GUILDID);
+	await guild.members.fetch();
+	
+	const emperorMembers = await guild.members.cache.filter((m) =>
+		m.roles.cache.has(process.env.ROLEID_EMPEROR)
+	);
+
+	const shouldOpen = emperorMembers.size === 0;
+
+
+	if(!shouldOpen && isThresholdOpen(12)) {
+		closeThreshold(12);
+
+		eventEmitter.emit("FirstEnthronement", emperorMembers[0].displayName);
+
+	}	
+	const kingCount = guild.members.cache.filter((m) =>
+		m.roles.cache.has(process.env.ROLEID_KING)
+	).size;
+
+
+	if (kingCount < MinimumKingSize && !isThresholdOpen(11)) {
+		await openThreshold(11, client);
+
+	} else if (kingCount >= MinimumKingSize && isThresholdOpen(11)) {
+		closeThreshold(11);
+	}	
+	const lordCount = guild.members.cache.filter((m) =>
+		m.roles.cache.has(process.env.ROLEID_LORD)
+	).size;
+
+
+	if (lordCount < MinimumLordSize && !isThresholdOpen(10)) {
+		await openThreshold(10, client);
+
+	} else if (lordCount >= MinimumLordSize && isThresholdOpen(10)) {
+		closeThreshold(10);
+	}	
+	const nobleCount = guild.members.cache.filter((m) =>
+		m.roles.cache.has(process.env.ROLEID_NOBLE)
+	).size;
+
+
+	if (nobleCount < MinimumNobleSize && !isThresholdOpen(9)) {
+		await openThreshold(9, client);
+
+	} else if (nobleCount >= MinimumNobleSize && isThresholdOpen(9)) {
+		closeThreshold(9);
+	}	
+
+	const knightCount = guild.members.cache.filter((m) =>
+		m.roles.cache.has(process.env.ROLEID_KNIGHT)
+	).size;
+
+
+	if (knightCount < MinimumKnightSize && !isThresholdOpen(8)) {
+		await openThreshold(client);
+
+	} else if (knightCount >= MinimumKnightSize && isThresholdOpen(8)) {
+		closeThreshold(8);
+	}	
+
+}
 				.setStyle(ButtonStyle.Primary),
 				new ButtonBuilder()
 				.setCustomId("Siege")

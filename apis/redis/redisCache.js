@@ -322,7 +322,8 @@ async function CacheSetWrit(
 	knightId,
 	targetId,
 	writStatus,
-	writMessage
+	writMessage,
+	writAmount
 ) {
 	const writKey = `writ:${writType}:${writerId}:${knightId}:${targetId}`;
 	const writData = JSON.stringify({
@@ -332,6 +333,7 @@ async function CacheSetWrit(
 		targetId,
 		writStatus,
 		writMessage,
+		writAmount
 	});
 
 	try {
@@ -344,6 +346,9 @@ async function CacheSetWrit(
 			if (currentData.writStatus === 0) {
 				currentData.writStatus = 2;
 				await client.set(writKey, JSON.stringify(currentData));
+			}
+			if( currentData.writStatus != 1) {
+				eventEmitter.emit('ReturnWritReward', currentData.writerId, currentData.writAmount);
 			}
 			// Set the second timer for deletion
 			setTimeout(async () => {

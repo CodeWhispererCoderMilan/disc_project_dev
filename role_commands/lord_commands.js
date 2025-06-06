@@ -415,7 +415,7 @@ async function setupLordBotEvents(client, lastMessageId) {
 					await sendInteractionReply(interaction, `You don't have enough drops. (drops left: ${userXP})`);
 					return;
 				}
-				await CacheSetWrit(2, userId, selectedKnights[userId].id, selectedHumans[userId].id, 0, writMessage);
+				await CacheSetWrit(2, userId, selectedKnights[userId].id, selectedHumans[userId].id, 0, writMessage, writAmount);
 				await DBUpdateXP(userId, -writAmount, client);
 				await CacheSetCooldown("eminentWrit", userId, EminentWritCooldown);
 				await sendInteractionReply(interaction, `Eminent Writ of execution succesfully emitted! (XP left: ${userXP - writAmount})`);
@@ -658,7 +658,7 @@ async function handleShowWrits(interaction) {
 		const writDescriptions = await Promise.all(writs.map(async (writ, index) => {
 			const knight = await interaction.client.users.fetch(writ.knightId).catch(() => ({ username: 'Unknown Knight' }));
 			const target = await interaction.client.users.fetch(writ.targetId).catch(() => ({ username: 'Unknown Target' }));
-			return `${index + 1}. Knight: ${knight.username}, Target: ${target.username}, Status: ${getWritStatus(writ.writStatus)}, Message: ${writ.writMessage}`;
+			return `${index + 1}. Knight: ${knight.username}, Target: ${target.username}, Status: ${getWritStatus(writ.writStatus)}, Message: ${writ.writMessage}, Reward: ${writ.writAmount} drops`;
 		}));
 
 		const response = `Your issued writs:\n\n${writDescriptions.join('\n')}`;
@@ -674,8 +674,8 @@ function getWritStatus(status) {
 	switch (status) {
 		case 0: return 'To be executed';
 		case 1: return 'Executed';
-		case 2: return 'Failed';
-		case 3: return 'Annulled, knight or target have changed roles';
+		case 2: return 'Failed, your drops will be returned';
+		case 3: return 'Annulled, knight or target have changed roles, your drops will be returned';
 		default: return 'Unknown';
 	}
 }

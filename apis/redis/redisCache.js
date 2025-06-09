@@ -346,11 +346,8 @@ async function CacheSetWrit(
 			if (currentData.writStatus === 0) {
 				currentData.writStatus = 2;
 				await client.set(writKey, JSON.stringify(currentData));
-			}
-			if( currentData.writStatus != 1) {
 				eventEmitter.emit('ReturnWritReward', currentData.writerId, currentData.writAmount);
 			}
-			// Set the second timer for deletion
 			setTimeout(async () => {
 				await client.del(writKey);
 			}, parseInt(WritDeleteTimeout));
@@ -467,11 +464,12 @@ async function CacheCheckAndUpdateUserWrits(userId) {
 					(writData.writerId === userId ||
 						writData.knightId === userId ||
 						writData.targetId === userId) &&
-					writData.writStatus !== 3
+						writData.writStatus === 0
 				) {
 					writData.writStatus = 3;
 					updatedMulti.set(allKeys[index], JSON.stringify(writData));
 					updatedCount++;
+					eventEmitter.emit('ReturnWritReward', writData.writerId, writData.writAmount);
 					console.log(`Updated writ: ${allKeys[index]}`);
 				}
 			} else {

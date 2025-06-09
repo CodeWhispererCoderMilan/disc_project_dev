@@ -720,8 +720,8 @@ async function updateMessage(client, lastMessageId) {
 				.setStyle(ButtonStyle.Primary)
 				.setDisabled(disableElection),
 				new ButtonBuilder()
-				.setCustomId(ButtonLabelEminentWrit)
-				.setLabel("Writ")
+				.setCustomId("EminentWrit")
+				.setLabel(ButtonLabelEminentWrit)
 				.setStyle(ButtonStyle.Primary),
 				new ButtonBuilder()
 				.setCustomId("ShowWrits")

@@ -141,7 +141,7 @@ async function setupEmperorBotEvents(client, lastMessageId) {
 				if (cooldown)
 					await sendInteractionReply(interaction, "Imperial Writ is on cooldown and cannot be used.");
 				else {
-					const modal = buildImperialWritModal();
+					const modal = await buildImperialWritModal();
 					await interaction.showModal(modal);
 				}
 			} catch (err) {

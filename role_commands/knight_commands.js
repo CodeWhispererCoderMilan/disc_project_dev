@@ -493,8 +493,6 @@ async function setupKnightBotEvents(client, lastMessageId) {
 						interaction,
 						userId,
 						targetId,
-						userXP,
-						validWrit,
 						client
 					);
 				} else {
@@ -505,8 +503,7 @@ async function setupKnightBotEvents(client, lastMessageId) {
 							interaction,
 							userId,
 							targetId,
-							userXP,
-							activeWrit
+							client
 						);
 					} else {
 						if (userXP < CutDownCost) {
@@ -1021,7 +1018,7 @@ function getWritStatus(status) {
 	}
 }
 
-async function executeCutDown(interaction, userId, targetId, userXP, client) {
+async function executeCutDown(interaction, userId, targetId, client) {
 	const cooldown = await CacheGetCooldown("cutdown", userId);
 	if (cooldown) {
 		await sendInteractionReply(
@@ -1030,6 +1027,7 @@ async function executeCutDown(interaction, userId, targetId, userXP, client) {
 		);
 		return;
 	}
+	const userXP = await CacheGetUserXP(userId);
 
 	// Get all active writs for this knight and target
 	const activeWrits = await CacheGetKnightWrits(userId);
@@ -1048,7 +1046,7 @@ async function executeCutDown(interaction, userId, targetId, userXP, client) {
 		}
 		await DBUpdateXP(userId, -CutDownCost, client);
 		await performCutDown(interaction, targetId);
-		await sendInteractionReply(
+				await sendInteractionReply(
 			interaction,
 			`(${userXP - CutDownCost} XP left) Cut Down successful with no writ`
 		);
@@ -1070,7 +1068,7 @@ async function executeCutDown(interaction, userId, targetId, userXP, client) {
 	}
 
 	// Apply XP reward and perform Cut Down
-	await DBUpdateXP(userId, totalXpReward, client);
+	await DBUpdateXP(userId, parseInt(totalXpReward), client);
 	await CacheSetCooldown("cutdown", userId, CutDownCooldown);
 	await performCutDown(interaction, targetId);
 

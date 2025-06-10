@@ -138,9 +138,14 @@ async function setupEmperorBotEvents(client, lastMessageId) {
 					return;
 				}
 				const cooldown = await CacheGetCooldown("ImperialWrit", userId);
-				if (cooldown)
+				if (cooldown){
 					await sendInteractionReply(interaction, "Imperial Writ is on cooldown and cannot be used.");
-				else {
+					return;
+				}
+				if (selectedHuman.id === selectedKnight.id) {
+					await sendInteractionReply(interaction, "You cannot target the same person as both knight and target.");
+					return;
+				}else {
 					const modal = await buildImperialWritModal();
 					await interaction.showModal(modal);
 				}
@@ -161,7 +166,7 @@ async function setupEmperorBotEvents(client, lastMessageId) {
 					await sendInteractionReply(interaction, `You don't have enough drops. (drops left: ${userXP})`);
 					return;
 				}
-				await CacheSetWrit(4, userId, selectedKnight.id, selectedHuman.id, 0, writMessage, writAmount);SetWrit
+				await CacheSetWrit(4, userId, selectedKnight.id, selectedHuman.id, 0, writMessage, writAmount);
 				await DBUpdateXP(userId, -writAmount, client);
 				await CacheSetCooldown("ImperialWrit", userId, ImperialWritCooldown);
 				await sendInteractionReply(interaction, `Imperial Writ of execution succesfully emitted! (XP left: ${userXP - writAmount})`);

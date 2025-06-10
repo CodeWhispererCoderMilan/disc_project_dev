@@ -126,6 +126,8 @@ async function setupKnightBotEvents(client, lastMessageId) {
 			if(knightsSize < MinimumKnightSize && !isThresholdOpen(8)){
 				await openThreshold(8, client);
 			}
+			await CacheCheckAndUpdateUserWrits(oldMember.id);
+
 
 		}
 		if (
@@ -278,6 +280,8 @@ async function setupKnightBotEvents(client, lastMessageId) {
 			if(knightsSize >= MinimumKnightSize && isThresholdOpen(8)){
 				closeThreshold(8);
 			}
+			await CacheCheckAndUpdateUserWrits(oldMember.id);
+
 		}
 		if (
 			hadRoleBeforePeasant ||
@@ -489,6 +493,7 @@ async function setupKnightBotEvents(client, lastMessageId) {
 					}
 
 					// Execute writ
+					await interaction.deferReply({ ephemeral: true });
 					await executeCutDown(
 						interaction,
 						userId,
@@ -499,6 +504,7 @@ async function setupKnightBotEvents(client, lastMessageId) {
 					// No writ required
 					const activeWrit = await CacheCheckActiveWrit(userId, targetId);
 					if (activeWrit) {
+						await interaction.deferReply({ ephemeral: true });	
 						await executeCutDown(
 							interaction,
 							userId,

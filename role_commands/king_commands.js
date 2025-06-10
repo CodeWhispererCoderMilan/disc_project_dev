@@ -261,9 +261,14 @@ async function setupKingBotEvents(client, lastMessageId) {
 					return;
 				}
 				const cooldown = await CacheGetCooldown("RoyalWrit", userId);
-				if (cooldown)
+				if (cooldown){
 					await sendInteractionReply(interaction, "Royal Writ is on cooldown and cannot be used.");
-				else {
+					return;
+				}
+				if (selectedWritHumans[userId].id === selectedKnights[userId].id) {
+					await sendInteractionReply(interaction, "You cannot target the same person as both knight and target.");
+					return;
+				}else {
 					const modal = buildRoyalWritModal();
 					await interaction.showModal(modal);
 				}

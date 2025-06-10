@@ -23,7 +23,7 @@ const { eventEmitter } = require('../../functions/eventEmitter.js');
 
 const roleUpgradeAvailable = Array(13).fill(true); //array that opens or blocks leveling up between roles.
 
-async function closeThreshold(thresholdnr) {
+function closeThreshold(thresholdnr) {
 	roleUpgradeAvailable[thresholdnr] = false;
 
 }

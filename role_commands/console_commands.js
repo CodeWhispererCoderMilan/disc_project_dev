@@ -59,6 +59,8 @@ const {
 	MinimumKnightSizeForCoup
 } = require("../game_config.json");
 
+const gameState = require("../game_state.js");
+const game_state = require("../game_state.js");
 
 const changeroleCommand = new SlashCommandBuilder()
 	.setName("changerole")
@@ -186,6 +188,7 @@ async function setupConsoleBotEvents(client) {
 		const hasRoleNowSubhuman = newMember.roles.cache.has(
 			process.env.ROLEID_SUBHUMAN
 		);
+		
 		if(hasRoleNowPoop || hadRoleBeforePoop || hasRoleNowMaggot || hadRoleBeforeMaggot ||
 			hadRoleBeforeCockroach || hasRoleNowCockroach ||
 			hasRoleNowRat || hadRoleBeforeRat ||
@@ -201,6 +204,10 @@ async function setupConsoleBotEvents(client) {
 	});
 	client.on("guildMemberRemove", async (member) => {
 		await handleHigherRoleSizeChange(member);
+		const hadRoleBeforeScholar = member.roles.cache.has(
+			process.env.ROLEID_SCHOLAR
+		);
+
 		const isFesteredByMaggot = await CacheIsPoopBeingFestered(member.id);
 		if (isFesteredByMaggot) {
 			await DBClearFestering(isFesteredByMaggot.maggotId);
@@ -220,6 +227,26 @@ async function setupConsoleBotEvents(client) {
 		} catch (error) {
 			console.error(
 				`An error occurred: ${error.message}, couldn't remove ${member.user.username} from the DB`
+			);
+		}
+		if (gameState.isRevolutionActive() && (hadRoleBeforeScholar)) {
+			const guild = await client.guilds.fetch(process.env.GUILDID);
+			scholars = guild.members.cache.filter((member) =>
+				member.roles.cache.has(process.env.ROLEID_SCHOLAR)
+			);
+			gameState.setRoleSize("scholar", scholars.size);
+			if (
+				Object.keys(revolutionParticipants).findIndex(
+					(key) => key === member.id
+				) > -1
+			) {
+				gameState.removeRevolutionParticipant(member.id);
+			}
+			eventEmitter.emit(
+				"SendRevolutionStatus",
+				"Scholar",
+				revolutionParticipants,
+				scholarsSize
 			);
 		}
 	});
@@ -357,62 +384,45 @@ async function setupConsoleBotEvents(client) {
 		}
 	});
 
-	eventEmitter.on("StartRevolution", async () => {
+	eventEmitter.on("StartRevolution", async (intiatorId, targetId, roleName) => {
 		try {
-			eventEmitter.emit("RevolutionStarted");
+			gameState.setRevolutionActive(true);
+			changeRevolutionStatus(roleName,intiatorId, targetId);
+			eventEmitter.emit("RevolutionStarted"); 
 			setTimeout(async () => {
-				await handleFirstPhaseRevolutionEnd();
+				await handleFirstPhaseRevolutionEnd(client);
 			}, RevolutionFirstPhaseTime);
 		} catch (err) {
 			throw err;
 		}
 	});
 
-	eventEmitter.on("StartCoup", async () => {
+	eventEmitter.on("StartCoup", async (intiatorId,targetId,rolename) => {
 		try {
-			coupActive = true;
-			struggleMethod = "Coup";
+			
+			gameState.setCoupActive(true);
+			gameState.setStruggleMethod("Coup");
+			changeRevolutionStatus(rolename, intiatorId, targetId);
 			eventEmitter.emit("CoupStarted");
 			setTimeout(async () => {
-				await handleFirstPhaseRevolutionEnd();
+				await handleFirstPhaseRevolutionEnd(client);
 			}, CoupFirstPhaseTime);
 		} catch (err) {
 			throw err;
 		}
 	});
 
-	eventEmitter.on(
-		"SendRevolutionStatus",
-		async (hierachy, participants, groupSize) => {
-			try {
-				switch (hierachy) {
-					case "Peasant":
-						peasantParticipants = participants;
-						peasantSize = groupSize;
-						botCallCounts++;
-						break;
-					case "Merchant":
-						merchantParticipants = participants;
-						merchantSize = groupSize;
-						botCallCounts++;
-						break;
-					case "Scholar":
-						scholarParticipants = participants;
-						scholarSize = groupSize;
-						botCallCounts++;
-						break;
-					case "Knight":
-						knightParticipants = participants;
-						botCallCounts++;
-						break;
-				}
+	
 
-				revolutionarySize =
-					Object.keys(peasantParticipants).length +
-					Object.keys(scholarParticipants).length +
-					Object.keys(merchantParticipants).length +
-					Object.keys(knightParticipants).length;
-				peopleSize = peasantSize + merchantSize + scholarSize + knightSize;
+
+}
+
+function changeRevolutionStatus(roleName, userId, targetId){
+			try {
+
+				gameState.addRevolutionParticipant(roleName, userId, targetId);
+				let revolutionarySize = gameState.getRevolutionarySize();
+				peopleSize = gameState.getPeopleSize();
 				if (revolutionSecondPhase && !emperorElectionActive) {
 					let success = revolutionarySize / peopleSize > REVOLUTIONTHRESHOLD2;
 					if (coupActive)
@@ -423,204 +433,168 @@ async function setupConsoleBotEvents(client) {
 						notifyRevolutionResult(
 							`${struggleMethod} failed because of insufficient number of participants.`
 						);
-						await resetRevolution();
+						gameState.resetRevolution();
 						eventEmitter.emit(`${struggleMethod}Finished`);
 						return;
 					}
 				}
 
-				if (coupActive || botCallCounts >= 4) {
-					eventEmitter.emit(
-						"UpdateRevolutionStatus",
-						revolutionarySize,
-						peopleSize
-					);
-				}
+
 			} catch (err) {
 				throw err;
 			}
 		}
-	);
 
+function handleHigherRoleSizeChange(member){
 
-}
-async function handleHigherRoleSizeChange(member){
-
-	let higherRoleSize = nobleSize + lordSize + kingSize;
+	const higherRoleSize = game_state.getHigherRoleSize();
 	const playerCount = member.guild.memberCount - 2;
-
+	const disableRevolution = gameState.getDisableRevolution();
+	const disableCoup = gameState.getDisableCoup();
+	const knightSize = gameState.getRoleSize("Knight");
 	if (((higherRoleSize >= MinimumHigherRoleSizeForRevolution) &&
 		(higherRoleSize/playerCount >=MinimumHigherRoleRatioForRevolution)) &&
 		disableRevolution === true){
-		disableRevolution = false;
+		gameState.setDisableRevolution(false);
 		eventEmitter.emit("enableRevolution");
 	}else if(((higherRoleSize < MinimumHigherRoleSizeForRevolution) ||
 		(higherRoleSize/playerCount < MinimumHigherRoleRatioForRevolution))
 		&& disableRevolution === false){
-		disableRevolution = true;
+		gameState.setDisableRevolution(true);
 		eventEmitter.emit("disableRevolution");
 	}
 
 	if ((higherRoleSize >= MinimumHigherRoleSizeForCoup) &&
 		(higherRoleSize/playerCount >= MinimumHigherRoleRatioForCoup)  &&
 		(knightSize >=MinimumKnightSizeForCoup) && disableCoup === true){
-
-		disableCoup = false;
+		gameState.setDisableCoup(false);
 		eventEmitter.emit("enableCoup");
 	}else if(((higherRoleSize < MinimumHigherRoleSizeForCoup) ||
 		(higherRoleSize/playerCount < MinimumHigherRoleRatioForCoup) ||
 		(knightSize < MinimumKnightSizeForCoup))
 		&& disableCoup === false){
-
-		disableCoup = true;
+		gameState.setDisableCoup(true);
 		eventEmitter.emit("disableCoup");
 	}
 
 }
-async function handleFirstPhaseRevolutionEnd() {
+async function handleFirstPhaseRevolutionEnd(client) {
+	let revolutionarySize = gameState.getRevolutionarySize();
+	let peopleSize = gameState.getPeopleSize();
+	let coupActive = gameState.isCoupActive();
 	let success = revolutionarySize / peopleSize > REVOLUTIONTHRESHOLD;
 	if (coupActive) success = revolutionarySize / peopleSize > COUPTHRESHOLD;
 	if (success) {
-		notifyRevolutionResult(`${struggleMethod} moved in the second phase.`);
-		revolutionSecondPhase = true;
-		eventEmitter.emit("RevolutionMovedInSecondPhase");
+		notifyRevolutionResult(`${struggleMethod} moved to the brimming phase.`);
+		gameState.setRevolutionSecondPhase(true);
 		if (coupActive) {
 			revolutionTimeout = setTimeout(async () => {
-				await handleSecondPhaseRevolutionEnd();
+				await handleSecondPhaseRevolutionEnd(client);
 			}, CoupSecondPhaseTime);
 		} else {
 			revolutionTimeout = setTimeout(async () => {
-				await handleSecondPhaseRevolutionEnd();
+				await handleSecondPhaseRevolutionEnd(client);
 			}, RevolutionSecondPhaseTime);
 		}
 	} else {
 		notifyRevolutionResult(`${struggleMethod} Failed.`);
-		eventEmitter.emit(`${struggleMethod}Finished`);
-		resetRevolution();
+		gameState.resetRevolution();
 	}
 }
 
-async function resetRevolution() {
-	revolutionarySize = 0;
-	peopleSize = 0;
-	peasantSize = 0;
-	scholarSize = 0;
-	merchantSize = 0;
-	peasantParticipants = 0;
-	scholarParticipants = 0;
-	merchantParticipants = 0;
-	knightParticipants = 0;
-	revolutionSecondPhase = false;
-	emperorElectionActive = false;
-	botCallCounts = 0;
-	coupActive = false;
-	struggleMethod = "Revolution";
-}
 
-async function handleSecondPhaseRevolutionEnd() {
-	const refinedTargets = {};
-	const revolutionParticipants = {
-		...peasantParticipants,
-		...knightParticipants,
-		...scholarParticipants,
-		...merchantParticipants,
-	};
-	const civilParticipants = {
-		...peasantParticipants,
-		...scholarParticipants,
-		...merchantParticipants,
-	};
-	Object.keys(revolutionParticipants).forEach((userId) => {
-		const targetId = revolutionParticipants[userId].user.id;
-		let targetedNumber = 0;
-		Object.keys(civilParticipants).forEach((otherUserId) => {
-			const otherTargetId = civilParticipants[otherUserId].user.id;
-			if (targetId === otherTargetId) targetedNumber++;
-		});
-		Object.keys(knightParticipants).forEach((otherUserId) => {
-			const otherTargetId = knightParticipants[otherUserId].user.id;
-			if (targetId === otherTargetId) {
-				if (coupActive) targetedNumber++;
-				else targetedNumber += RevolutionKnightWeight;
+async function handleSecondPhaseRevolutionEnd(client) {
+	const revolutionParticipants = gameState.getRevolutionParticipants();
+	const civilParticipants = gameState.getCivilParticipants();
+	const knightParticipants = gameState.getKnightParticipants();
+	for(const participant in revolutionParticipants){
+		const targetId = participant.targetId;
+		if(!gameState.checkSelectedRevolutionTarget(targetId)){
+			let targetedNumber = 0;
+			for(const civilParticipant in civilParticipants) {
+				if (targetId === civilParticipant.targetId) targetedNumber++;
 			}
-		});
-
-		if (!refinedTargets[targetId]) {
-			refinedTargets[targetId] = {
-				targetedNumber,
-				target: revolutionParticipants[userId],
-			};
+			for(const knightParticipant in knightParticipants) {
+				if (targetId === knightParticipant.targetId) {
+					if (coupActive) targetedNumber++;
+					else targetedNumber += RevolutionKnightWeight;
+				}
+			}
+			gameState.addSelectedRevolutionTarget(targetId, targetedNumber);
 		}
-	});
-
+	}
 	let isEmperorDead = false;
-	Object.keys(refinedTargets).forEach(async (targetId) => {
+	const targets = gameState.getSelectedRevolutionTargets();
+	for (const target in targets){
 		let killTarget = false;
+		const guild = await client.guilds.fetch(process.env.GUILDID);
+		await guild.members.fetch();
+		const member = await guild.members.fetch(memberId);
 		if (coupActive) {
 			if (
-				refinedTargets[targetId].target.roles.cache.has(
+				member.roles.cache.has(
 					process.env.ROLEID_NOBLE
 				) &&
-				refinedTargets[targetId].targetedNumber > CoupKillNoble
+				target.targetCount > CoupKillNoble
 			)
 				killTarget = true;
-			if (
-				refinedTargets[targetId].target.roles.cache.has(
+			else if (
+				member.roles.cache.has(
 					process.env.ROLEID_LORD
 				) &&
-				refinedTargets[targetId].targetedNumber > CoupKillLord
+				target.targetCount > CoupKillLord
 			)
 				killTarget = true;
-			if (
-				refinedTargets[targetId].target.roles.cache.has(
+			else if (
+				member.roles.cache.has(
 					process.env.ROLEID_KING
 				) &&
-				refinedTargets[targetId].targetedNumber > CoupKillKing
+				target.targetCount > CoupKillKing
 			)
 				killTarget = true;
-			if (
-				refinedTargets[targetId].target.roles.cache.has(
+			else if (
+				member.roles.cache.has(
 					process.env.ROLEID_EMPEROR
 				) &&
-				refinedTargets[targetId].targetedNumber > CoupKillEmperor
+				target.targetCount > CoupKillEmperor
 			) {
 				killTarget = true;
 				isEmperorDead = true;
 			}
 		} else {
 			if (
-				refinedTargets[targetId].target.roles.cache.has(
+				member.roles.cache.has(
 					process.env.ROLEID_KNIGHT
 				) &&
-				refinedTargets[targetId].targetedNumber > RevolutionKillKnight
+				 target.targetCount > RevolutionKillKnight
 			)
 				killTarget = true;
-			if (
-				refinedTargets[targetId].target.roles.cache.has(
+			else if (
+				member.roles.cache.has(
 					process.env.ROLEID_NOBLE
 				) &&
-				refinedTargets[targetId].targetedNumber > RevolutionKillNoble
+				target.targetCount > RevolutionKillNoble
 			)
 				killTarget = true;
-			if (
-				refinedTargets[targetId].target.roles.cache.has(
+			else if (
+				member.roles.cache.has(
 					process.env.ROLEID_LORD
 				) &&
-				refinedTargets[targetId].targetedNumber > RevolutionKillLord
+				target.targetCount > RevolutionKillLord
 			)
 				killTarget = true;
-			if (
-				refinedTargets[targetId].target.roles.cache.has(
+			else if (
+				member.roles.cache.has(
 					process.env.ROLEID_KING
 				) &&
-				refinedTargets[targetId].targetedNumber > RevolutionKillKing
+				target.targetCount > RevolutionKillKing
 			)
 				killTarget = true;
-			if (
-				refinedTargets[targetId].target.roles.cache.has(
+			else if (
+				member.roles.cache.has(
 					process.env.ROLEID_EMPEROR
 				) &&
-				refinedTargets[targetId].targetedNumber > RevolutionKillEmperor
+				target.targetCount > RevolutionKillEmperor
 			) {
 				killTarget = true;
 				isEmperorDead = true;
@@ -628,26 +602,17 @@ async function handleSecondPhaseRevolutionEnd() {
 		}
 
 		if (killTarget) {
-			const target = refinedTargets[targetId].target;
-			await changeRole( target, "Poop", false);
+			await changeRole( member, "Poop", false);
 			await notifyRevolutionResult(
 				`@${target.user.username} has been killed by ${struggleMethod}.`
 			);
 		}
-	});
+	};
 
 	if (isEmperorDead) {
-		notifyRevolutionResult("The emperor is dead. Let's vote for new emperor.");
-		emperorElectionActive = true;
-		peasantParticipants = {};
-		scholarParticipants = {};
-		merchantParticipants = {};
-		knightParticipants = {};
-		revolutionarySize = 0;
-		peopleSize = 0;
-		peasantSize = 0;
-		scholarSize = 0;
-		merchantSize = 0;
+		notifyRevolutionResult("The emperor is dead. The poeple will vote in the next emperor.");
+		gameState.setEmperorElectionActive(true);
+		gameState.resetRevolutionParticipants();
 		eventEmitter.emit("RevolutionMovedInEmperorElection");
 		setTimeout(async () => {
 			await handleEmperorElectionEnd();
@@ -655,7 +620,7 @@ async function handleSecondPhaseRevolutionEnd() {
 	} else {
 		eventEmitter.emit(`${struggleMethod}Finished`);
 		notifyRevolutionResult(`${struggleMethod} Finished.`);
-		resetRevolution();
+		gameState.resetRevolution();
 	}
 }
 
@@ -706,7 +671,7 @@ async function handleEmperorElectionEnd() {
 		);
 		eventEmitter.emit("ElectionEnthronement", target.user.username);
 		eventEmitter.emit(`${struggleMethod}Finished`);
-		await resetRevolution();
+		gameState.resetRevolution();
 	} else if (maxCandidates.length > 1) {
 		notifyRevolutionResult(
 			`${maxCandidates.length} candidates have same votes. Starting reelection...`
@@ -715,10 +680,7 @@ async function handleEmperorElectionEnd() {
 			label: candidate.user.username,
 			value: candidate.id,
 		}));
-		peasantParticipants = {};
-		scholarParticipants = {};
-		merchantParticipants = {};
-		knightParticipants = {};
+		gameState.setRevolutionParticipants({});
 		revolutionarySize = 0;
 		peopleSize = 0;
 		peasantSize = 0;
@@ -733,10 +695,7 @@ async function handleEmperorElectionEnd() {
 		notifyRevolutionResult(
 			`No one participated in election! Let's vote a new emperor.`
 		);
-		peasantParticipants = {};
-		scholarParticipants = {};
-		merchantParticipants = {};
-		knightParticipants = {};
+		gameState.setRevolutionParticipants({});
 		revolutionarySize = 0;
 		peopleSize = 0;
 		peasantSize = 0;
@@ -806,4 +765,4 @@ async function messageConsoleCommands(client) {
 
 
 
-module.exports = { setupConsoleBotEvents, messageConsoleCommands };
+module.exports = { setupConsoleBotEvents, messageConsoleComman	}

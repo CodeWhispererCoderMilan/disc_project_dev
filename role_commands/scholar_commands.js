@@ -7,6 +7,7 @@ const {
 	TextInputBuilder,
 	TextInputStyle,
 } = require("discord.js");
+const gameState = require("../game_state.json");
 const {
 	buildSelectMenu,
 	sendInteractionReply,
@@ -29,13 +30,12 @@ const {
 	ButtonLabelAdvise
 } = require("../game_config.json");
 const { eventEmitter } = require("../functions/eventEmitter.js");
+const { isRevolutionActive } = require("../game_state.js");
 
 let scholars = [];
 let scholarsSize = 1;
 let selectedRevolutionTargets = {};
 let revolutionarySize = 0;
-let revolutionActive = false;
-let revolutionSecondPhase = false;
 let peopleSize = 0;
 let revolutionParticipants = {};
 let emperorElectionActive = false;
@@ -53,12 +53,10 @@ function showErrorMsg(err) {
 
 async function setupScholarBotEvents(client, lastMessageId) {
 	eventEmitter.on("DisableRevolution", async () => {
-		disableRevolution = true;
-		if(!revolutionActive && !coupActive) await updateMessage();
+		if(!gameState.isRevolutionActive() && !coupActive) await updateMessage();
 	});
 	eventEmitter.on("enableRevolution", async () => {
-		disableRevolution = false;
-		if(!revolutionActive && !coupActive) await updateMessage();
+		if(!gameState.isRevolutionActive() && !coupActive) await updateMessage();
 	});
 	client.on("guildMemberRemove", async(member) => {
 		const hadRoleBeforeScholar = member.roles.cache.has(
@@ -80,7 +78,7 @@ async function setupScholarBotEvents(client, lastMessageId) {
 			process.env.ROLEID_EMPEROR
 		);
 
-		if (revolutionActive && (hadRoleBeforeScholar)) {
+		if (gameState.isRevolutionActive() && (hadRoleBeforeScholar)) {
 			const guild = await client.guilds.fetch(process.env.GUILDID);
 			scholars = guild.members.cache.filter((member) =>
 				member.roles.cache.has(process.env.ROLEID_SCHOLAR)
@@ -143,7 +141,7 @@ async function setupScholarBotEvents(client, lastMessageId) {
 			process.env.ROLEID_EMPEROR
 		);
 
-		if (revolutionActive && (hadRoleBeforeScholar || hasRoleNowScholar)) {
+		if (gameState.isRevolutionActive() && (hadRoleBeforeScholar || hasRoleNowScholar)) {
 			const guild = await client.guilds.fetch(process.env.GUILDID);
 			scholars = guild.members.cache.filter((member) =>
 				member.roles.cache.has(process.env.ROLEID_SCHOLAR)
@@ -244,7 +242,10 @@ async function setupScholarBotEvents(client, lastMessageId) {
 			if (interaction.customId === "Revolution") {
 				const userId = interaction.user.id;
 				const target = selectedRevolutionTargets[userId];
-
+				if(gameState.isRevolutionActive()){
+					await sendInteractionReply(interaction, "Revolution is already active");
+					return;
+				}
 				if (!target) {
 					await sendInteractionReply(interaction, "No member selected");
 					return;
@@ -269,12 +270,10 @@ async function setupScholarBotEvents(client, lastMessageId) {
 					return;
 				}
 
-				await CacheSetCooldown("Revolution", "Global", RevolutionCoolDown);
 
 				try {
-					revolutionParticipants[userId] = target;
 
-					eventEmitter.emit("StartRevolution");
+					eventEmitter.emit("StartRevolution", userId, target.user.id);
 					await sendInteractionReply(
 						interaction,
 						"Revolution started, waiting for others to join."
@@ -439,7 +438,7 @@ async function setupScholarBotEvents(client, lastMessageId) {
 				member.roles.cache.has(process.env.ROLEID_SCHOLAR)
 			);
 			scholarsSize = scholars.size;
-			revolutionActive = true;
+			gameState.setRevolutionActive(true);
 			eventEmitter.emit(
 				"SendRevolutionStatus",
 				"Scholar",
@@ -475,7 +474,7 @@ async function setupScholarBotEvents(client, lastMessageId) {
 	});
 	eventEmitter.on("RevolutionMovedInSecondPhase", async () => {
 		try {
-			revolutionSecondPhase = true;
+			gameState.setRevolutionSecondPhase(true);
 			await updateMessage(client, lastMessageId);
 		} catch (err) {
 			throw err;
@@ -551,13 +550,13 @@ async function updateMessage(client, lastMessageId) {
 			actionRow_1.components[1] = revolutionBtn;
 		}
 
-		if (revolutionActive) {
+		if (gameState.isRevolutionActive()) {
 			let revolutionBtn = new ButtonBuilder()
 				.setCustomId("JoinRevolution")
 				.setLabel(ButtonLabelJoinRevolution)
 				.setStyle(ButtonStyle.Danger);
 			revolutionStatusMsg = `\nRevolution started. Join revolution. (Joined ${revolutionarySize} / ${peopleSize}.)`;
-			if (revolutionSecondPhase) {
+			if (gameState.isRevolutionSecondPhase()) {
 				actionRow_1.components[2] = new ButtonBuilder()
 					.setCustomId("WithdrawRevolution")
 					.setLabel(ButtonLabelWithdrawRevolution)
@@ -638,8 +637,8 @@ async function messageScholarCommands(client) {
 async function resetRevolution(client, lastMessageId) {
 	try {
 		selectedRevolutionTargets = {};
-		revolutionActive = false;
-		revolutionSecondPhase = false;
+		gameState.setRevolutionActive(false);
+		gameState.setRevolutionSecondPhase(false);
 		revolutionarySize = 0;
 		peopleSize = 0;
 		revolutionParticipants = {};

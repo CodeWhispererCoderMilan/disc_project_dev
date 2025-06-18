@@ -32,18 +32,6 @@ const {
 const { eventEmitter } = require("../functions/eventEmitter.js");
 const { isRevolutionActive } = require("../game_state.js");
 
-let scholars = [];
-let scholarsSize = 1;
-let selectedRevolutionTargets = {};
-let revolutionarySize = 0;
-let peopleSize = 0;
-let revolutionParticipants = {};
-let emperorElectionActive = false;
-let reelectionActive = false;
-let candidates = null;
-let coupActive = false;
-let disableRevolution = true;
-
 const initContent =TextScholarMessageContent;
 let revolutionStatusMsg = "";
 
@@ -53,10 +41,10 @@ function showErrorMsg(err) {
 
 async function setupScholarBotEvents(client, lastMessageId) {
 	eventEmitter.on("DisableRevolution", async () => {
-		if(!gameState.isRevolutionActive() && !coupActive) await updateMessage();
+		if(gameState.isRevolutionActive() || gameState.isCoupActive()) await updateMessage();
 	});
-	eventEmitter.on("enableRevolution", async () => {
-		if(!gameState.isRevolutionActive() && !coupActive) await updateMessage();
+	eventEmitter.on("EnableRevolution", async () => {
+		if(!gameState.isRevolutionActive() && !gameState.iscoupActive()) await updateMessage();
 	});
 	client.on("guildMemberRemove", async(member) => {
 		const hadRoleBeforeScholar = member.roles.cache.has(
@@ -83,7 +71,7 @@ async function setupScholarBotEvents(client, lastMessageId) {
 			scholars = guild.members.cache.filter((member) =>
 				member.roles.cache.has(process.env.ROLEID_SCHOLAR)
 			);
-			scholarsSize = scholars.size;
+			scholarsSize = gameState.setScholarSize();
 			if (
 				Object.keys(revolutionParticipants).findIndex(
 					(key) => key === member.id

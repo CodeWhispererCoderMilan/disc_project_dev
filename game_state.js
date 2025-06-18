@@ -3,7 +3,6 @@
 // =====================
 let revolutionActive = false;
 let revolutionSecondPhase = false;
-let coupActive = false;
 let siegeActive = false;
 let emperorElectionActive = false;
 let reelectionActive = false;
@@ -52,6 +51,7 @@ let siegeTimeout = null;
 module.exports = {
 	//struggleMethod
 	setStruggleMethod: (method) => { struggleMethod = method; },
+	isCoupActive: () => struggleMethod === "Coup",
 	// Revolution Flags
 	isRevolutionActive: () => revolutionActive,
 	setRevolutionActive: (val) => { revolutionActive = val; },
@@ -95,7 +95,6 @@ module.exports = {
 	},
 	resetRevolutionParticipants: () => {
 		revolutionParticipants.clear();
-		selectedRevolutionTargets.clear();
 	},
 	resetRevolution:() => {
 		revolutionActive = false;
@@ -120,16 +119,20 @@ module.exports = {
 			targetId: targetId,
 			targetCount: targetCount
 		});
+	},	
+	removeRevolutionTarget: (target) => {
+		selectedRevolutionTargets.delete(target);
 	},
 	// Revolution Size
 	getRevolutionarySize: () => {
 		return revolutionParticipants.size;
 	},
+	getRevolutionTargetsSize: () =>{
+		return selectedRevolutionTargets.size;
+	},
 	getPeopleSize: () => peopleSize,
-
+	
 	// Coup
-	isCoupActive: () => coupActive,
-	setCoupActive: (val) => { coupActive = val; },
 	addCoupParticipant: (id) => coupParticipants.add(id),
 	removeCoupParticipant: (id) => coupParticipants.delete(id),
 	isCoupParticipant: (id) => coupParticipants.has(id),

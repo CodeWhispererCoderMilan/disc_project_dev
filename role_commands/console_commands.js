@@ -78,22 +78,7 @@ function showErrorMsg(err) {
 }
 
 async function setupConsoleBotEvents(client) {
-	eventEmitter.on("UpdateNobleSize", async (size, member)=>{
-		nobleSize = size;
-		await handleHigherRoleSizeChange(member);
-	});				
-	eventEmitter.on("UpdateLordSize", async (size, member)=>{
-		lordSize = size;
-		await handleHigherRoleSizeChange(member);
-	});
-	eventEmitter.on("UpdateKingSize", async (size, member)=>{
-		kingSize = size;
-		await handleHigherRoleSizeChange(member);
-	});
-	eventEmitter.on("UpdateKnightSize", async (size, member)=>{
-		knightSize = size;
-		await handleHigherRoleSizeChange(member);
-	});
+
 
 	eventEmitter.on("startXpBoost", async () => {
 		console.log(
@@ -206,8 +191,11 @@ async function setupConsoleBotEvents(client) {
 				);
 				gameState.setRoleSize("Peasant", peasants.size);
 				await handleHigherRoleSizeChange();
-				if (hadRoleBeforePeasant && gameState.isRevolutionActive() && !gameState.isCoupActive())
-					gameState.removeRevolutionParticipant(member.id);
+				if (hadRoleBeforePeasant && gameState.isRevolutionActive() 
+					&& !gameState.isCoupActive()){
+					const wasParticipant = gameState.removeRevolutionParticipant(member.id);
+					if(wasParticipant)updateRevolutionAndCoupMessages();
+				}
 				break;
 			case hadRoleBeforeScholar || hasRoleNowScholar: 
 				scholars = guild.members.cache.filter((member) =>
@@ -215,8 +203,11 @@ async function setupConsoleBotEvents(client) {
 				);
 				gameState.setRoleSize("Scholar", scholars.size);
 				handleHigherRoleSizeChange();
-				if (hadRoleBeforeScholar && gameState.isRevolutionActive() && !gameState.isCoupActive())
-					gameState.removeRevolutionParticipant(member.id);
+				if (hadRoleBeforeScholar && gameState.isRevolutionActive() &&
+					!gameState.isCoupActive()){
+					const wasParticipant = gameState.removeRevolutionParticipant(member.id);
+					if(wasParticipant)updateRevolutionAndCoupMessages();
+				}
 				break;
 			case hadRoleBeforeMerchant || hasRoleNowMerchant:
 				merchants = guild.members.cache.filter((member) =>
@@ -224,7 +215,11 @@ async function setupConsoleBotEvents(client) {
 				);
 				gameState.setRoleSize("Merchant", merchants.size);
 				handleHigherRoleSizeChange();
-				if (hadRoleBeforeMerchant && gameState.isRevolutionActive() && !gameState.isCoupActive())gameState.removeRevolutionParticipant(member.id);
+				if (hadRoleBeforeMerchant && gameState.isRevolutionActive() &&
+					!gameState.isCoupActive()){
+					const wasParticipant = gameState.removeRevolutionParticipant(member.id);
+					if(wasParticipant)updateRevolutionAndCoupMessages();
+				}
 				break;
 			case hadRoleBeforeKnight || hasRoleNowKnight:
 				knights = guild.members.cache.filter((member) =>
@@ -232,7 +227,10 @@ async function setupConsoleBotEvents(client) {
 				);
 				gameState.setRoleSize("Knight", knights.size);
 				handleHigherRoleSizeChange();
-				if (hadRoleBeforeKnight && gameState.isRevolutionActive())gameState.removeRevolutionParticipant(member.id);
+				if (hadRoleBeforeKnight && gameState.isRevolutionActive()){
+					const wasParticipant = gameState.removeRevolutionParticipant(member.id);
+					if(wasParticipant)updateRevolutionAndCoupMessages();
+				}
 				break;
 			case hadRoleBeforeLord || hasRoleNowLord:
 				lords = guild.members.cache.filter((member) =>
@@ -240,7 +238,9 @@ async function setupConsoleBotEvents(client) {
 				);
 				gameState.setRoleSize("Lord", lords.size);
 				handleHigherRoleSizeChange();
-				if (hadRoleBeforeLord && gameState.isRevolutionActive())gameState.removeRevolutionParticipant(member.id);
+				if (hadRoleBeforeLord && gameState.isRevolutionActive()){
+					gameState.removeRevolutionParticipant(member.id);
+				}
 				break;
 			case hadRoleBeforeKing || hasRoleNowKing:
 				kings = guild.members.cache.filter((member) =>
@@ -248,7 +248,8 @@ async function setupConsoleBotEvents(client) {
 				);
 				gameState.setRoleSize("King", kings.size);
 				handleHigherRoleSizeChange();
-				if (hadRoleBeforeKing && gameState.isRevolutionActive())gameState.removeRevolutionParticipant(member.id);
+				if (hadRoleBeforeKing && gameState.isRevolutionActive())
+					gameState.removeRevolutionParticipant(member.id);
 				break;
 			case hadRoleBeforeNoble || hasRoleNowNoble:
 				nobles = guild.members.cache.filter((member) =>
@@ -256,7 +257,8 @@ async function setupConsoleBotEvents(client) {
 				);
 				gameState.setRoleSize("Noble", nobles.size);
 				handleHigherRoleSizeChange();
-				if (hadRoleBeforeNoble && gameState.isRevolutionActive())gameState.removeRevolutionParticipant(member.id);
+				if (hadRoleBeforeNoble && gameState.isRevolutionActive())
+					gameState.removeRevolutionParticipant(member.id);
 				break;
 			case hadRoleBeforeEmperor || hasRoleNowEmperor:
 				knights = guild.members.cache.filter((member) =>
@@ -264,7 +266,8 @@ async function setupConsoleBotEvents(client) {
 				);
 				gameState.setRoleSize("Knight", knights.size);
 				handleHigherRoleSizeChange();
-				if (hadRoleBeforeEmperor && ameState.isRevolutionActive())gameState.removeRevolutionParticipant(member.id);
+				if (hadRoleBeforeEmperor && gameState.isRevolutionActive())
+					gameState.removeRevolutionParticipant(member.id);
 				break;
 			default:
 				handleHigherRoleSizeChange();
@@ -331,7 +334,10 @@ async function setupConsoleBotEvents(client) {
 				);
 				gameState.setRoleSize("Peasant", peasants.size);
 				await handleHigherRoleSizeChange();
-				if (gameState.isRevolutionActive() && !gameState.isCoupActive()) gameState.removeRevolutionParticipant(member.id);
+				if (gameState.isRevolutionActive() && !gameState.isCoupActive()){
+					const wasParticipant = gameState.removeRevolutionParticipant(member.id);
+					if(wasParticipant)updateRevolutionAndCoupMessages();
+				}
 				break;
 			case hadRoleBeforeScholar: 
 				scholars = guild.members.cache.filter((member) =>
@@ -339,7 +345,10 @@ async function setupConsoleBotEvents(client) {
 				);
 				gameState.setRoleSize("Scholar", scholars.size);
 				handleHigherRoleSizeChange();
-				if (gameState.isRevolutionActive() && !gameState.isCoupActive())gameState.removeRevolutionParticipant(member.id);
+				if (gameState.isRevolutionActive() && !gameState.isCoupActive()){
+					const wasParticipant = gameState.removeRevolutionParticipant(member.id);
+					if(wasParticipant)updateRevolutionAndCoupMessages();
+				}
 				break;
 			case hadRoleBeforeMerchant:
 				merchants = guild.members.cache.filter((member) =>
@@ -347,7 +356,10 @@ async function setupConsoleBotEvents(client) {
 				);
 				gameState.setRoleSize("Merchant", merchants.size);
 				handleHigherRoleSizeChange();
-				if (gameState.isRevolutionActive() && !gameState.isCoupActive())gameState.removeRevolutionParticipant(member.id);
+				if (gameState.isRevolutionActive() && !gameState.isCoupActive()){
+					const wasParticipant = gameState.removeRevolutionParticipant(member.id);
+					if(wasParticipant)updateRevolutionAndCoupMessages();
+				}
 				break;
 			case hadRoleBeforeKnight :
 				knights = guild.members.cache.filter((member) =>
@@ -355,7 +367,10 @@ async function setupConsoleBotEvents(client) {
 				);
 				gameState.setRoleSize("Knight", knights.size);
 				handleHigherRoleSizeChange();
-				if (gameState.isRevolutionActive())gameState.removeRevolutionParticipant(member.id);
+				if (gameState.isRevolutionActive()){
+					const wasParticipant = gameState.removeRevolutionParticipant(member.id);
+					if(wasParticipant)updateRevolutionAndCoupMessages();
+				}
 				break;
 			case hadRoleBeforeLord:
 				lords = guild.members.cache.filter((member) =>
@@ -363,7 +378,8 @@ async function setupConsoleBotEvents(client) {
 				);
 				gameState.setRoleSize("Lord", lords.size);
 				handleHigherRoleSizeChange();
-				if (gameState.isRevolutionActive())gameState.removeRevolutionParticipant(member.id);
+				if (gameState.isRevolutionActive())
+					gameState.removeRevolutionParticipant(member.id);
 				break;
 			case hadRoleBeforeKing:
 				kings = guild.members.cache.filter((member) =>
@@ -371,7 +387,8 @@ async function setupConsoleBotEvents(client) {
 				);
 				gameState.setRoleSize("King", kings.size);
 				handleHigherRoleSizeChange();
-				if (gameState.isRevolutionActive())gameState.removeRevolutionParticipant(member.id);
+				if (gameState.isRevolutionActive())
+					gameState.removeRevolutionParticipant(member.id);
 				break;
 			case hadRoleBeforeNoble:
 				nobles = guild.members.cache.filter((member) =>
@@ -379,7 +396,8 @@ async function setupConsoleBotEvents(client) {
 				);
 				gameState.setRoleSize("Noble", nobles.size);
 				handleHigherRoleSizeChange();
-				if (gameState.isRevolutionActive())gameState.removeRevolutionParticipant(member.id);
+				if (gameState.isRevolutionActive())
+					gameState.removeRevolutionParticipant(member.id);
 				break;
 			case hadRoleBeforeEmperor:
 				knights = guild.members.cache.filter((member) =>
@@ -387,7 +405,8 @@ async function setupConsoleBotEvents(client) {
 				);
 				gameState.setRoleSize("Knight", knights.size);
 				handleHigherRoleSizeChange();
-				if (gameState.isRevolutionActive())gameState.removeRevolutionParticipant(member.id);
+				if (gameState.isRevolutionActive())
+					gameState.removeRevolutionParticipant(member.id);
 				break;
 			default:
 				handleHigherRoleSizeChange();
@@ -558,7 +577,24 @@ async function setupConsoleBotEvents(client) {
 		}
 	});
 
+	eventEmitter.on("AddRevolutionParticipant", (roleName, userId, targetId) => {
+		try {
+			const coupActive = gameState.isCoupActive();
+			changeRevolutionStatus(roleName, userId, targetId);
+			updateRevolutionAndCoupMessages();
 
+		} catch (err) {
+			showErrorMsg(err);
+		}
+	});
+	eventEmitter.on("RemoveRevolutionParticipant", (userId) => {
+		try {
+			gameState.removeRevolutionParticipant(userId);
+			updateRevolutionAndCoupMessages();
+		} catch (err) {
+			showErrorMsg(err);
+		}
+	});
 
 
 }
@@ -601,6 +637,7 @@ function handleHigherRoleSizeChange(){
 	const disableRevolution = gameState.getDisableRevolution();
 	const disableCoup = gameState.getDisableCoup();
 	const knightSize = gameState.getRoleSize("Knight");
+	const playerCount = gameState.getPlayerCount();
 	if (((higherRoleSize >= MinimumHigherRoleSizeForRevolution) &&
 		(higherRoleSize/playerCount >=MinimumHigherRoleRatioForRevolution)) &&
 		disableRevolution === true){
@@ -646,7 +683,7 @@ async function handleFirstPhaseRevolutionEnd(client) {
 			}, RevolutionSecondPhaseTime);
 		}
 	} else {
-		notifyRevolutionResult(`${struggleMethod} Failed.`);
+		notifyRevolutionResult(`${struggleMethod}Failed.`);
 		gameState.resetRevolution();
 	}
 }
@@ -870,8 +907,14 @@ async function handleAdminRoleChange(client, interaction, targetId, roleName, ke
 	await changeRole( member, roleName, keepXP);
 	interaction.reply(`Role changed to ${roleName} for ${member.user.username}.`);
 }
+async function updateRevolutionAndCoupMessages(){
+			if(!coupActive)eventEmitter.emit("UpdateRevolutionMessage");
+			else eventEmitter.emit("UpdateCoupMessage");
+}
 async function messageConsoleCommands(client) {
-	try {
+	try {	
+		const guild = await client.guilds.fetch(process.env.GUILDID);
+		gameState.setPlayerCount(guild.memberCount - 2);
 		const channel = await client.channels.fetch(process.env.CHANNELIDCONSOLE);
 
 		const buttonRow = new ActionRowBuilder().addComponents(
@@ -898,4 +941,4 @@ async function messageConsoleCommands(client) {
 
 
 
-module.exports = { setupConsoleBotEvents, messageConsoleComman	}
+module.exports = { setupConsoleBotEvents, messageConsoleCommands}

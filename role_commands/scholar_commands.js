@@ -30,7 +30,7 @@ const {
 	ButtonLabelAdvise
 } = require("../game_config.json");
 const { eventEmitter } = require("../functions/eventEmitter.js");
-const { isRevolutionActive } = require("../game_state.js");
+const { isRevolutionActive, isEmperorElectionActive } = require("../game_state.js");
 
 const initContent =TextScholarMessageContent;
 let revolutionStatusMsg = "";
@@ -44,7 +44,7 @@ async function setupScholarBotEvents(client, lastMessageId) {
 		if(gameState.isRevolutionActive() || gameState.isCoupActive()) await updateMessage();
 	});
 	eventEmitter.on("EnableRevolution", async () => {
-		if(!gameState.isRevolutionActive() && !gameState.iscoupActive()) await updateMessage();
+		if(!gameState.isRevolutionActive() && !gameState.isCoupActive()) await updateMessage();
 	});
 	client.on("guildMemberRemove", async(member) => {
 		const hadRoleBeforeScholar = member.roles.cache.has(
@@ -66,27 +66,6 @@ async function setupScholarBotEvents(client, lastMessageId) {
 			process.env.ROLEID_EMPEROR
 		);
 
-		if (gameState.isRevolutionActive() && (hadRoleBeforeScholar)) {
-			const guild = await client.guilds.fetch(process.env.GUILDID);
-			scholars = guild.members.cache.filter((member) =>
-				member.roles.cache.has(process.env.ROLEID_SCHOLAR)
-			);
-			scholarsSize = gameState.setScholarSize();
-			if (
-				Object.keys(revolutionParticipants).findIndex(
-					(key) => key === member.id
-				) > -1
-			) {
-				delete revolutionParticipants[member.id];
-				delete selectedRevolutionTargets[member.id];
-			}
-			eventEmitter.emit(
-				"SendRevolutionStatus",
-				"Scholar",
-				revolutionParticipants,
-				scholarsSize
-			);
-		}
 		if (
 			hadRoleBeforeKnight ||
 			hadRoleBeforeNoble ||
@@ -129,27 +108,7 @@ async function setupScholarBotEvents(client, lastMessageId) {
 			process.env.ROLEID_EMPEROR
 		);
 
-		if (gameState.isRevolutionActive() && (hadRoleBeforeScholar || hasRoleNowScholar)) {
-			const guild = await client.guilds.fetch(process.env.GUILDID);
-			scholars = guild.members.cache.filter((member) =>
-				member.roles.cache.has(process.env.ROLEID_SCHOLAR)
-			);
-			scholarsSize = scholars.size;
-			if (
-				Object.keys(revolutionParticipants).findIndex(
-					(key) => key === newMember.id
-				) > -1
-			) {
-				delete revolutionParticipants[newMember.id];
-				delete selectedRevolutionTargets[newMember.id];
-			}
-			eventEmitter.emit(
-				"SendRevolutionStatus",
-				"Scholar",
-				revolutionParticipants,
-				scholarsSize
-			);
-		}
+
 		if (
 			hadRoleBeforeKnight ||
 			hadRoleBeforeNoble ||
@@ -271,17 +230,20 @@ async function setupScholarBotEvents(client, lastMessageId) {
 				}
 			}
 			if (interaction.customId === "JoinRevolution") {
+				if (!gameState.isRevolutionActive()) {
+					await sendInteractionReply(
+						interaction,
+						"No revolution ongoing, messages will sync soon."
+					);
+					return;
+				}
 				const userId = interaction.user.id;
 				if (!selectedRevolutionTargets[userId]) {
 					await sendInteractionReply(interaction, "No member selected");
 					return;
 				}
-
-				if (
-					Object.keys(revolutionParticipants).findIndex(
-						(key) => key === userId
-					) > -1
-				) {
+				const isRevolutionParticipant = gameState.isRevolutionParticipant(userId);
+				if (isRevolutionParticipant) {
 					await sendInteractionReply(
 						interaction,
 						"You've already joined revolution."
@@ -290,13 +252,12 @@ async function setupScholarBotEvents(client, lastMessageId) {
 				}
 
 				const target = selectedRevolutionTargets[userId];
-				revolutionParticipants[userId] = target;
 
 				eventEmitter.emit(
-					"SendRevolutionStatus",
+					"AddRevolutionParticipant",
 					"Scholar",
-					revolutionParticipants,
-					scholarsSize
+					userId,
+					target.user.id
 				);
 
 				await sendInteractionReply(
@@ -305,12 +266,16 @@ async function setupScholarBotEvents(client, lastMessageId) {
 				);
 			}
 			if (interaction.customId === "WithdrawRevolution") {
+				if (!gameState.isRevolutionActive()) {
+					await sendInteractionReply(
+						interaction,
+						"No revolution ongoing, messages will sync soon."
+					);
+					return;
+				}
 				const userId = interaction.user.id;
-				if (
-					Object.keys(revolutionParticipants).findIndex(
-						(key) => key === userId
-					) < 0
-				) {
+				const isRevolutionParticipant = gameState.isRevolutionParticipant(userId);
+				if (!isRevolutionParticipant) {
 					await sendInteractionReply(
 						interaction,
 						"You've not joined revolution."
@@ -318,14 +283,10 @@ async function setupScholarBotEvents(client, lastMessageId) {
 					return;
 				}
 
-				delete revolutionParticipants[userId];
-				delete selectedRevolutionTargets[userId];
 
 				eventEmitter.emit(
-					"SendRevolutionStatus",
-					"Scholar",
-					revolutionParticipants,
-					scholarsSize
+					"RemoveRevolutionParticipant",
+					userId
 				);
 
 				await sendInteractionReply(
@@ -335,7 +296,7 @@ async function setupScholarBotEvents(client, lastMessageId) {
 			}
 			if (interaction.customId === "VoteEmperor") {
 				try {
-					if (!emperorElectionActive) {
+					if (!gameState.isEmperorElectionActive()) {
 						await sendInteractionReply(
 							interaction,
 							"There is no active election to vote."
@@ -350,9 +311,7 @@ async function setupScholarBotEvents(client, lastMessageId) {
 					}
 
 					if (
-						Object.keys(revolutionParticipants).findIndex(
-							(key) => key === userId
-						) > -1
+						gameState.isRevolutionParticipant(userId)
 					) {
 						await sendInteractionReply(
 							interaction,
@@ -362,13 +321,12 @@ async function setupScholarBotEvents(client, lastMessageId) {
 					}
 
 					const candidate = selectedRevolutionTargets[userId];
-					revolutionParticipants[userId] = candidate;
 
 					eventEmitter.emit(
-						"SendRevolutionStatus",
+						"AddRevolutionParticipant",
 						"Scholar",
-						revolutionParticipants,
-						scholarsSize
+						userId,
+						selectedRevolutionTargets[userId].user.id
 					);
 
 					await sendInteractionReply(
@@ -421,88 +379,64 @@ async function setupScholarBotEvents(client, lastMessageId) {
 	});
 	eventEmitter.on("RevolutionStarted", async () => {
 		try {
-			const guild = await client.guilds.fetch(process.env.GUILDID);
-			scholars = guild.members.cache.filter((member) =>
-				member.roles.cache.has(process.env.ROLEID_SCHOLAR)
-			);
-			scholarsSize = scholars.size;
-			gameState.setRevolutionActive(true);
-			eventEmitter.emit(
-				"SendRevolutionStatus",
-				"Scholar",
-				revolutionParticipants,
-				scholarsSize
-			);
+			if(gameState.isRevolutionActive())await updateMessage(client, lastMessageId);
 		} catch (err) {
 			throw err;
 		}
 	});
 	eventEmitter.on("CoupStarted", async () => {
 		try {
-			coupActive = true;
-			updateMessage(client, lastMessageId);
+			if(gameState.isRevolutionActive() && gameState.isCoupActive())
+				await updateMessage(client, lastMessageId);
 		} catch (err) {
 			throw err;
 		}
 	});
 	eventEmitter.on("CoupFinished", async () => {
 		try {
-			coupActive = false;
-			updateMessage(client, lastMessageId);
+			if(!gameState.isRevolutionActive() && gameState.isCoupActive()) await updateMessage(client, lastMessageId);
 		} catch (err) {
 			throw err;
 		}
 	});
 	eventEmitter.on("RevolutionFinished", async () => {
 		try {
-			await resetRevolution(client, lastMessageId);
+			if(!gameState.isRevolutionActive() && gameState.isCoupActive())await updateMessage(client, lastMessageId);
 		} catch (err) {
 			throw err;
 		}
 	});
 	eventEmitter.on("RevolutionMovedInSecondPhase", async () => {
 		try {
-			gameState.setRevolutionSecondPhase(true);
-			await updateMessage(client, lastMessageId);
+			if(gameState.isRevolutionSecondPhase() && !gameState.isCoupActive())await updateMessage(client, lastMessageId);
 		} catch (err) {
 			throw err;
 		}
 	});
 	eventEmitter.on("RevolutionMovedInEmperorElection", async () => {
 		try {
-			emperorElectionActive = true;
-			revolutionParticipants = {};
-			selectedRevolutionTargets = {};
-			revolutionarySize = 0;
-			await updateMessage(client, lastMessageId);
+			if(gameState.isEmperorElectionActive() && !gameState.isCoupActive()) await updateMessage(client, lastMessageId);
 		} catch (err) {
 			throw err;
 		}
 	});
 	eventEmitter.on("RevolutionMovedInEmperorReelection", async (members) => {
 		try {
-			reelectionActive = true;
-			candidates = members;
-			revolutionParticipants = {};
-			selectedRevolutionTargets = {};
-			revolutionarySize = 0;
-			await updateMessage(client, lastMessageId);
+			if(gameState.isReelectionActive() && !gameState.isCoupActive())
+				await updateMessage(client, lastMessageId);
 		} catch (err) {
 			throw err;
 		}
 	});
-	eventEmitter.on(
-		"UpdateRevolutionStatus",
-		async (participantsSize, totalSize) => {
-			try {
-				revolutionarySize = participantsSize;
-				peopleSize = totalSize;
+	eventEmitter.on("UpdateRevolutionMessage", async () => {
+		try {
+			if(gameState.isRevolutionActive() && !gameState.isCoupActive()) 
 				await updateMessage(client, lastMessageId);
-			} catch (err) {
-				throw err;
-			}
+		} catch (err) {
+			showErrorMsg(err);
 		}
-	);
+	});
+
 }
 
 async function updateMessage(client, lastMessageId) {
@@ -528,7 +462,7 @@ async function updateMessage(client, lastMessageId) {
 			.setStyle(ButtonStyle.Danger)
 			.setDisabled(disableRevolution)
 		);
-
+		let coupActive = gameState.isCoupActive();
 		if (coupActive) {
 			const revolutionBtn = new ButtonBuilder()
 				.setCustomId("Revolution")
@@ -538,19 +472,19 @@ async function updateMessage(client, lastMessageId) {
 			actionRow_1.components[1] = revolutionBtn;
 		}
 
-		if (gameState.isRevolutionActive()) {
+		if (gameState.isRevolutionActive() && !coupActive) {
 			let revolutionBtn = new ButtonBuilder()
 				.setCustomId("JoinRevolution")
 				.setLabel(ButtonLabelJoinRevolution)
 				.setStyle(ButtonStyle.Danger);
-			revolutionStatusMsg = `\nRevolution started. Join revolution. (Joined ${revolutionarySize} / ${peopleSize}.)`;
+			revolutionStatusMsg = `\n Revolution washes over the Land. (Joined ${gameState.getRevoultionarySize()} / ${gameState.getPeopleSize()}.)`;
 			if (gameState.isRevolutionSecondPhase()) {
 				actionRow_1.components[2] = new ButtonBuilder()
 					.setCustomId("WithdrawRevolution")
 					.setLabel(ButtonLabelWithdrawRevolution)
 					.setStyle(ButtonStyle.Primary);
 
-				revolutionStatusMsg = `\nRevolution moved in the next phase. Join revolution. You can also withdraw. (Joined ${revolutionarySize} / ${peopleSize}.)`;
+				revolutionStatusMsg = `\nRevolution moved in the next phase. townsfolk may still join, those who've joined may withdraw. (Joined ${gameState.getRevoultionarySize()} / ${gameState.getPeopleSize()}.)`;
 				if (emperorElectionActive) {
 					actionRow_0 = new ActionRowBuilder().addComponents(
 						await buildSelectMenu(
@@ -574,7 +508,7 @@ async function updateMessage(client, lastMessageId) {
 						.addOptions(candidates)
 					);
 
-					revolutionStatusMsg = `\nEmperor must be only one. Let's reelect an emperor. (Joined ${revolutionarySize} members.)`; }
+					revolutionStatusMsg = `\nEmperor must be only one. Let's reelect an emperor. (Joined ${gameState.getRevolutionarySize()} members.)`; }
 			}
 
 			actionRow_1.components[1] = revolutionBtn;
@@ -622,21 +556,4 @@ async function messageScholarCommands(client) {
 	}
 }
 
-async function resetRevolution(client, lastMessageId) {
-	try {
-		selectedRevolutionTargets = {};
-		gameState.setRevolutionActive(false);
-		gameState.setRevolutionSecondPhase(false);
-		revolutionarySize = 0;
-		peopleSize = 0;
-		revolutionParticipants = {};
-		emperorElectionActive = false;
-		reelectionActive = false;
-		candidates = null;
-		revolutionStatusMsg = "";
-		await updateMessage(client, lastMessageId);
-	} catch (err) {
-		throw err;
-	}
-}
 module.exports = { setupScholarBotEvents, messageScholarCommands };

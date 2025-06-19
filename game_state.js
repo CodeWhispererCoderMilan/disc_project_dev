@@ -9,6 +9,7 @@ let reelectionActive = false;
 let disableRevolution = true;
 let disableCoup = true;
 let struggleMethod = "Revolution";
+let playerCount = 0;
 // =====================
 	// PARTICIPANT STATE
 // =====================
@@ -26,7 +27,6 @@ let candidates = null;
 	// SIZE TRACKING
 // =====================
 let revolutionarySize = 0;
-let peopleSize = 0;
 let roleSizes = {
 	Peasant: 0,
 	Scholar: 0,
@@ -49,6 +49,9 @@ let siegeTarget = null;
 let siegeTimeout = null;
 
 module.exports = {
+	// Player Count
+	getPlayerCount: () => playerCount,
+	setPlayerCount: (count) => { playerCount = count; },
 	//struggleMethod
 	setStruggleMethod: (method) => { struggleMethod = method; },
 	isCoupActive: () => struggleMethod === "Coup",
@@ -74,6 +77,13 @@ module.exports = {
 		);
 		return knightParticipants;
 	},
+	isRevolutionParticipant: (userId) => {
+		for (const participant of revolutionParticipants) {
+			if (participant.userId === userId) {
+				return true;
+			}
+		}
+	},
 	getRevolutionParticipants: () => revolutionParticipants,
 	addRevolutionParticipant: (role, userId, targetId) => {
 		revolutionParticipants.add({
@@ -84,14 +94,17 @@ module.exports = {
 
 	},
 	removeRevolutionParticipant: (userId) => {
+		let wasParticipant = false;
 		for (const participant of revolutionParticipants) {
 			if (participant.userId === userId) {
 				revolutionParticipants.delete(participant);
+				wasParticipant = true;
 			}
 			if (participant.targetId === userId) {
 				participant.targetId = null; 
 			}
 		}
+		return wasParticipant;
 	},
 	resetRevolutionParticipants: () => {
 		revolutionParticipants.clear();
@@ -130,7 +143,9 @@ module.exports = {
 	getRevolutionTargetsSize: () =>{
 		return selectedRevolutionTargets.size;
 	},
-	getPeopleSize: () => peopleSize,
+	getPeopleSize: () => {
+		return roleSizes["Peasant"] + roleSizes["Scholar"] + roleSizes["Merchant"] + roleSizes["Knight"];
+	},
 	
 	// Coup
 	addCoupParticipant: (id) => coupParticipants.add(id),

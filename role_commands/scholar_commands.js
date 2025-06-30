@@ -32,6 +32,7 @@ const {
 const { eventEmitter } = require("../functions/eventEmitter.js");
 const { isRevolutionActive, isEmperorElectionActive } = require("../game_state.js");
 
+let selectedRevolutionTargets = {};
 const initContent =TextScholarMessageContent;
 let revolutionStatusMsg = "";
 
@@ -406,7 +407,7 @@ async function setupScholarBotEvents(client, lastMessageId) {
 			throw err;
 		}
 	});
-	eventEmitter.on("RevolutionMovedInSecondPhase", async () => {
+	eventEmitter.on("RevolutionMovedToSecondPhase", async () => {
 		try {
 			if(gameState.isRevolutionSecondPhase() && !gameState.isCoupActive())await updateMessage(client, lastMessageId);
 		} catch (err) {
@@ -420,10 +421,10 @@ async function setupScholarBotEvents(client, lastMessageId) {
 			throw err;
 		}
 	});
-	eventEmitter.on("RevolutionMovedInEmperorReelection", async (members) => {
+	eventEmitter.on("RevolutionMovedInEmperorReelection", async (emperorReelectionSelectMenu) => {
 		try {
 			if(gameState.isReelectionActive() && !gameState.isCoupActive())
-				await updateMessage(client, lastMessageId);
+				await updateMessage(client, lastMessageId, emperorReelectionSelectMenu);
 		} catch (err) {
 			throw err;
 		}
@@ -436,10 +437,24 @@ async function setupScholarBotEvents(client, lastMessageId) {
 			showErrorMsg(err);
 		}
 	});
+	eventEmitter.on("ElectionEnthronement", async (emperorUsername) => {
+		try {
+			const channel = await client.channels.fetch(process.env.CHANNELIDSCHOLAR);
+			const tmpMessage = await channel.send(
+				`Hail our new Emperor! ${emperorUsername}, youy have risen to the mountain spring in the spray of revolution, may your rule last 1000 years!`
+			);
+			setTimeout(() => {
+				tmpMessage.delete().catch(showErrorMsg);
+			}, 30000);
+		} catch (err) {
+			showErrorMsg(err);
+		}
+	});
+
 
 }
 
-async function updateMessage(client, lastMessageId) {
+async function updateMessage(client, lastMessageId, emperorReelectionSelectMenu) {
 	try {
 		const channel = await client.channels.fetch(process.env.CHANNELIDSCHOLAR);
 		const messageToEdit = await channel.messages.fetch(lastMessageId);
@@ -460,7 +475,7 @@ async function updateMessage(client, lastMessageId) {
 			.setCustomId("Revolution")
 			.setLabel(ButtonLabelRevolution)
 			.setStyle(ButtonStyle.Danger)
-			.setDisabled(disableRevolution)
+			.setDisabled(gameState.getDisableRevolution())
 		);
 		let coupActive = gameState.isCoupActive();
 		if (coupActive) {
@@ -485,7 +500,7 @@ async function updateMessage(client, lastMessageId) {
 					.setStyle(ButtonStyle.Primary);
 
 				revolutionStatusMsg = `\nRevolution moved in the next phase. townsfolk may still join, those who've joined may withdraw. (Joined ${gameState.getRevoultionarySize()} / ${gameState.getPeopleSize()}.)`;
-				if (emperorElectionActive) {
+				if (gameState.isEmperorElectionActive()) {
 					actionRow_0 = new ActionRowBuilder().addComponents(
 						await buildSelectMenu(
 							client,
@@ -500,14 +515,8 @@ async function updateMessage(client, lastMessageId) {
 					if (actionRow_1.components[2]) actionRow_1.components.splice(2, 1);
 					revolutionStatusMsg = `\nLet's vote a new emperor.  (Joined ${revolutionarySize} members.)`;
 				}
-				if (reelectionActive) {
-					actionRow_0 = new ActionRowBuilder().addComponents(
-						new StringSelectMenuBuilder()
-						.setCustomId("SelectEmperorCandidate")
-						.setPlaceholder(TextEmperorCandidateSelectMenu)
-						.addOptions(candidates)
-					);
-
+				if (gameState.isReelectionActive()) {
+					actionRow_0 = emperorReelectionSelectMenu;
 					revolutionStatusMsg = `\nEmperor must be only one. Let's reelect an emperor. (Joined ${gameState.getRevolutionarySize()} members.)`; }
 			}
 
@@ -544,7 +553,7 @@ async function messageScholarCommands(client) {
 			.setCustomId("Revolution")
 			.setLabel(ButtonLabelRevolution)
 			.setStyle(ButtonStyle.Danger)
-			.setDisabled(disableRevolution)
+			.setDisabled(gameState.getDisableRevolution())
 		);
 
 		return await channel.send({

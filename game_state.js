@@ -136,6 +136,9 @@ module.exports = {
 	removeRevolutionTarget: (target) => {
 		selectedRevolutionTargets.delete(target);
 	},
+	resetRevolutionTargets: () => {
+		selectedRevolutionTargets.clear();
+	},
 	// Revolution Size
 	getRevolutionarySize: () => {
 		return revolutionParticipants.size;
@@ -147,21 +150,13 @@ module.exports = {
 		return roleSizes["Peasant"] + roleSizes["Scholar"] + roleSizes["Merchant"] + roleSizes["Knight"];
 	},
 	
-	// Coup
-	addCoupParticipant: (id) => coupParticipants.add(id),
-	removeCoupParticipant: (id) => coupParticipants.delete(id),
-	isCoupParticipant: (id) => coupParticipants.has(id),
-	getCoupParticipants: () => Array.from(coupParticipants),
-	clearCoupParticipants: () => coupParticipants.clear(),
+
 
 	// Emperor Election
 	isEmperorElectionActive: () => emperorElectionActive,
 	setEmperorElectionActive: (val) => { emperorElectionActive = val; },
 	isReelectionActive: () => reelectionActive,
 	setReelectionActive: (val) => { reelectionActive = val; },
-	getCandidates: () => candidates,
-	setCandidates: (val) => { candidates = val; },
-
 	// Siege
 	isSiegeActive: () => siegeActive,
 	setSiegeActive: (val) => { siegeActive = val; },

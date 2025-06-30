@@ -1,9 +1,11 @@
 const { eventEmitter } = require("../functions/eventEmitter.js");
+
 const{
 	SlashCommandBuilder,
 	ActionRowBuilder,
 	ButtonBuilder,
-	ButtonStyle
+	ButtonStyle,
+	SelectMenuBuilder
 } = require("discord.js");
 
 const {
@@ -37,6 +39,7 @@ const {
 	RevolutionKillEmperor,
 	RevolutionEmperorElectionTime,
 	RevolutionKnightWeight,
+	RevolutionCooldown,
 	CoupKillNoble,
 	CoupKillLord,
 	CoupKillKing,
@@ -112,7 +115,10 @@ async function setupConsoleBotEvents(client) {
 		);
 		const hasRoleNowScholar = newMember.roles.cache.has(
 			process.env.ROLEID_SCHOLAR
-		);
+		);				if(gameState.isRevolutionActive()){
+					await sendInteractionReply(interaction, "Revolution is already active");
+					return;
+				}
 		const hadRoleBeforeMerchant = oldMember.roles.cache.has(
 			process.env.ROLEID_MERCHANT
 		);
@@ -180,6 +186,11 @@ async function setupConsoleBotEvents(client) {
 			process.env.ROLEID_SUBHUMAN
 		);
 		const guild = await client.guilds.fetch(process.env.GUILDID);
+		const oldPeopleCount = gameState.getPlayerCount();
+		const peopleCount = guild.memberCount - 2;
+		let updatedRevolutionAndCoupMessages = false;
+		gameState.setPlayerCount(peopleCount);
+		
 		const hadOrHasRevolutionRole = hadRoleBeforePeasant || hasRoleNowPeasant || hadRoleBeforeScholar || hasRoleNowScholar ||
 			hadRoleBeforeMerchant || hasRoleNowMerchant || hadRoleBeforeKnight || hasRoleNowKnight ||
 			hadRoleBeforeLord || hasRoleNowLord || hadRoleBeforeKing ||
@@ -194,7 +205,10 @@ async function setupConsoleBotEvents(client) {
 				if (hadRoleBeforePeasant && gameState.isRevolutionActive() 
 					&& !gameState.isCoupActive()){
 					const wasParticipant = gameState.removeRevolutionParticipant(member.id);
-					if(wasParticipant)updateRevolutionAndCoupMessages();
+					if(wasParticipant){
+						updateRevolutionAndCoupMessages();
+						updatedRevolutionAndCoupMessages = true;
+					}
 				}
 				break;
 			case hadRoleBeforeScholar || hasRoleNowScholar: 
@@ -206,8 +220,10 @@ async function setupConsoleBotEvents(client) {
 				if (hadRoleBeforeScholar && gameState.isRevolutionActive() &&
 					!gameState.isCoupActive()){
 					const wasParticipant = gameState.removeRevolutionParticipant(member.id);
-					if(wasParticipant)updateRevolutionAndCoupMessages();
-				}
+					if(wasParticipant){
+						updateRevolutionAndCoupMessages();
+						updatedRevolutionAndCoupMessages = true;
+					}				}
 				break;
 			case hadRoleBeforeMerchant || hasRoleNowMerchant:
 				merchants = guild.members.cache.filter((member) =>
@@ -218,8 +234,10 @@ async function setupConsoleBotEvents(client) {
 				if (hadRoleBeforeMerchant && gameState.isRevolutionActive() &&
 					!gameState.isCoupActive()){
 					const wasParticipant = gameState.removeRevolutionParticipant(member.id);
-					if(wasParticipant)updateRevolutionAndCoupMessages();
-				}
+					if(wasParticipant){
+						updateRevolutionAndCoupMessages();
+						updatedRevolutionAndCoupMessages = true;
+					}							}
 				break;
 			case hadRoleBeforeKnight || hasRoleNowKnight:
 				knights = guild.members.cache.filter((member) =>
@@ -229,7 +247,10 @@ async function setupConsoleBotEvents(client) {
 				handleHigherRoleSizeChange();
 				if (hadRoleBeforeKnight && gameState.isRevolutionActive()){
 					const wasParticipant = gameState.removeRevolutionParticipant(member.id);
-					if(wasParticipant)updateRevolutionAndCoupMessages();
+					if(wasParticipant){
+						updateRevolutionAndCoupMessages();
+						updatedRevolutionAndCoupMessages = true;
+					}			
 				}
 				break;
 			case hadRoleBeforeLord || hasRoleNowLord:
@@ -242,7 +263,10 @@ async function setupConsoleBotEvents(client) {
 					gameState.removeRevolutionParticipant(member.id);
 				}
 				break;
-			case hadRoleBeforeKing || hasRoleNowKing:
+			case hadRol				if(gameState.isRevolutionActive()){
+					await sendInteractionReply(interaction, "Revolution is already active");
+					return;
+				}eBeforeKing || hasRoleNowKing:
 				kings = guild.members.cache.filter((member) =>
 					member.roles.cache.has(process.env.ROLEID_KING)
 				);
@@ -261,10 +285,10 @@ async function setupConsoleBotEvents(client) {
 					gameState.removeRevolutionParticipant(member.id);
 				break;
 			case hadRoleBeforeEmperor || hasRoleNowEmperor:
-				knights = guild.members.cache.filter((member) =>
-				member.roles.cache.has(process.env.ROLEID_KNIGHT)
+				emperors = guild.members.cache.filter((member) =>
+				member.roles.cache.has(process.env.ROLEID_EMPEROR)
 				);
-				gameState.setRoleSize("Knight", knights.size);
+				gameState.setRoleSize("Emperor", emperors.size);
 				handleHigherRoleSizeChange();
 				if (hadRoleBeforeEmperor && gameState.isRevolutionActive())
 					gameState.removeRevolutionParticipant(member.id);
@@ -273,11 +297,13 @@ async function setupConsoleBotEvents(client) {
 				handleHigherRoleSizeChange();
 		}
 		if(gameState.isRevolutionActive())checkAndFailRevolution();
+		if(gameState.isRevolutionActive() && !updatedRevolutionAndCoupMessages && oldPeopleCount != peopleCount){
+			updateRevolutionAndCoupMessages();
+		}
 	});
 	client.on("guildMemberRemove", async (member) => {
 		const guild = await client.guilds.fetch(process.env.GUILDID);
 
-		gameState.setPlayerCount(guild.memberCount - 2);
 
 		const hadRoleBeforePeasant = member.roles.cache.has(
 			process.env.ROLEID_PEASANT
@@ -324,6 +350,10 @@ async function setupConsoleBotEvents(client) {
 				`An error occurred: ${error.message}, couldn't remove ${member.user.username} from the DB`
 			);
 		}
+		const oldPeopleCount = gameState.getPlayerCount();
+		const peopleCount = guild.memberCount - 2;
+		let updatedRevolutionAndCoupMessages = false;
+		gameState.setPlayerCount(peopleCount);
 		const hadRevolutionRole = hadRoleBeforePeasant || hadRoleBeforeScholar || hadRoleBeforeMerchant ||
 			hadRoleBeforeKnight ||	hadRoleBeforeLord || hadRoleBeforeKing ||
 			hadRoleBeforeNoble || hadRoleBeforeEmperor;
@@ -336,7 +366,10 @@ async function setupConsoleBotEvents(client) {
 				await handleHigherRoleSizeChange();
 				if (gameState.isRevolutionActive() && !gameState.isCoupActive()){
 					const wasParticipant = gameState.removeRevolutionParticipant(member.id);
-					if(wasParticipant)updateRevolutionAndCoupMessages();
+					if(wasParticipant){
+						updateRevolutionAndCoupMessages();
+						updatedRevolutionAndCoupMessages = true;
+					}			
 				}
 				break;
 			case hadRoleBeforeScholar: 
@@ -347,7 +380,10 @@ async function setupConsoleBotEvents(client) {
 				handleHigherRoleSizeChange();
 				if (gameState.isRevolutionActive() && !gameState.isCoupActive()){
 					const wasParticipant = gameState.removeRevolutionParticipant(member.id);
-					if(wasParticipant)updateRevolutionAndCoupMessages();
+					if(wasParticipant){
+						updateRevolutionAndCoupMessages();
+						updatedRevolutionAndCoupMessages = true;
+					}			
 				}
 				break;
 			case hadRoleBeforeMerchant:
@@ -358,10 +394,16 @@ async function setupConsoleBotEvents(client) {
 				handleHigherRoleSizeChange();
 				if (gameState.isRevolutionActive() && !gameState.isCoupActive()){
 					const wasParticipant = gameState.removeRevolutionParticipant(member.id);
-					if(wasParticipant)updateRevolutionAndCoupMessages();
+					if(wasParticipant){
+						updateRevolutionAndCoupMessages();
+						updatedRevolutionAndCoupMessages = true;
+					}		
 				}
 				break;
-			case hadRoleBeforeKnight :
+			case hadRole				if(gameState.isRevolutionActive()){
+					await sendInteractionReply(interaction, "Revolution is already active");
+					return;
+				}BeforeKnight :
 				knights = guild.members.cache.filter((member) =>
 					member.roles.cache.has(process.env.ROLEID_KNIGHT)
 				);
@@ -369,7 +411,10 @@ async function setupConsoleBotEvents(client) {
 				handleHigherRoleSizeChange();
 				if (gameState.isRevolutionActive()){
 					const wasParticipant = gameState.removeRevolutionParticipant(member.id);
-					if(wasParticipant)updateRevolutionAndCoupMessages();
+					if(wasParticipant){
+						updateRevolutionAndCoupMessages();
+						updatedRevolutionAndCoupMessages = true;
+					}			
 				}
 				break;
 			case hadRoleBeforeLord:
@@ -412,6 +457,9 @@ async function setupConsoleBotEvents(client) {
 				handleHigherRoleSizeChange();
 		}
 		if(gameState.isRevolutionActive()) checkAndFailRevolution();
+		if(gameState.isRevolutionActive() && !updatedRevolutionAndCoupMessages && oldPeopleCount != peopleCount){
+			updateRevolutionAndCoupMessages();
+		}
 	});
 	client.on("guildMemberAdd", async (member) => {
 		try {
@@ -554,7 +602,8 @@ async function setupConsoleBotEvents(client) {
 		try {
 			gameState.setRevolutionActive(true);
 			changeRevolutionStatus(roleName,intiatorId, targetId);
-			eventEmitter.emit("RevolutionStarted"); 
+			await CacheSetCooldown("Revolution", "Global", RevolutionCooldown);
+			eventEmitter.emit("RevolutionStarted");
 			setTimeout(async () => {
 				await handleFirstPhaseRevolutionEnd(client);
 			}, RevolutionFirstPhaseTime);
@@ -614,6 +663,7 @@ function checkAndFailRevolution() {
 	const revolutionarySize = gameState.getRevolutionarySize();
 	const peopleSize = gameState.getPeopleSize();
 	const coupActive = gameState.isCoupActive();
+	const struggleMethod = gameState.getStruggleMethod();
 	if (revolutionSecondPhase && !emperorElectionActive) {
 		let success = revolutionarySize / peopleSize > REVOLUTIONTHRESHOLD2;
 		if (coupActive)
@@ -633,7 +683,7 @@ function checkAndFailRevolution() {
 }
 function handleHigherRoleSizeChange(){
 
-	const higherRoleSize = gameState.getHigherRoleSize();
+	const higherRoleSize = gameState.getHigherRoleSize(); 
 	const disableRevolution = gameState.getDisableRevolution();
 	const disableCoup = gameState.getDisableCoup();
 	const knightSize = gameState.getRoleSize("Knight");
@@ -668,11 +718,12 @@ async function handleFirstPhaseRevolutionEnd(client) {
 	let revolutionarySize = gameState.getRevolutionarySize();
 	let peopleSize = gameState.getPeopleSize();
 	let coupActive = gameState.isCoupActive();
+	const struggleMethod = gameState.getStruggleMethod();
 	let success = revolutionarySize / peopleSize > REVOLUTIONTHRESHOLD;
 	if (coupActive) success = revolutionarySize / peopleSize > COUPTHRESHOLD;
 	if (success) {
-		notifyRevolutionResult(`${struggleMethod} moved to the brimming phase.`);
 		gameState.setRevolutionSecondPhase(true);
+		eventEmitter.emit(`${struggleMethod}MovedToSecondPhase`);
 		if (coupActive) {
 			revolutionTimeout = setTimeout(async () => {
 				await handleSecondPhaseRevolutionEnd(client);
@@ -683,8 +734,10 @@ async function handleFirstPhaseRevolutionEnd(client) {
 			}, RevolutionSecondPhaseTime);
 		}
 	} else {
-		notifyRevolutionResult(`${struggleMethod}Failed.`);
 		gameState.resetRevolution();
+		eventEmitter.emit(`${struggleMethod}Finished`);
+		notifyRevolutionResult(`${struggleMethod}Failed.`);
+
 	}
 }
 
@@ -712,6 +765,7 @@ async function handleSecondPhaseRevolutionEnd(client) {
 	}
 	let isEmperorDead = false;
 	const targets = gameState.getSelectedRevolutionTargets();
+	const struggleMethod = gameState.getStruggleMethod();
 	for (const target in targets){
 		let killTarget = false;
 		const guild = await client.guilds.fetch(process.env.GUILDID);
@@ -791,23 +845,24 @@ async function handleSecondPhaseRevolutionEnd(client) {
 		if (killTarget) {
 			await changeRole( member, "Poop", false);
 			await notifyRevolutionResult(
-				`@${target.user.username} has been killed by ${struggleMethod}.`
+				`@${target.user.username} has fallen beanth the waves of the ${struggleMethod}.`
 			);
 		}
 	};
 
 	if (isEmperorDead) {
-		notifyRevolutionResult("The emperor is dead. The poeple will vote in the next emperor.");
 		gameState.setEmperorElectionActive(true);
 		gameState.resetRevolutionParticipants();
+		gameState.resetRevolutionTargets();
 		eventEmitter.emit("RevolutionMovedInEmperorElection");
+		notifyRevolutionResult("The emperor is dead, voting for Heaven's Favour new vessel has begun.");
 		setTimeout(async () => {
 			await handleEmperorElectionEnd(client);
 		}, RevolutionEmperorElectionTime);
 	} else {
+		gameState.resetRevolution();
 		eventEmitter.emit(`${struggleMethod}Finished`);
 		notifyRevolutionResult(`${struggleMethod} Finished.`);
-		gameState.resetRevolution();
 	}
 }
 
@@ -815,6 +870,7 @@ async function handleEmperorElectionEnd(client) {
 	const emperorElectionParticipants = gameState.getRevolutionParticipants();
 	const civilParticipants = gameState.getCivilParticipants();
 	const knightParticipants = gameState.getKnightParticipants();
+	const struggleMethod = gameState.getStruggleMethod();
 	const refinedCandidates = {};
 	let maximumVotes = 0;
 	for(const participant in emperorElectionParticipants){
@@ -835,34 +891,34 @@ async function handleEmperorElectionEnd(client) {
 			}
 		}
 	}
-	cadidates = gameState.getSelectedRevolutionTargets();
-	for(const candidate in candidates) {
+	const initialCandidates = gameState.getSelectedRevolutionTargets();
+	for(const candidate in initialCandidates) {
 		if (candidate.targetCount != maximumVotes) {
 			gameState.removeRevolutionTarget(candidate.targetId);		
 		}	
 	}
 
-	const finalCandidatesCount = gameState.getSelectedRevolutionTargets();
+
 	const candidates = gameState.getSelectedRevolutionTargets();
+	const finalCandidatesCount = candidates.size;
 	if (finalCandidatesCount === 1) {
 		const target = [...candidates][0];
 		const guild = await client.guilds.fetch(process.env.GUILDID);
 		await guild.members.fetch();
 		const targetMember = await guild.members.fetch(target.targetId);
 		await changeRole( targetMember, "Emperor", true);
-		notifyRevolutionResult(
-			`Congrats! @${target.user.username} has been elected as a new emperor. `
-		);
-		eventEmitter.emit("ElectionEnthronement", target.user.username);
-		eventEmitter.emit(`${struggleMethod}Finished`);
 		gameState.resetRevolution();
+		eventEmitter.emit(`${struggleMethod}Finished`);
+		eventEmitter.emit("ElectionEnthronement", target.user.username);
+		notifyRevolutionResult(`${targetMember.user.username} has been elected Emperor. Order has been restored to Griefhem`);
 	} else if (finalCandidatesCount > 1) {
+		gameState.resetRevolutionParticipants();
+		gameState.resetRevolutionTargets();
+		const emperorReelectionSelectMenu = await buildEmperorReelectionTargetSelectMenu(client, candidates);
+		eventEmitter.emit("RevolutionMovedInEmperorReelection", emperorReelectionSelectMenu);
 		notifyRevolutionResult(
 			`${finalCandidatesCount} candidates have same votes. Starting reelection...`
 		);
-		gameState.resetRevolutionParticipants();
-		eventEmitter.emit("RevolutionMovedInEmperorReelection", candidates);
-
 		setTimeout(async () => {
 			await handleEmperorElectionEnd(client);
 		}, RevolutionEmperorElectionTime);
@@ -871,6 +927,7 @@ async function handleEmperorElectionEnd(client) {
 			`No one participated in election! Let's vote a new emperor.`
 		);
 		gameState.resetRevolutionParticipants();
+		gameState.resetRevolutionTargets();
 		eventEmitter.emit("RevolutionMovedInEmperorElection");
 		setTimeout(async () => {
 			await handleEmperorElectionEnd(client);
@@ -910,6 +967,41 @@ async function handleAdminRoleChange(client, interaction, targetId, roleName, ke
 async function updateRevolutionAndCoupMessages(){
 			if(!coupActive)eventEmitter.emit("UpdateRevolutionMessage");
 			else eventEmitter.emit("UpdateCoupMessage");
+}
+
+
+async function buildEmperorReelectionTargetSelectMenu(client, candidates) {
+	try{
+		const guild = await client.guilds.fetch(process.env.GUILDID);
+		await guild.members.fetch();
+		const targets = candidates;
+		const options = [];
+		for (const target of targets) {
+			try {
+				const member = await guild.members.fetch(target.targetId);
+				options.push({
+					label: member.user.username,
+					value: target.targetId
+				});
+			} catch (err) {
+				console.error(`Failed to fetch member with ID ${target.targetId}:`, err);
+			}
+		}
+
+		const selectMenu = new StringSelectMenuBuilder()
+			.setCustomId("SelectEmperorCandidate")
+			.setPlaceholder("Choose an Emperor")
+			.setDisabled(options.length === 0)
+			.addOptions(
+				options.length > 0
+				? options
+				: [{ label: "No targets available", value: "none", default: true, disabled: true }]
+			);
+		return new ActionRowBuilder().addComponents(selectMenu);
+	}catch (err) {
+		showErrorMsg(err);
+		return null;
+	}
 }
 async function messageConsoleCommands(client) {
 	try {	

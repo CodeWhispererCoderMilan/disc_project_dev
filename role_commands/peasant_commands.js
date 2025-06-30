@@ -33,7 +33,9 @@ const {
 	TextMobFlayingSelectMenu
 } = require("../game_config.json");
 const { eventEmitter } = require("../functions/eventEmitter.js");
+const gameState = require("../game_state/gameState.js");
 
+let selectedRevolutionTargets = {};
 let selectedMobFlayingTargets = {};
 let peasants = [];
 let peasantsSize = 1;
@@ -44,17 +46,6 @@ let mobFlayingTarget = null;
 let mobFlayingActive = false;
 let mobFlayingParticipants = new Set();
 let mobFlayingTimeout;
-let selectedRevolutionTargets = {};
-let revolutionarySize = 0;
-let revolutionActive = false;
-let revolutionSecondPhase = false;
-let peopleSize = 0;
-let revolutionParticipants = {};
-let emperorElectionActive = false;
-let reelectionActive = false;
-let candidates = null;
-let coupActive = false;
-let disableRevolution = true;
 const initContent = TextPeasantMessageContent;
 let mobFlayingStatusMsg = "";
 let revolutionStatusMsg = "";
@@ -65,12 +56,10 @@ function showErrorMsg(err) {
 
 async function setupPeasantBotEvents(client, lastMessageId) {
 	eventEmitter.on("DisableRevolution", async () => {
-		disableRevolution = true;
-		if(!revolutionActive && !coupActive) await updateMessage();
+		if(!gameState.isRevolutionActive() || !gameState.isCoupActive()) await updateMessage();
 	});
 	eventEmitter.on("enableRevolution", async () => {
-		disableRevolution = false;
-		if(!revolutionActive && !coupActive) await updateMessage();
+		if(!gameState.isRevolutionActive() && !gameState.isCoupActive()) await updateMessage();
 	});
 	client.on("guildMemberRemove", async (member) => {
 		try {
@@ -95,7 +84,6 @@ async function setupPeasantBotEvents(client, lastMessageId) {
 			const hadRoleBeforeEmperor = member.roles.cache.has(
 				process.env.ROLEID_EMPEROR
 			);
-
 			// Handle mob flaying cleanup
 			if (hadRoleBeforePeasant) {
 				if (mobFlayingActive){
@@ -121,28 +109,6 @@ async function setupPeasantBotEvents(client, lastMessageId) {
 						showErrorMsg(err);
 					}
 				}
-
-
-				if (revolutionActive) {
-					const guild = await client.guilds.fetch(process.env.GUILDID);
-					peasants = guild.members.cache.filter((member) =>
-						member.roles.cache.has(process.env.ROLEID_PEASANT)
-					);
-					peasantsSize = peasants.size;
-
-					if (Object.keys(revolutionParticipants).findIndex(
-						(key) => key === member.id
-					) > -1) {
-						delete revolutionParticipants[member.id];
-						delete selectedRevolutionTargets[member.id];
-					}
-					eventEmitter.emit(
-						"SendRevolutionStatus",
-						"Peasant",
-						revolutionParticipants,
-						peasantsSize
-					);
-				}
 			}
 			if (mobFlayingActive && (hadRoleBeforePeasant || hadRoleBeforeSubHuman)) {
 				if (member.id === mobFlayingTargetId) {
@@ -153,9 +119,9 @@ async function setupPeasantBotEvents(client, lastMessageId) {
 			}
 
 			// Clear mob flaying targets
-			if ((hadRoleBeforePeasant||hadRoleBeforeSubHuman) && !mobFlayingActive && !revolutionActive) {
+			if ((hadRoleBeforePeasant||hadRoleBeforeSubHuman) && !mobFlayingActive && !gameState.isRevolutionActive()) {
 				for (let userId in selectedMobFlayingTargets) {
-					if (selectedMobFlayingTargets[userId] && selectedMobFlayingTargets[userId].id === member.id) {
+					if (selectedMobFlayingTargets[userId] && selectedMobFlayingTargets[userId].id === member.id) {let selectedRevolutionTargets = {};
 						selectedMobFlayingTargets[userId] = null;
 					}
 					await updateMessage(client,lastMessageId);
@@ -211,7 +177,7 @@ async function setupPeasantBotEvents(client, lastMessageId) {
 		);
 
 		if (
-			(mobFlayingActive || revolutionActive) &&
+			(mobFlayingActive || gameState.isRevolutionActive()) &&
 			(hadRoleBeforePeasant || hasRoleNowPeasant)
 		) {
 			const guild = await client.guilds.fetch(process.env.GUILDID);
@@ -234,7 +200,7 @@ async function setupPeasantBotEvents(client, lastMessageId) {
 							await ceaseMobFlaying(client, lastMessageId);
 							return;
 						} else if (participationRate >= MobFlayingSuccessThreadshold) {
-							await ceaseMobFlaying(client, lastMessageId);
+							await ceaseMobFlaying(client, lastMessageId);let selectedRevolutionTargets = {};
 						} else {
 							await updateMessage(client, lastMessageId);
 						}
@@ -249,22 +215,7 @@ async function setupPeasantBotEvents(client, lastMessageId) {
 					}	
 				}
 			}
-			if (revolutionActive) {
-				if (
-					Object.keys(revolutionParticipants).findIndex(
-						(key) => key === newMember.id
-					) > -1
-				) {
-					delete revolutionParticipants[newMember.id];
-					delete selectedRevolutionTargets[newMember.id];
-				}
-				eventEmitter.emit(
-					"SendRevolutionStatus",
-					"Peasant",
-					revolutionParticipants,
-					peasantsSize
-				);
-			}
+			
 		}
 		if (mobFlayingActive && (hadRoleBeforePeasant || hadRoleBeforeSubHuman)) {
 			if (newMember.id === mobFlayingTargetId) {
@@ -297,7 +248,7 @@ async function setupPeasantBotEvents(client, lastMessageId) {
 				hadRoleBeforeSubHuman ||
 				hasRoleNowSubhuman) &&
 			!mobFlayingActive &&
-			!revolutionActive
+			!gameState.isRevolutionActive()
 		) {
 			for (let userId in selectedMobFlayingTargets) {
 				if (selectedMobFlayingTargets[userId] && selectedMobFlayingTargets[userId].id === member.id) {
@@ -412,7 +363,10 @@ async function setupPeasantBotEvents(client, lastMessageId) {
 		if (interaction.customId === "Revolution") {
 			const userId = interaction.user.id;
 			const target = selectedRevolutionTargets[userId];
-
+			if(gameState.isRevolutionActive()){
+				await sendInteractionReply(interaction, "Revolution is already active");
+				return;
+			}
 			if (!target) {
 				await sendInteractionReply(interaction, "No member selected");
 				return;
@@ -434,12 +388,10 @@ async function setupPeasantBotEvents(client, lastMessageId) {
 				return;
 			}
 
-			await CacheSetCooldown("Revolution", "Global", RevolutionCoolDown);
-
+			
 			try {
-				revolutionParticipants[userId] = target;
 
-				eventEmitter.emit("StartRevolution");
+				eventEmitter.emit("StartRevolution", userId, target.user.id);
 				await sendInteractionReply(
 					interaction,
 					"Revolution started, waiting for others to join."
@@ -449,16 +401,17 @@ async function setupPeasantBotEvents(client, lastMessageId) {
 			}
 		}
 		if (interaction.customId === "JoinRevolution") {
+			if(gameState.isRevolutionActive()){
+				await sendInteractionReply(interaction, "Revolution is already active");
+				return;
+			}
 			const userId = interaction.user.id;
 			if (!selectedRevolutionTargets[userId]) {
 				await sendInteractionReply(interaction, "No member selected");
 				return;
 			}
 
-			if (
-				Object.keys(revolutionParticipants).findIndex((key) => key === userId) >
-				-1
-			) {
+			if (gameState.isRevolutionParticipant(userId)) {
 				await sendInteractionReply(
 					interaction,
 					"You've already joined revolution."
@@ -467,13 +420,12 @@ async function setupPeasantBotEvents(client, lastMessageId) {
 			}
 
 			const target = selectedRevolutionTargets[userId];
-			revolutionParticipants[userId] = target;
 
 			eventEmitter.emit(
-				"SendRevolutionStatus",
+				"AddRevolutionParticipant",
 				"Peasant",
-				revolutionParticipants,
-				peasantsSize
+				userId,
+				target.user.id
 			);
 
 			await sendInteractionReply(
@@ -482,11 +434,16 @@ async function setupPeasantBotEvents(client, lastMessageId) {
 			);
 		}
 		if (interaction.customId === "WithdrawRevolution") {
+			if (!gameState.isRevolutionActive()) {
+				await sendInteractionReply(
+					interaction,
+					"No revolution ongoing, messages will sync soon."
+				);
+				return;
+			}
 			const userId = interaction.user.id;
-			if (
-				Object.keys(revolutionParticipants).findIndex((key) => key === userId) <
-				0
-			) {
+			const isRevolutionParticipant = gameState.isRevolutionParticipant(userId);
+			if (!isRevolutionParticipant) {
 				await sendInteractionReply(
 					interaction,
 					"You've not joined revolution."
@@ -494,14 +451,10 @@ async function setupPeasantBotEvents(client, lastMessageId) {
 				return;
 			}
 
-			delete revolutionParticipants[userId];
-			delete selectedRevolutionTargets[userId];
 
 			eventEmitter.emit(
-				"SendRevolutionStatus",
-				"Peasant",
-				revolutionParticipants,
-				peasantsSize
+				"RemoveRevolutionParticipant",
+				userId
 			);
 
 			await sendInteractionReply(
@@ -511,7 +464,7 @@ async function setupPeasantBotEvents(client, lastMessageId) {
 		}
 		if (interaction.customId === "VoteEmperor") {
 			try {
-				if (!emperorElectionActive) {
+				if (!gameState.isEmperorElectionActive()) {
 					await sendInteractionReply(
 						interaction,
 						"There is no active election to vote."
@@ -526,9 +479,7 @@ async function setupPeasantBotEvents(client, lastMessageId) {
 				}
 
 				if (
-					Object.keys(revolutionParticipants).findIndex(
-						(key) => key === userId
-					) > -1
+					gameState.isRevolutionParticipant(userId)
 				) {
 					await sendInteractionReply(
 						interaction,
@@ -538,13 +489,12 @@ async function setupPeasantBotEvents(client, lastMessageId) {
 				}
 
 				const candidate = selectedRevolutionTargets[userId];
-				revolutionParticipants[userId] = candidate;
 
 				eventEmitter.emit(
-					"SendRevolutionStatus",
+					"AddRevolutionParticipant",
 					"Peasant",
-					revolutionParticipants,
-					peasantsSize
+					userId,
+					selectedRevolutionTargets[userId].user.id
 				);
 
 				await sendInteractionReply(
@@ -608,7 +558,7 @@ async function setupPeasantBotEvents(client, lastMessageId) {
 				throw err;
 			}
 		}
-	});
+});
 	eventEmitter.on("NotifyPeasantChannel", async (msg) => {
 		try {
 			let channel = await client.channels.fetch(process.env.CHANNELIDPEASANT);
@@ -624,88 +574,76 @@ async function setupPeasantBotEvents(client, lastMessageId) {
 	});
 	eventEmitter.on("RevolutionStarted", async () => {
 		try {
-			const guild = await client.guilds.fetch(process.env.GUILDID);
-			peasants = guild.members.cache.filter((member) =>
-				member.roles.cache.has(process.env.ROLEID_PEASANT)
-			);
-			peasantsSize = peasants.size;
-			revolutionActive = true;
-			eventEmitter.emit(
-				"SendRevolutionStatus",
-				"Peasant",
-				revolutionParticipants,
-				peasantsSize
-			);
+			if(gameState.isRevolutionActive())await updateMessage(client, lastMessageId);
 		} catch (err) {
 			throw err;
 		}
 	});
 	eventEmitter.on("CoupStarted", async () => {
 		try {
-			coupActive = true;
-			updateMessage(client, lastMessageId);
+			if(gameState.isRevolutionActive() && gameState.isCoupActive())
+				await updateMessage(client, lastMessageId);
 		} catch (err) {
 			throw err;
 		}
 	});
 	eventEmitter.on("CoupFinished", async () => {
 		try {
-			coupActive = false;
-			updateMessage(client, lastMessageId);
+			if(!gameState.isRevolutionActive() && gameState.isCoupActive()) await updateMessage(client, lastMessageId);
 		} catch (err) {
 			throw err;
 		}
 	});
 	eventEmitter.on("RevolutionFinished", async () => {
 		try {
-			await resetRevolution(client, lastMessageId);
+			if(!gameState.isRevolutionActive() && gameState.isCoupActive())await updateMessage(client, lastMessageId);
 		} catch (err) {
 			throw err;
 		}
 	});
-	eventEmitter.on("RevolutionMovedInSecondPhase", async () => {
+	eventEmitter.on("RevolutionMovedToSecondPhase", async () => {
 		try {
-			revolutionSecondPhase = true;
-			await updateMessage(client, lastMessageId);
+			if(gameState.isRevolutionSecondPhase() && !gameState.isCoupActive())await updateMessage(client, lastMessageId);
 		} catch (err) {
 			throw err;
 		}
 	});
 	eventEmitter.on("RevolutionMovedInEmperorElection", async () => {
 		try {
-			emperorElectionActive = true;
-			revolutionParticipants = {};
-			selectedRevolutionTargets = {};
-			revolutionarySize = 0;
-			await updateMessage(client, lastMessageId);
+			if(gameState.isEmperorElectionActive() && !gameState.isCoupActive()) await updateMessage(client, lastMessageId);
 		} catch (err) {
 			throw err;
 		}
 	});
-	eventEmitter.on("RevolutionMovedInEmperorReelection", async (members) => {
+	eventEmitter.on("RevolutionMovedInEmperorReelection", async (emperorReelectionSelectMenu) => {
 		try {
-			reelectionActive = true;
-			candidates = members;
-			revolutionParticipants = {};
-			selectedRevolutionTargets = {};
-			revolutionarySize = 0;
-			await updateMessage(client, lastMessageId);
+			if(gameState.isReelectionActive() && !gameState.isCoupActive())
+				await updateMessage(client, lastMessageId, emperorReelectionSelectMenu);
 		} catch (err) {
 			throw err;
 		}
 	});
-	eventEmitter.on(
-		"UpdateRevolutionStatus",
-		async (participantsSize, totalSize) => {
-			try {
-				revolutionarySize = participantsSize;
-				peopleSize = totalSize;
+	eventEmitter.on("UpdateRevolutionMessage", async () => {
+		try {
+			if(gameState.isRevolutionActive() && !gameState.isCoupActive()) 
 				await updateMessage(client, lastMessageId);
-			} catch (err) {
-				throw err;
-			}
+		} catch (err) {
+			showErrorMsg(err);
 		}
-	);
+	});
+	eventEmitter.on("ElectionEnthronement", async (emperorUsername) => {
+		try {
+			const channel = await client.channels.fetch(process.env.CHANNELIDSCHOLAR);
+			const tmpMessage = await channel.send(
+				`Hail our new Emperor! ${emperorUsername}, youy have risen to the mountain spring in the spray of revolution, may your rule last 1000 years!`
+			);
+			setTimeout(() => {
+				tmpMessage.delete().catch(showErrorMsg);
+			}, 30000);
+		} catch (err) {
+			showErrorMsg(err);
+		}
+	});
 }
 
 async function startMobFlaying(client, lastMessageId, timeout) {
@@ -722,7 +660,7 @@ async function handleMobFlayingEnd(client, lastMessageId) {
 		const msg = `Mob flaying successful! @${mobFlayingTarget} has become a poop by @${mobFlayingInitiator}.`;
 		eventEmitter.emit("NotifyPeasantChannel", msg);
 	} else {
-		const msg = `Mob flaying on @${mobFlayingTarget} initiated by @${mobFlayingInitiator} has been failed.`;
+		const msg = `Mob flaying on @${mobFlayingTarget} initiated by @${mobFlayingInitiator} has failed.`;
 		eventEmitter.emit("NotifyPeasantChannel", msg);
 	}
 	await resetMobFlaying(client, lastMessageId);
@@ -736,7 +674,7 @@ async function ceaseMobFlaying(client, lastMessageId) {
 	}
 }
 
-async function updateMessage(client, lastMessageId) {
+async function updateMessage(client, lastMessageId,emperorReelectionSelectMenu) {
 	try {
 		const channel = await client.channels.fetch(process.env.CHANNELIDPEASANT);
 		const messageToEdit = await channel.messages.fetch(lastMessageId);
@@ -764,9 +702,9 @@ async function updateMessage(client, lastMessageId) {
 			.setCustomId("Revolution")
 			.setLabel(ButtonLabelRevolution)
 			.setStyle(ButtonStyle.Danger)
-			.setDisabled(disableRevolution)
+			.setDisabled(gameState.getDisableRevolution())
 		);
-
+		let coupActive = gameState.isCoupActive();
 		if (coupActive) {
 			const revolutionBtn = new ButtonBuilder()
 				.setCustomId("Revolution")
@@ -789,22 +727,21 @@ async function updateMessage(client, lastMessageId) {
 				.setStyle(ButtonStyle.Primary);
 			actionRow_2.components[0] = joinMobFlayingBtn;
 
-			mobFlayingStatusMsg = `\n@${mobFlayingInitiator} initiated a mob flaying. Join to downgrade ${mobFlayingTarget}. (Joined ${mobFlayingParticipants.size} / ${peasantsSize}.)`;
+			mobFlayingStatusMsg = `\n@${mobFlayingInitiator} initiated a mob flaying. Join to downgrade ${mobFlayingTarget}. (Joined ${mobFlayingParticipants.size} / ${gameState.getRoleSize("Peasant")}.)`;
 		}
-		if (revolutionActive) {
+		if (gameState.isRevolutionActive() && !coupActive) {
 			let revolutionBtn = new ButtonBuilder()
 				.setCustomId("JoinRevolution")
 				.setLabel(ButtonLabelJoinRevolution)
 				.setStyle(ButtonStyle.Danger);
-			revolutionStatusMsg = `\nRevolution started. Join revolution. (Joined ${revolutionarySize} / ${peopleSize}.)`;
-			if (revolutionSecondPhase) {
+			revolutionStatusMsg = `\nRevolution washes over the land. (Joined ${gameState.getRevolutionarySize()} / ${gameState.getPeopleSize()}.)`;
+			if (gameState.isRevolutionSecondPhase()) {
 				actionRow_2.components[2] = new ButtonBuilder()
 					.setCustomId("WithdrawRevolution")
 					.setLabel(ButtonLabelWithdrawRevolution)
 					.setStyle(ButtonStyle.Primary);
-
-				revolutionStatusMsg = `\nRevolution moved in the next phase. Join revolution. You can also withdraw. (Joined ${revolutionarySize} / ${peopleSize}.)`;
-				if (emperorElectionActive) {
+				revolutionStatusMsg = `\nRevolution moved in the next phase. townsfolk may still join, those who've joined may withdraw.(Joined ${gameState.getRevolutionarySize()} / ${gameState.getPeopleSize()}.)`;
+				if (gameState.isEmperorElectionActive()) {
 					actionRow_1 = new ActionRowBuilder().addComponents(
 						await buildSelectMenu(
 							client,
@@ -817,17 +754,12 @@ async function updateMessage(client, lastMessageId) {
 						.setLabel(ButtonLabelVoteEmperor)
 						.setStyle(ButtonStyle.Danger);
 					if (actionRow_2.components[2]) actionRow_2.components.splice(2, 1);
-					revolutionStatusMsg = `\nLet's vote a new emperor.  (Joined ${revolutionarySize} members.)`;
+					revolutionStatusMsg = `\nLet's vote a new emperor. (Votes ${gameState.getRevolutionarySize()} / ${gameState.getPeopleSize()})`;
 				}
-				if (reelectionActive) {
-					actionRow_1 = new ActionRowBuilder().addComponents(
-						new StringSelectMenuBuilder()
-						.setCustomId("SelectEmperorCandidate")
-						.setPlaceholder(TextEmperorCandidateSelectMenu)
-						.addOptions(candidates)
-					);
+				if (gameState.isReelectionActive()) {
+					actionRow_0 = emperorReelectionSelectMenu;
 
-					revolutionStatusMsg = `\nEmperor must be only one. Let's reelect an emperor. (Joined ${revolutionarySize} members.)`;
+					revolutionStatusMsg = `\nEmperor must be only one. Let's reelect an emperor. (Votes ${gameState.getRevolutionarySize()} / ${gameState.getPeopleSize()})`;
 				}
 			}
 
@@ -876,7 +808,7 @@ async function messagePeasantCommands(client) {
 			.setCustomId("Revolution")
 			.setLabel(ButtonLabelRevolution)
 			.setStyle(ButtonStyle.Danger)
-			.setDisabled(disableRevolution)
+			.setDisabled(gameState.getDisableRevolution())
 		);
 
 		const message = await channel.send({
@@ -907,21 +839,5 @@ async function resetMobFlaying(client, lastMessageId) {
 	}
 }
 
-async function resetRevolution(client, lastMessageId) {
-	try {
-		selectedRevolutionTargets = {};
-		revolutionActive = false;
-		revolutionSecondPhase = false;
-		revolutionarySize = 0;
-		peopleSize = 0;
-		revolutionParticipants = {};
-		emperorElectionActive = false;
-		reelectionActive = false;
-		candidates = null;
-		revolutionStatusMsg = "";
-		await updateMessage(client, lastMessageId);
-	} catch (err) {
-		throw err;
-	}
-}
+
 module.exports = { setupPeasantBotEvents, messagePeasantCommands };

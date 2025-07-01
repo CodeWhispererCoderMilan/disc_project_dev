@@ -59,7 +59,7 @@ function showErrorMsg(err) {
 async function setupMerchantBotEvents(client, lastMessageId) {
 
 	eventEmitter.on("DisableRevolution", async () => {
-		if(!gameState.isRevolutionActive() || !gameState.isCoupActive()) await updateMessage();
+		if(!gameState.isRevolutionActive() && !gameState.isCoupActive()) await updateMessage();
 	});
 	eventEmitter.on("enableRevolution", async () => {
 		if(!gameState.isRevolutionActive() && !gameState.isCoupActive()) await updateMessage();
@@ -348,152 +348,225 @@ async function setupMerchantBotEvents(client, lastMessageId) {
 
 				await interaction.showModal(modal);
 			}
-			
-	if (interaction.customId === "Revolution") {
-			const userId = interaction.user.id;
-			const target = selectedRevolutionTargets[userId];
-			if(gameState.isRevolutionActive()){
-				await sendInteractionReply(interaction, "Revolution is already active");
-				return;
-			}
-			if (!target) {
-				await sendInteractionReply(interaction, "No member selected");
-				return;
-			}
 
-			let cooldown;
-			try {
-				cooldown = await CacheGetCooldown("Revolution", "Global");
-			} catch (err) {
-				showErrorMsg(err);
-			}
-			if (cooldown) {
-				await sendInteractionReply(interaction, "Revolution is on cooldown");
-				return;
-			}
-
-			if (target.user.id === userId) {
-				await sendInteractionReply(interaction, "You cannot target yourself.");
-				return;
-			}
-
-			
-			try {
-
-				eventEmitter.emit("StartRevolution", userId, target.user.id);
-				await sendInteractionReply(
-					interaction,
-					"Revolution started, waiting for others to join."
-				);
-			} catch (err) {
-				showErrorMsg(err);
-			}
-		}
-		if (interaction.customId === "JoinRevolution") {
-			if(gameState.isRevolutionActive()){
-				await sendInteractionReply(interaction, "Revolution is already active");
-				return;
-			}
-			const userId = interaction.user.id;
-			if (!selectedRevolutionTargets[userId]) {
-				await sendInteractionReply(interaction, "No member selected");
-				return;
-			}
-
-			if (gameState.isRevolutionParticipant(userId)) {
-				await sendInteractionReply(
-					interaction,
-					"You've already joined revolution."
-				);
-				return;
-			}
-
-			const target = selectedRevolutionTargets[userId];
-
-			eventEmitter.emit(
-				"AddRevolutionParticipant",
-				"Merchant",
-				userId,
-				target.user.id
-			);
-
-			await sendInteractionReply(
-				interaction,
-				`You have joined the revolution with target @${target.user.username}.`
-			);
-		}
-		if (interaction.customId === "WithdrawRevolution") {
-			if (!gameState.isRevolutionActive()) {
-				await sendInteractionReply(
-					interaction,
-					"No revolution ongoing, messages will sync soon."
-				);
-				return;
-			}
-			const userId = interaction.user.id;
-			const isRevolutionParticipant = gameState.isRevolutionParticipant(userId);
-			if (!isRevolutionParticipant) {
-				await sendInteractionReply(
-					interaction,
-					"You've not joined revolution."
-				);
-				return;
-			}
-
-
-			eventEmitter.emit(
-				"RemoveRevolutionParticipant",
-				userId
-			);
-
-			await sendInteractionReply(
-				interaction,
-				`You have withdrawn the revolution`
-			);
-		}
-		if (interaction.customId === "VoteEmperor") {
-			try {
-				if (!gameState.isEmperorElectionActive()) {
-					await sendInteractionReply(
-						interaction,
-						"There is no active election to vote."
-					);
+			if (interaction.customId === "Revolution") {
+				const userId = interaction.user.id;
+				const target = selectedRevolutionTargets[userId];
+				if(gameState.isRevolutionActive()){
+					await sendInteractionReply(interaction, "Revolution is already active");
+					return;
+				}
+				if (!target) {
+					await sendInteractionReply(interaction, "No member selected");
 					return;
 				}
 
+				let cooldown;
+				try {
+					cooldown = await CacheGetCooldown("Revolution", "Global");
+				} catch (err) {
+					showErrorMsg(err);
+				}
+				if (cooldown) {
+					await sendInteractionReply(interaction, "Revolution is on cooldown");
+					return;
+				}
+
+				if (target.user.id === userId) {
+					await sendInteractionReply(interaction, "You cannot target yourself.");
+					return;
+				}
+
+
+				try {
+
+					eventEmitter.emit("StartRevolution", userId, target.user.id, "Merchant");
+					await sendInteractionReply(
+						interaction,
+						"Revolution started, waiting for others to join."
+					);
+				} catch (err) {
+					showErrorMsg(err);
+				}
+			}
+			if (interaction.customId === "JoinRevolution") {
+				if(!gameState.isRevolutionActive()){
+					await sendInteractionReply(interaction, "No revolution ongoing, messages will sync soon.");
+					return;
+				}
 				const userId = interaction.user.id;
 				if (!selectedRevolutionTargets[userId]) {
 					await sendInteractionReply(interaction, "No member selected");
 					return;
 				}
 
-				if (
-					gameState.isRevolutionParticipant(userId)
-				) {
+				if (gameState.isRevolutionParticipant(userId)) {
 					await sendInteractionReply(
 						interaction,
-						"You've already joined the election."
+						"You've already joined revolution."
 					);
 					return;
 				}
 
-				const candidate = selectedRevolutionTargets[userId];
+				const target = selectedRevolutionTargets[userId];
 
 				eventEmitter.emit(
 					"AddRevolutionParticipant",
 					"Merchant",
 					userId,
-					selectedRevolutionTargets[userId].user.id
+					target.user.id
 				);
 
 				await sendInteractionReply(
 					interaction,
-					"You have joined the election."
+					`You have joined the revolution with target @${target.user.username}.`
 				);
-			} catch (err) {
-				throw err;
 			}
+			if (interaction.customId === "WithdrawRevolution") {
+				if (!gameState.isRevolutionActive()) {
+					await sendInteractionReply(
+						interaction,
+						"No revolution ongoing, messages will sync soon."
+					);
+					return;
+				}
+				const userId = interaction.user.id;
+				const isRevolutionParticipant = gameState.isRevolutionParticipant(userId);
+				if (!isRevolutionParticipant) {
+					await sendInteractionReply(
+						interaction,
+						"You've not joined revolution."
+					);
+					return;
+				}
+
+
+				eventEmitter.emit(
+					"RemoveRevolutionParticipant",
+					userId
+				);
+
+				await sendInteractionReply(
+					interaction,
+					`You have withdrawn the revolution`
+				);eventEmitter.on("RevolutionStarted", async () => {
+		try {
+			if(gameState.isRevolutionActive() && !gameState.isCoupActive())await updateMessage(client, lastMessageId);
+		} catch (err) {
+			throw err;
 		}
+	});
+	eventEmitter.on("CoupStarted", async () => {
+		try {
+			if(gameState.isRevolutionActive() && gameState.isCoupActive())
+				await updateMessage(client, lastMessageId);
+		} catch (err) {
+			throw err;
+		}
+	});
+	eventEmitter.on("CoupFinished", async () => {
+		try {
+			if(!gameState.isRevolutionActive() && !gameState.isCoupActive()) 
+				await updateMessage(client, lastMessageId);
+		} catch (err) {
+			throw err;
+		}
+	});
+	eventEmitter.on("RevolutionFinished", async () => {
+		try {
+			if(!gameState.isRevolutionActive()) 
+				await updateMessage(client, lastMessageId);
+		} catch (err) {
+			throw err;
+		}
+	});
+	eventEmitter.on("RevolutionMovedToSecondPhase", async () => {
+		try {
+			if(gameState.isRevolutionSecondPhase() && !gameState.isCoupActive())await updateMessage(client, lastMessageId);
+		} catch (err) {
+			throw err;
+		}
+	});
+	eventEmitter.on("RevolutionMovedInEmperorElection", async () => {
+		try {
+			if(gameState.isEmperorElectionActive() && !gameState.isCoupActive()) await updateMessage(client, lastMessageId);
+		} catch (err) {
+			throw err;
+		}
+	});
+	eventEmitter.on("RevolutionMovedInEmperorReelection", async (emperorReelectionSelectMenu) => {
+		try {
+			if(gameState.isReelectionActive() && !gameState.isCoupActive())
+				await updateMessage(client, lastMessageId, emperorReelectionSelectMenu);
+		} catch (err) {
+			throw err;
+		}
+	});
+	eventEmitter.on("UpdateRevolutionMessage", async () => {
+		try {
+			if(gameState.isRevolutionActive() && !gameState.isCoupActive()) 
+				await updateMessage(client, lastMessageId);
+		} catch (err) {
+			showErrorMsg(err);
+		}
+	});
+	eventEmitter.on("ElectionEnthronement", async (emperorUsername) => {
+		try {
+			const channel = await client.channels.fetch(process.env.CHANNELIDSCHOLAR);
+			const tmpMessage = await channel.send(
+				`Hail our new Emperor! ${emperorUsername}, youy have risen to the mountain spring in the spray of revolution, may your rule last 1000 years!`
+			);
+			setTimeout(() => {
+				tmpMessage.delete().catch(showErrorMsg);
+			}, 30000);
+		} catch (err) {
+			showErrorMsg(err);
+		}
+	});
+			}
+			if (interaction.customId === "VoteEmperor") {
+				try {
+					if (!gameState.isEmperorElectionActive()) {
+						await sendInteractionReply(
+							interaction,
+							"There is no active election to vote."
+						);
+						return;
+					}
+
+					const userId = interaction.user.id;
+					if (!selectedRevolutionTargets[userId]) {
+						await sendInteractionReply(interaction, "No member selected");
+						return;
+					}
+
+					if (
+						gameState.isRevolutionParticipant(userId)
+					) {
+						await sendInteractionReply(
+							interaction,
+							"You've already joined the election."
+						);
+						return;
+					}
+
+					const candidate = selectedRevolutionTargets[userId];
+
+					eventEmitter.emit(
+						"AddRevolutionParticipant",
+						"Merchant",
+						userId,
+						selectedRevolutionTargets[userId].user.id
+					);
+
+					await sendInteractionReply(
+						interaction,
+						"You have joined the election."
+					);
+				} catch (err) {
+					throw err;
+				}
+			}
 		}
 		// Handle modal submission
 		if (interaction.isModalSubmit() && interaction.customId === "xpModal") {
@@ -546,7 +619,7 @@ async function setupMerchantBotEvents(client, lastMessageId) {
 	});
 	eventEmitter.on("RevolutionStarted", async () => {
 		try {
-			if(gameState.isRevolutionActive())await updateMessage(client, lastMessageId);
+			if(gameState.isRevolutionActive() && !gameState.isCoupActive())await updateMessage(client, lastMessageId);
 		} catch (err) {
 			throw err;
 		}
@@ -561,14 +634,16 @@ async function setupMerchantBotEvents(client, lastMessageId) {
 	});
 	eventEmitter.on("CoupFinished", async () => {
 		try {
-			if(!gameState.isRevolutionActive() && gameState.isCoupActive()) await updateMessage(client, lastMessageId);
+			if(!gameState.isRevolutionActive() && !gameState.isCoupActive()) 
+				await updateMessage(client, lastMessageId);
 		} catch (err) {
 			throw err;
 		}
 	});
 	eventEmitter.on("RevolutionFinished", async () => {
 		try {
-			if(!gameState.isRevolutionActive() && gameState.isCoupActive())await updateMessage(client, lastMessageId);
+			if(!gameState.isRevolutionActive()) 
+				await updateMessage(client, lastMessageId);
 		} catch (err) {
 			throw err;
 		}
@@ -605,7 +680,8 @@ async function setupMerchantBotEvents(client, lastMessageId) {
 	});
 	eventEmitter.on("ElectionEnthronement", async (emperorUsername) => {
 		try {
-			const channel = await client.channels.fetch(process.env.CHANNELIDSCHOLAR);
+			const channel = await client
+				.channels.fetch(process.env.CHANNELIDMERCHANT);
 			const tmpMessage = await channel.send(
 				`Hail our new Emperor! ${emperorUsername}, youy have risen to the mountain spring in the spray of revolution, may your rule last 1000 years!`
 			);
@@ -616,7 +692,7 @@ async function setupMerchantBotEvents(client, lastMessageId) {
 			showErrorMsg(err);
 		}
 	});
-	
+
 }
 
 async function updateMessage(client, lastMessageId, emperorReelectionSelectMenu) {
@@ -665,7 +741,7 @@ async function updateMessage(client, lastMessageId, emperorReelectionSelectMenu)
 			.setLabel(ButtonLabelEndow)
 			.setStyle(ButtonStyle.Primary)
 		);
-		
+
 		let coupActive = gameState.isCoupActive();
 
 		if (coupActive) {

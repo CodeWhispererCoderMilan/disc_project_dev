@@ -42,7 +42,7 @@ function showErrorMsg(err) {
 
 async function setupScholarBotEvents(client, lastMessageId) {
 	eventEmitter.on("DisableRevolution", async () => {
-		if(gameState.isRevolutionActive() || gameState.isCoupActive()) await updateMessage();
+		if(!gameState.isRevolutionActive() && !gameState.isCoupActive()) await updateMessage();
 	});
 	eventEmitter.on("EnableRevolution", async () => {
 		if(!gameState.isRevolutionActive() && !gameState.isCoupActive()) await updateMessage();
@@ -221,7 +221,7 @@ async function setupScholarBotEvents(client, lastMessageId) {
 
 				try {
 
-					eventEmitter.emit("StartRevolution", userId, target.user.id);
+					eventEmitter.emit("StartRevolution", userId, target.user.id, "Scholar");
 					await sendInteractionReply(
 						interaction,
 						"Revolution started, waiting for others to join."
@@ -380,7 +380,7 @@ async function setupScholarBotEvents(client, lastMessageId) {
 	});
 	eventEmitter.on("RevolutionStarted", async () => {
 		try {
-			if(gameState.isRevolutionActive())await updateMessage(client, lastMessageId);
+			if(gameState.isRevolutionActive() && !gameState.isCoupActive())await updateMessage(client, lastMessageId);
 		} catch (err) {
 			throw err;
 		}
@@ -395,14 +395,16 @@ async function setupScholarBotEvents(client, lastMessageId) {
 	});
 	eventEmitter.on("CoupFinished", async () => {
 		try {
-			if(!gameState.isRevolutionActive() && gameState.isCoupActive()) await updateMessage(client, lastMessageId);
+			if(!gameState.isRevolutionActive() && !gameState.isCoupActive()) 
+				await updateMessage(client, lastMessageId);
 		} catch (err) {
 			throw err;
 		}
 	});
 	eventEmitter.on("RevolutionFinished", async () => {
 		try {
-			if(!gameState.isRevolutionActive() && gameState.isCoupActive())await updateMessage(client, lastMessageId);
+			if(!gameState.isRevolutionActive()) 
+				await updateMessage(client, lastMessageId);
 		} catch (err) {
 			throw err;
 		}

@@ -56,7 +56,7 @@ function showErrorMsg(err) {
 
 async function setupPeasantBotEvents(client, lastMessageId) {
 	eventEmitter.on("DisableRevolution", async () => {
-		if(!gameState.isRevolutionActive() || !gameState.isCoupActive()) await updateMessage();
+		if(!gameState.isRevolutionActive() && !gameState.isCoupActive()) await updateMessage();
 	});
 	eventEmitter.on("enableRevolution", async () => {
 		if(!gameState.isRevolutionActive() && !gameState.isCoupActive()) await updateMessage();
@@ -391,7 +391,7 @@ async function setupPeasantBotEvents(client, lastMessageId) {
 			
 			try {
 
-				eventEmitter.emit("StartRevolution", userId, target.user.id);
+				eventEmitter.emit("StartRevolution", userId, target.user.id, "Peasant");
 				await sendInteractionReply(
 					interaction,
 					"Revolution started, waiting for others to join."
@@ -401,8 +401,8 @@ async function setupPeasantBotEvents(client, lastMessageId) {
 			}
 		}
 		if (interaction.customId === "JoinRevolution") {
-			if(gameState.isRevolutionActive()){
-				await sendInteractionReply(interaction, "Revolution is already active");
+			if(!gameState.isRevolutionActive()){
+				await sendInteractionReply(interaction, "No revolution ongoing, messages will sync soon.");
 				return;
 			}
 			const userId = interaction.user.id;
@@ -514,7 +514,80 @@ async function setupPeasantBotEvents(client, lastMessageId) {
 					);
 					return;
 				}
-
+eventEmitter.on("RevolutionStarted", async () => {
+		try {
+			if(gameState.isRevolutionActive() && !gameState.isCoupActive())await updateMessage(client, lastMessageId);
+		} catch (err) {
+			throw err;
+		}
+	});
+	eventEmitter.on("CoupStarted", async () => {
+		try {
+			if(gameState.isRevolutionActive() && gameState.isCoupActive())
+				await updateMessage(client, lastMessageId);
+		} catch (err) {
+			throw err;
+		}
+	});
+	eventEmitter.on("CoupFinished", async () => {
+		try {
+			if(!gameState.isRevolutionActive() && !gameState.isCoupActive()) 
+				await updateMessage(client, lastMessageId);
+		} catch (err) {
+			throw err;
+		}
+	});
+	eventEmitter.on("RevolutionFinished", async () => {
+		try {
+			if(!gameState.isRevolutionActive()) 
+				await updateMessage(client, lastMessageId);
+		} catch (err) {
+			throw err;
+		}
+	});
+	eventEmitter.on("RevolutionMovedToSecondPhase", async () => {
+		try {
+			if(gameState.isRevolutionSecondPhase() && !gameState.isCoupActive())await updateMessage(client, lastMessageId);
+		} catch (err) {
+			throw err;
+		}
+	});
+	eventEmitter.on("RevolutionMovedInEmperorElection", async () => {
+		try {
+			if(gameState.isEmperorElectionActive() && !gameState.isCoupActive()) await updateMessage(client, lastMessageId);
+		} catch (err) {
+			throw err;
+		}
+	});
+	eventEmitter.on("RevolutionMovedInEmperorReelection", async (emperorReelectionSelectMenu) => {
+		try {
+			if(gameState.isReelectionActive() && !gameState.isCoupActive())
+				await updateMessage(client, lastMessageId, emperorReelectionSelectMenu);
+		} catch (err) {
+			throw err;
+		}
+	});
+	eventEmitter.on("UpdateRevolutionMessage", async () => {
+		try {
+			if(gameState.isRevolutionActive() && !gameState.isCoupActive()) 
+				await updateMessage(client, lastMessageId);
+		} catch (err) {
+			showErrorMsg(err);
+		}
+	});
+	eventEmitter.on("ElectionEnthronement", async (emperorUsername) => {
+		try {
+			const channel = await client.channels.fetch(process.env.CHANNELIDSCHOLAR);
+			const tmpMessage = await channel.send(
+				`Hail our new Emperor! ${emperorUsername}, youy have risen to the mountain spring in the spray of revolution, may your rule last 1000 years!`
+			);
+			setTimeout(() => {
+				tmpMessage.delete().catch(showErrorMsg);
+			}, 30000);
+		} catch (err) {
+			showErrorMsg(err);
+		}
+	});
 				const userId = interaction.user.id;
 				if (userId === mobFlayingInitiatorId) {
 					await sendInteractionReply(
@@ -574,7 +647,7 @@ async function setupPeasantBotEvents(client, lastMessageId) {
 	});
 	eventEmitter.on("RevolutionStarted", async () => {
 		try {
-			if(gameState.isRevolutionActive())await updateMessage(client, lastMessageId);
+			if(gameState.isRevolutionActive() && !gameState.isCoupActive())await updateMessage(client, lastMessageId);
 		} catch (err) {
 			throw err;
 		}
@@ -589,14 +662,16 @@ async function setupPeasantBotEvents(client, lastMessageId) {
 	});
 	eventEmitter.on("CoupFinished", async () => {
 		try {
-			if(!gameState.isRevolutionActive() && gameState.isCoupActive()) await updateMessage(client, lastMessageId);
+			if(!gameState.isRevolutionActive() && !gameState.isCoupActive()) 
+				await updateMessage(client, lastMessageId);
 		} catch (err) {
 			throw err;
 		}
 	});
 	eventEmitter.on("RevolutionFinished", async () => {
 		try {
-			if(!gameState.isRevolutionActive() && gameState.isCoupActive())await updateMessage(client, lastMessageId);
+			if(!gameState.isRevolutionActive()) 
+				await updateMessage(client, lastMessageId);
 		} catch (err) {
 			throw err;
 		}
@@ -633,7 +708,8 @@ async function setupPeasantBotEvents(client, lastMessageId) {
 	});
 	eventEmitter.on("ElectionEnthronement", async (emperorUsername) => {
 		try {
-			const channel = await client.channels.fetch(process.env.CHANNELIDSCHOLAR);
+			const channel = await client
+				.channels.fetch(process.env.CHANNELIDPEASANT);
 			const tmpMessage = await channel.send(
 				`Hail our new Emperor! ${emperorUsername}, youy have risen to the mountain spring in the spray of revolution, may your rule last 1000 years!`
 			);

@@ -125,7 +125,7 @@
 	"LordElectionCoolDown": 20000,
 	"GlobalCoolDown": 20000,
 	"BribeCoolDown": 20000,
-	"RevolutionCoolDown": 40000,
+	"RevolutionCooldown": 40000,
 	"RevolutionFirstPhaseTime": 10000,
 	"RevolutionSecondPhaseTime": 10000,
 	"RevolutionEmperorElectionTime": 60000,

@@ -263,10 +263,7 @@ async function setupConsoleBotEvents(client) {
 					gameState.removeRevolutionParticipant(member.id);
 				}
 				break;
-			case hadRol				if(gameState.isRevolutionActive()){
-					await sendInteractionReply(interaction, "Revolution is already active");
-					return;
-				}eBeforeKing || hasRoleNowKing:
+			case hadRoleBeforeKing || hasRoleNowKing:
 				kings = guild.members.cache.filter((member) =>
 					member.roles.cache.has(process.env.ROLEID_KING)
 				);
@@ -400,10 +397,7 @@ async function setupConsoleBotEvents(client) {
 					}		
 				}
 				break;
-			case hadRole				if(gameState.isRevolutionActive()){
-					await sendInteractionReply(interaction, "Revolution is already active");
-					return;
-				}BeforeKnight :
+			case hadRoleBeforeKnight :
 				knights = guild.members.cache.filter((member) =>
 					member.roles.cache.has(process.env.ROLEID_KNIGHT)
 				);
@@ -612,11 +606,11 @@ async function setupConsoleBotEvents(client) {
 		}
 	});
 
-	eventEmitter.on("StartCoup", async (intiatorId,targetId,rolename) => {
+	eventEmitter.on("StartCoup", async (intiatorId,targetId) => {
 		try {
 			gameState.setRevolutionActive(true);
 			gameState.setStruggleMethod("Coup");
-			changeRevolutionStatus(rolename, intiatorId, targetId);
+			changeRevolutionStatus("Knight", intiatorId, targetId);
 			eventEmitter.emit("CoupStarted");
 			setTimeout(async () => {
 				await handleFirstPhaseRevolutionEnd(client);
@@ -692,25 +686,25 @@ function handleHigherRoleSizeChange(){
 		(higherRoleSize/playerCount >=MinimumHigherRoleRatioForRevolution)) &&
 		disableRevolution === true){
 		gameState.setDisableRevolution(false);
-		eventEmitter.emit("enableRevolution");
+		eventEmitter.emit("EnableRevolution");
 	}else if(((higherRoleSize < MinimumHigherRoleSizeForRevolution) ||
 		(higherRoleSize/playerCount < MinimumHigherRoleRatioForRevolution))
 		&& disableRevolution === false){
 		gameState.setDisableRevolution(true);
-		eventEmitter.emit("disableRevolution");
+		eventEmitter.emit("DisableRevolution");
 	}
 
 	if ((higherRoleSize >= MinimumHigherRoleSizeForCoup) &&
 		(higherRoleSize/playerCount >= MinimumHigherRoleRatioForCoup)  &&
 		(knightSize >=MinimumKnightSizeForCoup) && disableCoup === true){
 		gameState.setDisableCoup(false);
-		eventEmitter.emit("enableCoup");
+		eventEmitter.emit("EnableCoup");
 	}else if(((higherRoleSize < MinimumHigherRoleSizeForCoup) ||
 		(higherRoleSize/playerCount < MinimumHigherRoleRatioForCoup) ||
 		(knightSize < MinimumKnightSizeForCoup))
 		&& disableCoup === false){
 		gameState.setDisableCoup(true);
-		eventEmitter.emit("disableCoup");
+		eventEmitter.emit("DisableCoup");
 	}
 
 }

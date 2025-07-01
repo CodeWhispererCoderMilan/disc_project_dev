@@ -21,8 +21,6 @@ const {
 	CutDownCost,
 	CutDownCooldown,
 	SiegeTime,
-	RevolutionCoolDown,
-	CoupCoolDown,
 	RoleChangeMessageDisplayTime,
 	MinimumKnightSize,
 	TextKnightMessageContent,
@@ -42,6 +40,7 @@ const {
 } = require("../game_config.json");
 const { DBUpdateXP, isThresholdOpen, changeRole, openThreshold, closeThreshold } = require("../apis/firebase/querys.js");
 const { eventEmitter } = require("../functions/eventEmitter.js");
+const gameState = require("../game_state.js");
 
 let selectedTargets = {};
 let knights = [];
@@ -53,18 +52,9 @@ let siegeActive = false;
 let siegeParticipants = new Set();
 let siegeTimeout;
 let selectedRevolutionTargets = {};
-let revolutionarySize = 0;
-let revolutionActive = false;
-let revolutionSecondPhase = false;
 let peopleSize = 0;
-let revolutionParticipants = {};
-let emperorElectionActive = false;
-let reelectionActive = false;
 let candidates = null;
-let coupActive = false;
 let selectedCoupTargets = {};
-let disableCoup = true;
-let disableRevolution = true;
 const initContent = TextKnightMessageContent;
 let siegeStatusMsg = "";
 let revolutionStatusMsg = "";
@@ -75,20 +65,16 @@ function showErrorMsg(err) {
 
 async function setupKnightBotEvents(client, lastMessageId) {
 	eventEmitter.on("DisableRevolution", async () => {
-		disableRevolution = true;
-		if(!revolutionActive && !coupActive) await updateMessage();
+		if(!gameState.isRevolutionActive() && !gameState.isCoupActive()) await updateMessage();
 	});
 	eventEmitter.on("enableRevolution", async () => {
-		disableRevolution = false;
-		if(!revolutionActive && !coupActive) await updateMessage();
+		if(!gameState.isRevolutionActive() && !gameState.isCoupActive()) await updateMessage();
 	});	
 	eventEmitter.on("DisableCoup", async () => {
-		disableCoup = true;
-		if(!revolutionActive && !coupActive) await updateMessage();
+		if(!gameState.isRevolutionActive() && !gameState.isCoupActive()) await updateMessage();
 	});
 	eventEmitter.on("EnableCoup", async () => {
-		disableCoup = false;
-		if(!revolutionActive && !coupActive) await updateMessage();
+		if(!gameState.isRevolutionActive() && !gameState.isCoupActive()) await updateMessage();
 	});
 	client.on("guildMemberRemove", async (member) => {
 		const hadRoleBeforePeasant = member.roles.cache.has(
@@ -162,35 +148,13 @@ async function setupKnightBotEvents(client, lastMessageId) {
 			await updateMessage(client, lastMessageId);
 		}
 
-		if (
-			(siegeActive || revolutionActive) &&
-			(hadRoleBeforeKnight)
-		) {
-			if (siegeActive) {
-				if (siegeParticipants.has(member.id)) {
-					try {
-						siegeParticipants.delete(member.id);
-					} catch (err) {
-						showErrorMsg(err);
-					}
+		if ((siegeActive) && (hadRoleBeforeKnight)) {
+			if (siegeParticipants.has(member.id)) {
+				try {
+					siegeParticipants.delete(member.id);
+				} catch (err) {
+					showErrorMsg(err);
 				}
-
-			}
-			if (revolutionActive) {
-				if (
-					Object.keys(revolutionParticipants).findIndex(
-						(key) => key === member.id
-					) > -1
-				) {
-					delete revolutionParticipants[member.id];
-					delete selectedRevolutionTargets[member.id];
-				}
-				eventEmitter.emit(
-					"SendRevolutionStatus",
-					"Knight",
-					revolutionParticipants,
-					knightsSize
-				);
 			}
 		}
 
@@ -201,14 +165,14 @@ async function setupKnightBotEvents(client, lastMessageId) {
 						member.roles.cache.has(process.env.ROLEID_KING)
 					);
 					kingsSize = kings.size;
-						const siegeSuccess =
-							siegeParticipants.size >= knightsSize / kingsSize;
-						if (siegeSuccess) {
-							await ceaseSiege(client, lastMessageId);
-							return;
-						} else {
-							await updateMessage(client, lastMessageId);
-						}
+					const siegeSuccess =
+						siegeParticipants.size >= knightsSize / kingsSize;
+					if (siegeSuccess) {
+						await ceaseSiege(client, lastMessageId);
+						return;
+					} else {
+						await updateMessage(client, lastMessageId);
+					}
 				} catch (err) {
 					showErrorMsg(err);
 				}
@@ -222,7 +186,6 @@ async function setupKnightBotEvents(client, lastMessageId) {
 			}
 		}
 	});
-
 	client.on("guildMemberUpdate", async (oldMember, newMember) => {
 		const hadRoleBeforePeasant = oldMember.roles.cache.has(
 			process.env.ROLEID_PEASANT
@@ -258,7 +221,7 @@ async function setupKnightBotEvents(client, lastMessageId) {
 		const hasRoleNowNoble = newMember.roles.cache.has(process.env.ROLEID_NOBLE);
 		const hadRoleBeforeLord = oldMember.roles.cache.has(
 			process.env.ROLEID_LORD
-		);
+		);	
 		const hasRoleNowLord = newMember.roles.cache.has(process.env.ROLEID_LORD);
 		const hadRoleBeforeEmperor = oldMember.roles.cache.has(
 			process.env.ROLEID_EMPEROR
@@ -321,34 +284,13 @@ async function setupKnightBotEvents(client, lastMessageId) {
 			await updateMessage(client, lastMessageId);
 		}
 
-		if (
-			(siegeActive || revolutionActive) &&
-			(hadRoleBeforeKnight || hasRoleNowKnight)
-		) {
-			if (siegeActive) {
-				if (siegeParticipants.has(newMember.id)) {
-					try {
-						siegeParticipants.delete(newMember.id);
-					} catch (err) {
-						showErrorMsg(err);
-					}
+		if (siegeActive &&(hadRoleBeforeKnight || hasRoleNowKnight)) {
+			if (siegeParticipants.has(newMember.id)) {
+				try {
+					siegeParticipants.delete(newMember.id);
+				} catch (err) {
+					showErrorMsg(err);
 				}
-			}
-			if (revolutionActive) {
-				if (
-					Object.keys(revolutionParticipants).findIndex(
-						(key) => key === newMember.id
-					) > -1
-				) {
-					delete revolutionParticipants[newMember.id];
-					delete selectedRevolutionTargets[newMember.id];
-				}
-				eventEmitter.emit(
-					"SendRevolutionStatus",
-					"Knight",
-					revolutionParticipants,
-					knightsSize
-				);
 			}
 		}
 
@@ -386,11 +328,11 @@ async function setupKnightBotEvents(client, lastMessageId) {
 				hasRoleNowKnight ||
 				hadRoleBeforeKing ||
 				hasRoleNowKing)){
-				try{
-					if(lastMessageId)await updateMessage(client, lastMessageId);
-				}catch(err){
-					showErrorMsg(err);
-				}
+			try{
+				if(lastMessageId)await updateMessage(client, lastMessageId);
+			}catch(err){
+				showErrorMsg(err);
+			}
 		}
 	});
 	client.on("interactionCreate", async (interaction) => {
@@ -582,7 +524,10 @@ async function setupKnightBotEvents(client, lastMessageId) {
 		if (interaction.customId === "Revolution") {
 			const userId = interaction.user.id;
 			const target = selectedRevolutionTargets[userId];
-
+			if(gameState.isRevolutionActive()){
+				await sendInteractionReply(interaction, "Revolution is already active");
+				return;
+			}
 			if (!target) {
 				await sendInteractionReply(interaction, "No member selected");
 				return;
@@ -604,12 +549,10 @@ async function setupKnightBotEvents(client, lastMessageId) {
 				return;
 			}
 
-			await CacheSetCooldown("Revolution", "Global", RevolutionCoolDown);
 
 			try {
-				revolutionParticipants[userId] = target;
 
-				eventEmitter.emit("StartRevolution");
+				eventEmitter.emit("StartRevolution", userId, target.user.id, "Knight");
 				await sendInteractionReply(
 					interaction,
 					"Revolution started, waiting for others to join."
@@ -617,103 +560,14 @@ async function setupKnightBotEvents(client, lastMessageId) {
 			} catch (err) {
 				showErrorMsg(err);
 			}
-		}
-		if (interaction.customId === "JoinRevolution") {
-			const userId = interaction.user.id;
-			if (!selectedRevolutionTargets[userId]) {
-				await sendInteractionReply(interaction, "No member selected");
-				return;
-			}
-
-			if (
-				Object.keys(revolutionParticipants).findIndex((key) => key === userId) >
-				-1
-			) {
-				await sendInteractionReply(
-					interaction,
-					"You've already joined revolution."
-				);
-				return;
-			}
-
-			const target = selectedRevolutionTargets[userId];
-			revolutionParticipants[userId] = target;
-
-			eventEmitter.emit(
-				"SendRevolutionStatus",
-				"Knight",
-				revolutionParticipants,
-				knightsSize
-			);
-
-			await sendInteractionReply(
-				interaction,
-				`You have joined the revolution with target @${target.user.username}.`
-			);
-		}
-		if (interaction.customId === "JoinCoup") {
-			const userId = interaction.user.id;
-			if (!selectedCoupTargets[userId]) {
-				await sendInteractionReply(interaction, "No member selected");
-				return;
-			}
-
-			if (
-				Object.keys(revolutionParticipants).findIndex((key) => key === userId) >
-				-1
-			) {
-				await sendInteractionReply(interaction, "You've already joined coup.");
-				return;
-			}
-
-			const target = selectedCoupTargets[userId];
-			revolutionParticipants[userId] = target;
-
-			eventEmitter.emit(
-				"SendRevolutionStatus",
-				"Knight",
-				revolutionParticipants,
-				knightsSize
-			);
-
-			await sendInteractionReply(
-				interaction,
-				`You have joined the coup with target @${target.user.username}.`
-			);
-		}
-		if (interaction.customId === "WithdrawRevolution") {
-			const userId = interaction.user.id;
-			if (
-				Object.keys(revolutionParticipants).findIndex((key) => key === userId) <
-				0
-			) {
-				await sendInteractionReply(
-					interaction,
-					"You've not joined revolution."
-				);
-				return;
-			}
-
-			delete revolutionParticipants[userId];
-			if (coupActive) delete selectedCoupTargets[userId];
-			else delete selectedRevolutionTargets[userId];
-
-			eventEmitter.emit(
-				"SendRevolutionStatus",
-				"Knight",
-				revolutionParticipants,
-				knightsSize
-			);
-
-			await sendInteractionReply(
-				interaction,
-				`You have withdrawn the revolution`
-			);
-		}
+		}	
 		if (interaction.customId === "Coup") {
 			const userId = interaction.user.id;
 			const target = selectedCoupTargets[userId];
-
+			if(gameState.isCoupActive()){
+				await sendInteractionReply(interaction, "Coup is already active");
+				return;
+			}
 			if (!target) {
 				await sendInteractionReply(interaction, "No member selected");
 				return;
@@ -729,13 +583,8 @@ async function setupKnightBotEvents(client, lastMessageId) {
 				await sendInteractionReply(interaction, "Coup is on cooldown");
 				return;
 			}
-
-			await CacheSetCooldown("Coup", "Global", CoupCoolDown);
-
 			try {
-				revolutionParticipants[userId] = target;
-
-				eventEmitter.emit("StartCoup");
+				eventEmitter.emit("StartCoup", userId, target.user.id);
 				await sendInteractionReply(
 					interaction,
 					"Coup started, waiting for others to join."
@@ -744,9 +593,101 @@ async function setupKnightBotEvents(client, lastMessageId) {
 				showErrorMsg(err);
 			}
 		}
+		if (interaction.customId === "JoinRevolution") {
+			if(!gameState.isRevolutionActive()){
+				await sendInteractionReply(interaction, "No revolution ongoing, messages will sync soon.");
+				return;
+			}
+			const userId = interaction.user.id;
+			if (!selectedRevolutionTargets[userId]) {
+				await sendInteractionReply(interaction, "No member selected");
+				return;
+			}
+
+			if (gameState.isRevolutionParticipant(userId)) {
+				await sendInteractionReply(
+					interaction,
+					"You've already joined revolution."
+				);
+				return;
+			}
+
+			const target = selectedRevolutionTargets[userId];
+
+			eventEmitter.emit(
+				"AddRevolutionParticipant",
+				"Knight",
+				userId,
+				target.user.id
+			);
+
+			await sendInteractionReply(
+				interaction,
+				`You have joined the revolution with target @${target.user.username}.`
+			);
+		}
+		if (interaction.customId === "JoinCoup") {
+			if(!gameState.isCoupActive()){
+				await sendInteractionReply(interaction, "No coup ongoing, messages will sync soon.");
+				return;
+			}
+			const userId = interaction.user.id;
+			if (!selectedCoupTargets[userId]) {
+				await sendInteractionReply(interaction, "No member selected");
+				return;
+			}
+
+			if (gameState.isRevolutionParticipant(userId) && gameState.isCoupActive()) {
+				await sendInteractionReply(interaction, "You've already joined coup.");
+				return;
+			}
+
+			const target = selectedCoupTargets[userId];
+
+			eventEmitter.emit(
+				"AddRevolutionParticipant",
+				"Knight",
+				userId,
+				target.user.id
+			);
+
+			await sendInteractionReply(
+				interaction,
+				`You have joined the coup with target @${target.user.username}.`
+			);
+		}
+		if (interaction.customId === "WithdrawRevolution") {
+			if (!gameState.isRevolutionActive()) {
+				await sendInteractionReply(
+					interaction,
+					"No revolution ongoing, messages will sync soon."
+				);
+				return;
+			}
+			const userId = interaction.user.id;
+			const isRevolutionParticipant = gameState.isRevolutionParticipant(userId);
+			if (!isRevolutionParticipant) {
+				await sendInteractionReply(
+					interaction,
+					"You've not joined revolution."
+				);
+				return;
+			}
+
+
+			eventEmitter.emit(
+				"RemoveRevolutionParticipant",
+				userId
+			);
+
+			await sendInteractionReply(
+				interaction,
+				`You have withdrawn the revolution`
+			);
+		}		
 		if (interaction.customId === "VoteEmperor") {
 			try {
-				if (!emperorElectionActive) {
+				if (!gameState.isEmperorElectionActive()) {
 					await sendInteractionReply(
 						interaction,
 						"There is no active election to vote."
@@ -761,9 +702,7 @@ async function setupKnightBotEvents(client, lastMessageId) {
 				}
 
 				if (
-					Object.keys(revolutionParticipants).findIndex(
-						(key) => key === userId
-					) > -1
+					gameState.isRevolutionParticipant(userId)
 				) {
 					await sendInteractionReply(
 						interaction,
@@ -773,17 +712,12 @@ async function setupKnightBotEvents(client, lastMessageId) {
 				}
 
 				const candidate = selectedRevolutionTargets[userId];
-				if (candidate.user.id === userId) {
-					await sendInteractionReply(interaction, "You cannot vote yourself.");
-					return;
-				}
-				revolutionParticipants[userId] = candidate;
 
 				eventEmitter.emit(
-					"SendRevolutionStatus",
+					"AddRevolutionParticipant",
 					"Knight",
-					revolutionParticipants,
-					knightsSize
+					userId,
+					selectedRevolutionTargets[userId].user.id
 				);
 
 				await sendInteractionReply(
@@ -795,7 +729,6 @@ async function setupKnightBotEvents(client, lastMessageId) {
 			}
 		}
 	});
-
 	eventEmitter.on("siegeStarted", async (initiator, target) => {
 		try {
 			if (lastMessageId) {
@@ -841,101 +774,84 @@ async function setupKnightBotEvents(client, lastMessageId) {
 			showErrorMsg(err);
 		}
 	});
+
+
 	eventEmitter.on("RevolutionStarted", async () => {
 		try {
-			const guild = await client.guilds.fetch(process.env.GUILDID);
-			knights = guild.members.cache.filter((member) =>
-				member.roles.cache.has(process.env.ROLEID_KNIGHT)
-			);
-			knightsSize = knights.size;
-			revolutionActive = true;
-
-			eventEmitter.emit(
-				"SendRevolutionStatus",
-				"Knight",
-				revolutionParticipants,
-				knightsSize
-			);
+			if(gameState.isRevolutionActive() && !gameState.isCoupActive() )await updateMessage(client, lastMessageId);
 		} catch (err) {
 			throw err;
 		}
 	});
 	eventEmitter.on("CoupStarted", async () => {
 		try {
-			const guild = await client.guilds.fetch(process.env.GUILDID);
-			knights = guild.members.cache.filter((member) =>
-				member.roles.cache.has(process.env.ROLEID_KNIGHT)
-			);
-			knightsSize = knights.size;
-			coupActive = true;
-
-			eventEmitter.emit(
-				"SendRevolutionStatus",
-				"Knight",
-				revolutionParticipants,
-				knightsSize
-			);
+			if(gameState.isRevolutionActive() && gameState.isCoupActive())
+				await updateMessage(client, lastMessageId);
 		} catch (err) {
 			throw err;
 		}
 	});
 	eventEmitter.on("CoupFinished", async () => {
 		try {
-			await resetRevolution(client, lastMessageId);
+			if(!gameState.isRevolutionActive() && !gameState.isCoupActive()) await updateMessage(client, lastMessageId);
 		} catch (err) {
 			throw err;
 		}
 	});
 	eventEmitter.on("RevolutionFinished", async () => {
 		try {
-			await resetRevolution(client, lastMessageId);
+			if(!gameState.isRevolutionActive())
+				await updateMessage(client, lastMessageId);
 		} catch (err) {
 			throw err;
 		}
 	});
-	eventEmitter.on("RevolutionMovedInSecondPhase", async () => {
+	eventEmitter.on("RevolutionMovedToSecondPhase", async () => {
 		try {
-			revolutionSecondPhase = true;
-			await updateMessage(client, lastMessageId);
+			if(gameState.isRevolutionSecondPhase())
+				await updateMessage(client, lastMessageId);
 		} catch (err) {
 			throw err;
 		}
 	});
 	eventEmitter.on("RevolutionMovedInEmperorElection", async () => {
 		try {
-			emperorElectionActive = true;
-			revolutionParticipants = {};
-			selectedRevolutionTargets = {};
-			revolutionarySize = 0;
-			await updateMessage(client, lastMessageId);
-		} catch (err) {
-			throw err;
-		}
-	});
-	eventEmitter.on("RevolutionMovedInEmperorReelection", async (members) => {
-		try {
-			reelectionActive = true;
-			candidates = members;
-			revolutionParticipants = {};
-			selectedRevolutionTargets = {};
-			revolutionarySize = 0;
-			await updateMessage(client, lastMessageId);
-		} catch (err) {
-			throw err;
-		}
-	});
-	eventEmitter.on(
-		"UpdateRevolutionStatus",
-		async (participantsSize, totalSize) => {
-			try {
-				revolutionarySize = participantsSize;
-				peopleSize = totalSize;
+			if(gameState.isEmperorElectionActive())
 				await updateMessage(client, lastMessageId);
-			} catch (err) {
-				throw err;
-			}
+		} catch (err) {
+			throw err;
 		}
-	);
+	});
+	eventEmitter.on("RevolutionMovedInEmperorReelection", async (emperorReelectionSelectMenu) => {
+		try {
+			if(gameState.isReelectionActive())
+				await updateMessage(client, lastMessageId, emperorReelectionSelectMenu);
+		} catch (err) {
+			throw err;
+		}
+	});
+	eventEmitter.on("UpdateRevolutionMessage", async () => {
+		try {
+			if(gameState.isRevolutionActive()) 
+				await updateMessage(client, lastMessageId);
+		} catch (err) {
+			showErrorMsg(err);
+		}
+	});
+	eventEmitter.on("ElectionEnthronement", async (emperorUsername) => {
+		try {
+			const channel = await client.channels.fetch(process.env.CHANNELIDKNIGHT);
+			const tmpMessage = await channel.send(
+				`Hail our new Emperor! ${emperorUsername}, youy have risen to the mountain spring in the spray of revolution, may your rule last 1000 years!`
+			);
+			setTimeout(() => {
+				tmpMessage.delete().catch(showErrorMsg);
+			}, 30000);
+		} catch (err) {
+			showErrorMsg(err);
+		}
+	});
+
 
 	eventEmitter.on('ReturnWritReward', async (userId, writAmount) => {
 		await DBUpdateXP(userId, writAmount, client); 
@@ -1052,7 +968,7 @@ async function executeCutDown(interaction, userId, targetId, client) {
 		}
 		await DBUpdateXP(userId, -CutDownCost, client);
 		await performCutDown(interaction, targetId);
-				await sendInteractionReply(
+		await sendInteractionReply(
 			interaction,
 			`(${userXP - CutDownCost} XP left) Cut Down successful with no writ`
 		);
@@ -1168,7 +1084,7 @@ async function updateMessage(client, lastMessageId) {
 				.setCustomId("JoinSiege")
 				.setLabel(ButtonLabelJoinSiege)
 				.setStyle(ButtonStyle.Danger);
-			if (revolutionActive) {
+			if (gameState.isRevolutionActive()) {
 				if (revolutionSecondPhase && !emperorElectionActive)
 					actionRow_4.components[3] = joinSiegeBtn;
 				else actionRow_4.components[2] = joinSiegeBtn;
@@ -1179,7 +1095,7 @@ async function updateMessage(client, lastMessageId) {
 			siegeStatusMsg = `\nKing @${siegeInitiator} initiated a siege. Join siege to downgrade ${siegeTarget}. (Joined ${siegeParticipants.size} / ${knightsSize}.)`;
 		}
 
-		if (revolutionActive) {
+		if (gameState.isRevolutionActive()) {
 			let revolutionBtn = new ButtonBuilder()
 				.setCustomId("JoinRevolution")
 				.setLabel(ButtonLabelJoinRevolution)
@@ -1235,7 +1151,7 @@ async function updateMessage(client, lastMessageId) {
 			}
 			actionRow_4.components[0] = revolutionBtn;
 			actionRow_4.components[1] = coupBtn;
-		} else if (coupActive) {
+		} else if (gameState.isCoupActive()) {
 			const revolutionBtn = new ButtonBuilder()
 				.setCustomId("Revolution")
 				.setLabel(ButtonLabelRevolution)
@@ -1372,23 +1288,5 @@ async function resetSiege(client, lastMessageId) {
 	}
 }
 
-async function resetRevolution(client, lastMessageId) {
-	try {
-		selectedRevolutionTargets = {};
-		revolutionActive = false;
-		revolutionSecondPhase = false;
-		revolutionarySize = 0;
-		peopleSize = 0;
-		revolutionParticipants = {};
-		emperorElectionActive = false;
-		reelectionActive = false;
-		candidates = null;
-		revolutionStatusMsg = "";
-		selectedCoupTargets = {};
-		coupActive = false;
-		await updateMessage(client, lastMessageId);
-	} catch (err) {
-		throw err;
-	}
-}
+
 module.exports = { setupKnightBotEvents, messageKnightCommands };

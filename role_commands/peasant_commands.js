@@ -19,7 +19,6 @@ const {
 	MobFlayingTime,
 	MobFlayingSuccessThreadshold,
 	MobFlayingCoolDown,
-	RevolutionCoolDown,
 	RoleChangeMessageDisplayTime,
 	TextPeasantMessageContent,
 	TextRevolutionTargetSelectMenu,
@@ -488,8 +487,6 @@ async function setupPeasantBotEvents(client, lastMessageId) {
 					return;
 				}
 
-				const candidate = selectedRevolutionTargets[userId];
-
 				eventEmitter.emit(
 					"AddRevolutionParticipant",
 					"Peasant",
@@ -830,12 +827,12 @@ async function updateMessage(client, lastMessageId,emperorReelectionSelectMenu) 
 						.setLabel(ButtonLabelVoteEmperor)
 						.setStyle(ButtonStyle.Danger);
 					if (actionRow_2.components[2]) actionRow_2.components.splice(2, 1);
-					revolutionStatusMsg = `\nLet's vote a new emperor. (Votes ${gameState.getRevolutionarySize()} / ${gameState.getPeopleSize()})`;
+					revolutionStatusMsg = `\nA vote for a new Emperor is underway. (${gameState.getRevolutionarySize()} votes cast)`;
 				}
 				if (gameState.isReelectionActive()) {
 					actionRow_0 = emperorReelectionSelectMenu;
 
-					revolutionStatusMsg = `\nEmperor must be only one. Let's reelect an emperor. (Votes ${gameState.getRevolutionarySize()} / ${gameState.getPeopleSize()})`;
+					revolutionStatusMsg = `\nThere may only be a single Emperor, a new vote is underway amongst notable contenders. (${gameState.getRevolutionarySize()} votes cast)`;
 				}
 			}
 

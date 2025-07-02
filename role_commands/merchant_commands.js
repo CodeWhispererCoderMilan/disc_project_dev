@@ -23,7 +23,6 @@ const {
 const { DBUpdateXP } = require("../apis/firebase/querys");
 const {
 	BribeCoolDown,
-	RevolutionCoolDown,
 	RoleChangeMessageDisplayTime,
 	EndowDuration,
 	EndowCost,
@@ -550,7 +549,6 @@ async function setupMerchantBotEvents(client, lastMessageId) {
 						return;
 					}
 
-					const candidate = selectedRevolutionTargets[userId];
 
 					eventEmitter.emit(
 						"AddRevolutionParticipant",
@@ -779,11 +777,11 @@ async function updateMessage(client, lastMessageId, emperorReelectionSelectMenu)
 						.setLabel(ButtonLabelVoteEmperor)
 						.setStyle(ButtonStyle.Danger);
 					if (actionRow_3.components[3]) actionRow_3.components.splice(3, 1);
-					revolutionStatusMsg = `\nLet's vote a new emperor. (Votes ${gameState.getRevolutionarySize()} / ${gameState.getPeopleSize()})`;
+					revolutionStatusMsg = `\nA vote for a new Emperor is underway. (${gameState.getRevolutionarySize()} votes cast)`;
 				}
 				if (gameState.isReelectionActive()) {
 					actionRow_1 = emperorReelectionSelectMenu;
-					revolutionStatusMsg = `\nEmperor must be only one. Let's reelect an emperor. (Joined ${revolutionarySize} members.)`;
+					revolutionStatusMsg = `\nThere may only be a single Emperor, a new vote is underway amongst notable contenders. (${gameState.getRevolutionarySize()} votes cast)`;
 				}
 			}
 

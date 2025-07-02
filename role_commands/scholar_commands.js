@@ -18,7 +18,7 @@ const {
 } = require("../apis/redis/redisCache");
 const {
 	AdviseCoolDown,
-	RevolutionCoolDown,
+	RevolutionCooldown,
 	RoleChangeMessageDisplayTime,
 	TextScholarMessageContent,
 	TextEmperorCandidateSelectMenu,
@@ -321,7 +321,6 @@ async function setupScholarBotEvents(client, lastMessageId) {
 						return;
 					}
 
-					const candidate = selectedRevolutionTargets[userId];
 
 					eventEmitter.emit(
 						"AddRevolutionParticipant",
@@ -515,11 +514,11 @@ async function updateMessage(client, lastMessageId, emperorReelectionSelectMenu)
 						.setLabel(ButtonLabelVoteEmperor)
 						.setStyle(ButtonStyle.Danger);
 					if (actionRow_1.components[2]) actionRow_1.components.splice(2, 1);
-					revolutionStatusMsg = `\nLet's vote a new emperor.  (Joined ${revolutionarySize} members.)`;
+					revolutionStatusMsg = `\nA vote for a new Emperor is underway. (${gameState.getRevolutionarySize()} votes cast)`;
 				}
 				if (gameState.isReelectionActive()) {
 					actionRow_0 = emperorReelectionSelectMenu;
-					revolutionStatusMsg = `\nEmperor must be only one. Let's reelect an emperor. (Joined ${gameState.getRevolutionarySize()} members.)`; }
+					revolutionStatusMsg = `\nEmperor must be only one. Let's reelect an emperor. (Votes ${gameState.getRevolutionarySize()} / ${gameState.getPeopleSize()})`; }
 			}
 
 			actionRow_1.components[1] = revolutionBtn;

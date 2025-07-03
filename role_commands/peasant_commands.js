@@ -32,7 +32,7 @@ const {
 	TextMobFlayingSelectMenu
 } = require("../game_config.json");
 const { eventEmitter } = require("../functions/eventEmitter.js");
-const gameState = require("../game_state/gameState.js");
+const gameState = require("../game_state.js");
 
 let selectedRevolutionTargets = {};
 let selectedMobFlayingTargets = {};

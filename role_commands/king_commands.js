@@ -426,6 +426,14 @@ async function setupKingBotEvents(client, lastMessageId) {
 		}
 		if (interaction.customId === "Siege") {
 			try {
+				if(disableSiege) {
+					await sendInteractionReply(interaction, "Siege is disabled, not enough knights to siege a king");
+					return;
+				}
+				if(siegeActive) {
+					await sendInteractionReply(interaction, "Siege is already active");
+					return;
+				}
 				if (!selectedKings[userId]) {
 					await sendInteractionReply(interaction, "No king selected");
 					return;

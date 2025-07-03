@@ -1073,7 +1073,7 @@ async function updateMessage(client, lastMessageId, emperorReelectionSelectMenu)
 			.setCustomId("Coup")
 			.setLabel(ButtonLabelCoup)
 			.setStyle(ButtonStyle.Danger)
-			.setDisabled(gameSte.getDisableCoup())
+			.setDisabled(gameState.getDisableCoup())
 		);
 
 		if (siegeActive) {

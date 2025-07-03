@@ -7,7 +7,7 @@ const {
 	TextInputBuilder,
 	TextInputStyle,
 } = require("discord.js");
-const gameState = require("../game_state.json");
+const gameState = require("../game_state.js");
 const {
 	buildSelectMenu,
 	sendInteractionReply,
@@ -18,7 +18,6 @@ const {
 } = require("../apis/redis/redisCache");
 const {
 	AdviseCoolDown,
-	RevolutionCooldown,
 	RoleChangeMessageDisplayTime,
 	TextScholarMessageContent,
 	TextEmperorCandidateSelectMenu,
@@ -30,7 +29,6 @@ const {
 	ButtonLabelAdvise
 } = require("../game_config.json");
 const { eventEmitter } = require("../functions/eventEmitter.js");
-const { isRevolutionActive, isEmperorElectionActive } = require("../game_state.js");
 
 let selectedRevolutionTargets = {};
 const initContent =TextScholarMessageContent;
@@ -321,6 +319,7 @@ async function setupScholarBotEvents(client, lastMessageId) {
 						return;
 					}
 
+					const candidate = selectedRevolutionTargets[userId];
 
 					eventEmitter.emit(
 						"AddRevolutionParticipant",
@@ -379,7 +378,8 @@ async function setupScholarBotEvents(client, lastMessageId) {
 	});
 	eventEmitter.on("RevolutionStarted", async () => {
 		try {
-			if(gameState.isRevolutionActive() && !gameState.isCoupActive())await updateMessage(client, lastMessageId);
+			if(gameState.isRevolutionActive() && !gameState.isCoupActive())
+				await updateMessage(client, lastMessageId);
 		} catch (err) {
 			throw err;
 		}
@@ -514,11 +514,11 @@ async function updateMessage(client, lastMessageId, emperorReelectionSelectMenu)
 						.setLabel(ButtonLabelVoteEmperor)
 						.setStyle(ButtonStyle.Danger);
 					if (actionRow_1.components[2]) actionRow_1.components.splice(2, 1);
-					revolutionStatusMsg = `\nA vote for a new Emperor is underway. (${gameState.getRevolutionarySize()} votes cast)`;
+					revolutionStatusMsg = `\nLet's vote a new emperor.  (Joined ${revolutionarySize} members.)`;
 				}
 				if (gameState.isReelectionActive()) {
 					actionRow_0 = emperorReelectionSelectMenu;
-					revolutionStatusMsg = `\nEmperor must be only one. Let's reelect an emperor. (Votes ${gameState.getRevolutionarySize()} / ${gameState.getPeopleSize()})`; }
+					revolutionStatusMsg = `\nEmperor must be only one. Let's reelect an emperor. (Joined ${gameState.getRevolutionarySize()} members.)`; }
 			}
 
 			actionRow_1.components[1] = revolutionBtn;

@@ -130,7 +130,6 @@ async function setupNobleBotEvents(client, lastMessageId) {
 					member.roles.cache.has(process.env.ROLEID_NOBLE)
 				);
 				noblesSize = nobles.size;
-				eventEmitter.emit("UpdateNobleSize", noblesSize, member);
 				if(noblesSize < MinimumNobleSize && !isThresholdOpen(9)){
 					await openThreshold(9, client);
 				}
@@ -232,7 +231,6 @@ async function setupNobleBotEvents(client, lastMessageId) {
 					member.roles.cache.has(process.env.ROLEID_NOBLE)
 				);
 				noblesSize = nobles.size;
-				eventEmitter.emit("UpdateNobleSize", noblesSize, newMember);
 				if(noblesSize < MinimumNobleSize && !isThresholdOpen(9)){
 					await openThreshold(9, client);
 				}

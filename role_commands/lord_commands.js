@@ -101,7 +101,6 @@ async function setupLordBotEvents(client, lastMessageId) {
 					member.roles.cache.has(process.env.ROLEID_LORD)
 				);
 				lordsSize = lords.size;
-				eventEmitter.emit("UpdateLordSize", lordsSize, member);
 				if(lordsSize < MinimumLordSize && !isThresholdOpen(10)){
 					await openThreshold(10, client);
 				}
@@ -226,7 +225,6 @@ async function setupLordBotEvents(client, lastMessageId) {
 					member.roles.cache.has(process.env.ROLEID_LORD)
 				);
 				lordsSize = lords.size;
-				eventEmitter.emit("UpdateLordSize", lordsSize, newMember);
 				if(lordsSize < MinimumLordSize && !isThresholdOpen(10)){
 					await openThreshold(10,client);
 				}

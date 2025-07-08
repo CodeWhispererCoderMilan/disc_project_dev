@@ -103,7 +103,6 @@ async function setupKingBotEvents(client, lastMessageId) {
 						member.roles.cache.has(process.env.ROLEID_KINGS)
 					);
 					kingSize = kings.size;
-					eventEmitter.emit("UpdateKingSize", kingSize, member);
 					if(kingSize < MinimumKingSize && !isThresholdOpen(11)){
 						await openThreshold(11, client);
 					}
@@ -164,14 +163,14 @@ async function setupKingBotEvents(client, lastMessageId) {
 		if (siegeActive && hadRoleBeforeKing) {
 			if (newMember.id === siegeInitiatorId) {
 				const message = "The role of the initiator has been changed.";
+				await resetComponents(client, lastMessageId);
 				eventEmitter.emit("NotifyKingChannel", message);
 				eventEmitter.emit("siegeResult", message, "early");
-				await resetComponents(client, lastMessageId);
 			} else if (newMember.id === siegeTargetId) {
 				const message = "The role of the target has been changed.";
+				await resetComponents(client, lastMessageId);
 				eventEmitter.emit("NotifyKingChannel", message);
 				eventEmitter.emit("siegeResult", message, "early");
-				await resetComponents(client, lastMessageId);
 			}
 		}	
 
@@ -183,7 +182,6 @@ async function setupKingBotEvents(client, lastMessageId) {
 						member.roles.cache.has(process.env.ROLEID_KINGS)
 					);
 					kingSize = kings.size;
-					eventEmitter.emit("UpdateKingSize", kingSize, newMember);
 					if(kingSize < MinimumKingSize && !isThresholdOpen(11)){
 						await openThreshold(11, client);
 					}
@@ -431,7 +429,7 @@ async function setupKingBotEvents(client, lastMessageId) {
 					return;
 				}
 				if(siegeActive) {
-					await sendInteractionReply(interaction, "Siege is already active");
+					await sendInteractionReply(interaction, "Another siege is underway, attacks amidst ongoing turmoil are of stagnant character.");
 					return;
 				}
 				if (!selectedKings[userId]) {
@@ -443,7 +441,7 @@ async function setupKingBotEvents(client, lastMessageId) {
 				if (userXP < SiegeCost) {
 					await sendInteractionReply(
 						interaction,
-						`Not enough XP (current XP: ${userXP})`
+						`Not enough drops (drops: ${userXP})`
 					);
 					return;
 				}

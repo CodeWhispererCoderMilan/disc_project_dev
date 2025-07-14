@@ -8,6 +8,7 @@ let emperorElectionActive = false;
 let reelectionActive = false;
 let disableRevolution = true;
 let disableCoup = true;
+let disableSiege = true;
 let struggleMethod = "Revolution";
 let playerCount = 0;
 // =====================
@@ -15,7 +16,6 @@ let playerCount = 0;
 // =====================
 let revolutionParticipants = new Set(); 
 let selectedRevolutionTargets = new Set();
-let coupParticipants = new Set();
 let siegeParticipants = new Set();
 
 // =====================
@@ -44,8 +44,10 @@ let kingsSize = 0;
 // =====================
 	// SIEGE TARGET INFO
 // =====================
-	let siegeInitiator = null;
+let siegeInitiator = null;
+let siegeInitiatorId = null;
 let siegeTarget = null;
+let siegeTargetId = null;
 let siegeTimeout = null;
 
 module.exports = {
@@ -163,14 +165,23 @@ module.exports = {
 	addSiegeParticipant: (id) => siegeParticipants.add(id),
 	removeSiegeParticipant: (id) => siegeParticipants.delete(id),
 	isSiegeParticipant: (id) => siegeParticipants.has(id),
-	getSiegeParticipants: () => Array.from(siegeParticipants),
+	getSiegeParticipants: () => siegeParticipants,
+	getSiegeParticipantsSize: () => siegeParticipants.size,
 	clearSiegeParticipants: () => siegeParticipants.clear(),
 	getSiegeInitiator: () => siegeInitiator,
-	setSiegeInitiator: (val) => { siegeInitiator = val; },
-	getSiegeTarget: () => siegeTarget,
+	setSiegeInitiator: (val) => { siegeInitiator = val; },	
+	getSiegeInitiatorId: () => siegeInitiatorId,
+	setSiegeInitiatorId: (val) => { siegeInitiatorId = val; },
+	getSiegeTarget: () => siegeTarget,	
+	getSiegeTargetId: () => siegeTargetId,
+	setSiegeTargetId: (val) => { siegeTargetId = val; },
 	setSiegeTarget: (val) => { siegeTarget = val; },
 	getSiegeTimeout: () => siegeTimeout,
 	setSiegeTimeout: (val) => { siegeTimeout = val; },
+	clearSiegeTimeout: () =>{ clearTimeout(siegeTimeout);},
+	removeSiegeTimeout: () => { siegeTimeout = null; },
+	getDisableSiege: () => disableSiege,
+	setDisableSiege: (val) => { disableSiege = val; },
 
 	// Role Sizes
 	setRoleSize: (role, size) => { roleSizes[role] = size; },

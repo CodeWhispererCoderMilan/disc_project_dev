@@ -552,7 +552,7 @@ async function evaluateThresholds(client) {
 
 
 	if (knightCount < MinimumKnightSize && !isThresholdOpen(8)) {
-		await openThreshold(client);
+		await openThreshold(8, client);
 
 	} else if (knightCount >= MinimumKnightSize && isThresholdOpen(8)) {
 		closeThreshold(8);

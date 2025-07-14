@@ -20,7 +20,7 @@ const {
 const {
 	CutDownCost,
 	CutDownCooldown,
-	SiegeTime,
+	
 	RoleChangeMessageDisplayTime,
 	MinimumKnightSize,
 	TextKnightMessageContent,
@@ -119,9 +119,10 @@ async function setupKnightBotEvents(client, lastMessageId) {
 			hadRoleBeforeMerchant ||
 			hadRoleBeforeNoble ||
 			hadRoleBeforeLord ||
-			hadRoleBeforeKing
+			hadRoleBeforeKing ||
+			hadRoleBeforeKnight
 		) {
-			await CacheCheckAndUpdateUserWrits(member.id);
+			if(!hadRoleBeforeKnight)await CacheCheckAndUpdateUserWrits(member.id);
 			for (let userId in selectedTargets) {
 				if (
 					selectedTargets[userId] &&
@@ -140,48 +141,13 @@ async function setupKnightBotEvents(client, lastMessageId) {
 			hadRoleBeforeMerchant ||
 			hadRoleBeforeNoble ||
 			hadRoleBeforeLord ||
-			hadRoleBeforeEmperor 
+			hadRoleBeforeEmperor ||
+			hadRoleBeforeKnight
 		) {
 			await updateMessage(client, lastMessageId);
 		}
 
-		if ((siegeActive) && (hadRoleBeforeKnight)) {
-			if (siegeParticipants.has(member.id)) {
-				try {
-					siegeParticipants.delete(member.id);
-				} catch (err) {
-					showErrorMsg(err);
-				}
-			}
-		}
 
-		if (siegeActive &&(hadRoleBeforeKnight || hadRoleBeforeKing)){
-			if (lastMessageId) {
-				try {
-					const kings = guild.members.cache.filter((member) =>
-						member.roles.cache.has(process.env.ROLEID_KING)
-					);
-					kingsSize = kings.size;
-					const siegeSuccess =
-						siegeParticipants.size >= knightsSize / kingsSize;
-					if (siegeSuccess) {
-						await ceaseSiege(client, lastMessageId);
-						return;
-					} else {
-						await updateMessage(client, lastMessageId);
-					}
-				} catch (err) {
-					showErrorMsg(err);
-				}
-			}
-		}
-		if(!siegeActive && (hadRoleBeforeKing || hadRoleBeforeKnight)){
-			try{
-				if(lastMessageId)await updateMessage(client,lastMessageId);
-			}catch(err){
-				showErrorMsg(err);
-			}
-		}
 	});
 	client.on("guildMemberUpdate", async (oldMember, newMember) => {
 		const hadRoleBeforePeasant = oldMember.roles.cache.has(
@@ -232,7 +198,7 @@ async function setupKnightBotEvents(client, lastMessageId) {
 			knights = guild.members.cache.filter((member) =>
 				member.roles.cache.has(process.env.ROLEID_KNIGHT)
 			);
-			knightsSize = knights.size;
+			const knightsSize = knights.size;
 			if(knightsSize < MinimumKnightSize && !isThresholdOpen(8)){
 				await openThreshold(8, client);
 			}
@@ -248,9 +214,10 @@ async function setupKnightBotEvents(client, lastMessageId) {
 			hadRoleBeforeMerchant ||
 			hadRoleBeforeNoble ||
 			hadRoleBeforeLord ||
-			hadRoleBeforeKing
+			hadRoleBeforeKing ||
+			hadRoleBeforeKnight
 		) {
-			await CacheCheckAndUpdateUserWrits(oldMember.id);
+			if(!hadRoleBeforeKnight)await CacheCheckAndUpdateUserWrits(oldMember.id);
 			for (let userId in selectedTargets) {
 				if (
 					selectedTargets[userId] &&
@@ -275,61 +242,14 @@ async function setupKnightBotEvents(client, lastMessageId) {
 			hasRoleNowMerchant ||
 			hasRoleNowNoble ||
 			hasRoleNowLord ||
-			hasRoleNowEmperor
+			hasRoleNowEmperor ||
+			hadRoleBeforeKnight ||
+			hasRoleNowKnight
 		) {
 			await updateMessage(client, lastMessageId);
 		}
 
-		if (siegeActive &&(hadRoleBeforeKnight || hasRoleNowKnight)) {
-			if (siegeParticipants.has(newMember.id)) {
-				try {
-					siegeParticipants.delete(newMember.id);
-				} catch (err) {
-					showErrorMsg(err);
-				}
-			}
-		}
 
-		if (
-			siegeActive &&
-			(hadRoleBeforeKnight ||
-				hasRoleNowKnight ||
-				hadRoleBeforeKing ||
-				hasRoleNowKing)
-		) {
-			if (lastMessageId) {
-				try {
-					const kings = guild.members.cache.filter((member) =>
-						member.roles.cache.has(process.env.ROLEID_KING)
-					);
-					kingsSize = kings.size;
-					if (siegeActive) {
-						const siegeSuccess =
-							siegeParticipants.size >= knightsSize / kingsSize;
-						if (siegeSuccess) {
-							await ceaseSiege(client, lastMessageId);
-							return;
-						} else {
-							await updateMessage(client, lastMessageId);
-						}
-					}
-				} catch (err) {
-					showErrorMsg(err);
-				}
-			}
-		}
-		if (
-			!siegeActive &&
-			(hadRoleBeforeKnight ||
-				hasRoleNowKnight ||
-				hadRoleBeforeKing ||
-				hasRoleNowKing)){
-			try{
-				if(lastMessageId)await updateMessage(client, lastMessageId);
-			}catch(err){
-				showErrorMsg(err);
-			}
-		}
 	});
 	client.on("interactionCreate", async (interaction) => {
 		if (!interaction.isStringSelectMenu() && !interaction.isButton()) return;
@@ -480,38 +400,24 @@ async function setupKnightBotEvents(client, lastMessageId) {
 
 		if (interaction.customId === "JoinSiege") {
 			try {
-				if (!siegeActive) {
+				if (!gameState.isSiegeActive()) {
 					await sendInteractionReply(
 						interaction,
-						"There is no active siege to join."
+						"There is no active siege. The message will sync soon."
 					);
 					return;
 				}
 
 				const userId = interaction.user.id;
-				if (siegeParticipants.has(userId)) {
+				if (gameState.isSiegeParticipant(userId)) {
 					await sendInteractionReply(
 						interaction,
 						"You've already joined this siege."
 					);
 					return;
 				}
-
-				siegeParticipants.add(userId);
+				eventEmitter.emit("KnightParticipatedOnSiege", userId);
 				await sendInteractionReply(interaction, "You have joind the siege.");
-
-				const siegeSuccess = siegeParticipants.size >= knightsSize / kingsSize;
-				if (siegeSuccess) {
-					await ceaseSiege(client, lastMessageId);
-					return;
-				} else {
-					eventEmitter.emit(
-						"KnightParticipatedOnSiege",
-						siegeParticipants.size,
-						knightsSize
-					);
-					await updateMessage(client, lastMessageId);
-				}
 			} catch (err) {
 				throw err;
 			}
@@ -724,34 +630,25 @@ async function setupKnightBotEvents(client, lastMessageId) {
 			}
 		}
 	});
-	eventEmitter.on("siegeStarted", async (initiator, target) => {
+	eventEmitter.on("siegeStarted", async () => {
 		try {
-			if (lastMessageId) {
-				const guild = await client.guilds.fetch(process.env.GUILDID);
-				knights = guild.members.cache.filter((member) =>
-					member.roles.cache.has(process.env.ROLEID_KNIGHT)
-				);
-				const kings = guild.members.cache.filter((member) =>
-					member.roles.cache.has(process.env.ROLEID_KING)
-				);
-				knightsSize = knights.size;
-				kingsSize = kings.size;
-				siegeInitiator = initiator;
-				siegeTarget = target;
-
-				await startSiege(client, lastMessageId, SiegeTime);
-				await updateMessage(client, lastMessageId);
-			}
+			await updateMessage(client, lastMessageId);
 		} catch (err) {
 			showErrorMsg(err);
 		}
 	});
-	eventEmitter.on("siegeResult", async (message, status) => {
+	eventEmitter.on("siegeResult", async (message) => {
 		try {
-			if (status === "early") {
-				await ceaseSiege(client, lastMessageId);
-			}
+			await updateMessage(client, lastMessageId);
 			eventEmitter.emit("NotifyKnightChannel", message);
+
+		} catch (err) {
+			showErrorMsg(err);
+		}
+	});
+	eventEmitter.on("UpdateSiegeMessageKnight", async () => {
+		try {
+			if (gameState.isSiegeActive()) await updateMessage(client, lastMessageId);
 		} catch (err) {
 			showErrorMsg(err);
 		}
@@ -853,28 +750,6 @@ async function setupKnightBotEvents(client, lastMessageId) {
 	});
 
 }
-
-async function startSiege(client, lastMessageId, timeout) {
-	siegeActive = true;
-	siegeTimeout = setTimeout(async () => {
-		await handleSiegeEnd(client, lastMessageId);
-	}, timeout);
-}
-
-async function handleSiegeEnd(client, lastMessageId) {
-	eventEmitter.emit("SiegeFinished", siegeParticipants.size, knightsSize);
-	eventEmitter.emit("NotifyKnightChannel", "Siege finished.");
-	await resetSiege(client, lastMessageId);
-}
-
-async function ceaseSiege(client, lastMessageId) {
-	siegeActive = false;
-	if (siegeTimeout) {
-		clearTimeout(siegeTimeout);
-		await handleSiegeEnd(client, lastMessageId);
-	}
-}
-
 async function handleShowWrits(interaction) {
 	try {
 		const knightId = interaction.user.id;
@@ -1073,7 +948,7 @@ async function updateMessage(client, lastMessageId, emperorReelectionSelectMenu)
 			.setStyle(ButtonStyle.Danger)
 			.setDisabled(gameState.getDisableCoup())
 		);
-
+		const siegeActive = gameState.isSiegeActive();
 		if (siegeActive) {
 			const joinSiegeBtn = new ButtonBuilder()
 				.setCustomId("JoinSiege")
@@ -1086,8 +961,11 @@ async function updateMessage(client, lastMessageId, emperorReelectionSelectMenu)
 			} else {
 				actionRow_4.components[2] = joinSiegeBtn;
 			}
-
-			siegeStatusMsg = `\nKing @${siegeInitiator} initiated a siege. Join siege to downgrade ${siegeTarget}. (Joined ${siegeParticipants.size} / ${knightsSize}.)`;
+			const siegeInitiator = gameState.getSiegeInitiator();
+			const siegeTarget = gameState.getSiegeTarget();
+			const siegeParticipantsSize = gameState.getSiegeParticipantsSize();
+			const knightsSize = gameState.getKnightsSize();
+			siegeStatusMsg = `\nKing @${siegeInitiator} initiated a siege. Join siege to downgrade ${siegeTarget}. (Joined ${siegeParticipantsSize} / ${knightsSize}.)`;
 		}
 
 		if (gameState.isRevolutionActive() && !gameState.isCoupActive()) {
@@ -1257,20 +1135,7 @@ async function messageKnightCommands(client) {
 	}
 }
 
-async function resetSiege(client, lastMessageId) {
-	try {
-		siegeActive = false;
-		siegeInitiator = "";
-		siegeTarget = "";
-		siegeParticipants.clear();
-		knightsSize = 1;
-		knights = [];
-		siegeStatusMsg = "";
-		await updateMessage(client, lastMessageId);
-	} catch (err) {
-		throw err;
-	}
-}
+
 
 
 module.exports = { setupKnightBotEvents, messageKnightCommands };

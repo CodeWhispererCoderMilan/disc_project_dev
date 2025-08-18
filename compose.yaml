@@ -1,0 +1,15 @@
+services:
+  bot:
+    build: .
+    env_file: .env
+    depends_on:
+      - redis
+    environment:
+      # make sure your code reads REDIS_URL; if not, add it now
+      REDIS_URL: redis://redis:6379
+
+  redis:
+    image: redis:7-alpine
+    ports:
+      - "6379:6379"   # optional; for inspecting from host
+

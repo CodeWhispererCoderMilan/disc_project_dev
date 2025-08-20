@@ -504,6 +504,7 @@ async function setupConsoleBotEvents(client) {
 			const guild = await client.guilds.fetch(process.env.GUILDID);
 			gameState.setPlayerCount(guild.memberCount - 16);
 			handleHigherRoleSizeChange();
+			 
 			if(gameState.isRevolutionActive()) checkAndFailRevolution();
 			const channel = await client.channels.fetch(process.env.CHANNELIDSEWERS);
 			if (!channel) {

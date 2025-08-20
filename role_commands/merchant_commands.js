@@ -58,10 +58,10 @@ function showErrorMsg(err) {
 async function setupMerchantBotEvents(client, lastMessageId) {
 
 	eventEmitter.on("DisableRevolution", async () => {
-		if(!gameState.isRevolutionActive() && !gameState.isCoupActive()) await updateMessage();
+		if(!gameState.isRevolutionActive() && !gameState.isCoupActive()) await updateMessage(client, lastMessageId);
 	});
-	eventEmitter.on("enableRevolution", async () => {
-		if(!gameState.isRevolutionActive() && !gameState.isCoupActive()) await updateMessage();
+	eventEmitter.on("EnableRevolution", async () => {
+		if(!gameState.isRevolutionActive() && !gameState.isCoupActive()) await updateMessage(client, lastMessageId);
 	});
 
 	client.on("guildMemberRemove", async (member) => {

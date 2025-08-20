@@ -54,11 +54,12 @@ function showErrorMsg(err) {
 }
 
 async function setupPeasantBotEvents(client, lastMessageId) {
+
 	eventEmitter.on("DisableRevolution", async () => {
-		if(!gameState.isRevolutionActive() && !gameState.isCoupActive()) await updateMessage();
+		if(!gameState.isRevolutionActive() && !gameState.isCoupActive()) await updateMessage(client, lastMessageId);
 	});
-	eventEmitter.on("enableRevolution", async () => {
-		if(!gameState.isRevolutionActive() && !gameState.isCoupActive()) await updateMessage();
+	eventEmitter.on("EnableRevolution", async () => {
+		if(!gameState.isRevolutionActive() && !gameState.isCoupActive()) await updateMessage(client, lastMessageId);
 	});
 	client.on("guildMemberRemove", async (member) => {
 		try {
@@ -138,6 +139,7 @@ async function setupPeasantBotEvents(client, lastMessageId) {
 		}
 	});
 	client.on("guildMemberUpdate", async (oldMember, newMember) => {
+
 		const hadRoleBeforeSubHuman = oldMember.roles.cache.has(
 			process.env.ROLEID_SUBHUMAN
 		);

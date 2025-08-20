@@ -63,16 +63,16 @@ function showErrorMsg(err) {
 
 async function setupKnightBotEvents(client, lastMessageId) {
 	eventEmitter.on("DisableRevolution", async () => {
-		if(!gameState.isRevolutionActive() && !gameState.isCoupActive()) await updateMessage();
+		if(!gameState.isRevolutionActive() && !gameState.isCoupActive()) await updateMessage(client, lastMessageId);
 	});
-	eventEmitter.on("enableRevolution", async () => {
-		if(!gameState.isRevolutionActive() && !gameState.isCoupActive()) await updateMessage();
+	eventEmitter.on("EnableRevolution", async () => {
+		if(!gameState.isRevolutionActive() && !gameState.isCoupActive()) await updateMessage(client, lastMessageId);
 	});	
 	eventEmitter.on("DisableCoup", async () => {
-		if(!gameState.isRevolutionActive() && !gameState.isCoupActive()) await updateMessage();
+		if(!gameState.isRevolutionActive() && !gameState.isCoupActive()) await updateMessage(client, lastMessageId);
 	});
 	eventEmitter.on("EnableCoup", async () => {
-		if(!gameState.isRevolutionActive() && !gameState.isCoupActive()) await updateMessage();
+		if(!gameState.isRevolutionActive() && !gameState.isCoupActive()) await updateMessage(client, lastMessageId);
 	});
 	client.on("guildMemberRemove", async (member) => {
 		const hadRoleBeforePeasant = member.roles.cache.has(

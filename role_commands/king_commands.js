@@ -285,7 +285,7 @@ async function setupKingBotEvents(client, lastMessageId) {
 		}
 
 		if (
-			siegeActive &&
+			 gameState.isSiegeActive() &&
 			(hadRoleBeforeKnight ||
 				hasRoleNowKnight ||
 				hadRoleBeforeKing ||
@@ -311,7 +311,7 @@ async function setupKingBotEvents(client, lastMessageId) {
 				}
 		}
 		if (
-			!siegeActive &&
+			!gameState.isSiegeActive() &&
 			(hadRoleBeforeKnight ||
 				hasRoleNowKnight ||
 				hadRoleBeforeKing ||

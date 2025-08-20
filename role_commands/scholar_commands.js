@@ -40,10 +40,10 @@ function showErrorMsg(err) {
 
 async function setupScholarBotEvents(client, lastMessageId) {
 	eventEmitter.on("DisableRevolution", async () => {
-		if(!gameState.isRevolutionActive() && !gameState.isCoupActive()) await updateMessage();
+		if(!gameState.isRevolutionActive() && !gameState.isCoupActive()) await updateMessage(client, lastMessageId);
 	});
 	eventEmitter.on("EnableRevolution", async () => {
-		if(!gameState.isRevolutionActive() && !gameState.isCoupActive()) await updateMessage();
+		if(!gameState.isRevolutionActive() && !gameState.isCoupActive()) await updateMessage(client, lastMessageId);
 	});
 	client.on("guildMemberRemove", async(member) => {
 		const hadRoleBeforeScholar = member.roles.cache.has(
@@ -535,9 +535,8 @@ async function updateMessage(client, lastMessageId, emperorReelectionSelectMenu)
 }
 
 async function messageScholarCommands(client) {
-	let channel = null;
 	try {
-		channel = await client.channels.fetch(process.env.CHANNELIDSCHOLAR);
+		const channel = await client.channels.fetch(process.env.CHANNELIDSCHOLAR);
 		const actionRow_0 = new ActionRowBuilder().addComponents(
 			await buildSelectMenu(
 				client,

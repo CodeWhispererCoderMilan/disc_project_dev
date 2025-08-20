@@ -346,13 +346,19 @@ async function setupCockroachBotEvents(client, lastMessageId) {
 						content: `Not enough XP (current XP: ${userXP})`,
 						ephemeral: true,
 					});
+					return;
 				} catch (err) {
 					console.error(err);
 					throw err;
 				}
 			} else {
-				if (!selectedMaggots[userId])
-					throw { name: "NoMaggotSelected", message: "No maggot selected" };
+				if (!selectedMaggots[userId]){
+					await interaction.reply({
+						content: `No Maggot selected for infanticide`,
+						ephemeral: true,
+					});
+					return;
+				}
 				const cooldown = await CacheGetCooldown("infanticide", userId);
 				if (cooldown) {
 					try {
@@ -360,6 +366,7 @@ async function setupCockroachBotEvents(client, lastMessageId) {
 							content: "Infanticide is on cooldown and cannot be used",
 							ephemeral: true,
 						});
+						return;
 					} catch (err) {
 						throw err;
 					}

@@ -187,7 +187,7 @@ module.exports = {
 	setRoleSize: (role, size) => { roleSizes[role] = size; },
 	getRoleSize: (role) => roleSizes[role],
 	getHigherRoleSize: () => {
-		return roleSizes["Lord"] + roleSizes["King"] + roleSizes["Noble"];
+		return roleSizes["Lord"] + roleSizes["King"] + roleSizes["Noble"] + roleSizes["Emperor"]; 
 	},
 	getAllRoleSizes: () => ({ ...roleSizes }),
 

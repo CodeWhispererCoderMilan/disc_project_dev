@@ -105,7 +105,7 @@ async function createBot(token, channelId, setupEventsFunction, messageCommands,
 				let lastMessageId = sentMessage.id;
 				await setupEventsFunction(client, lastMessageId);
 				if(isConsole){
-					eventEmitter.emit("startXpBoost");
+					eventEmitter.emit("startXpBoost&RevolutonStates");
 				}
 				resolve();
 			} catch (err) {
@@ -212,6 +212,7 @@ async function initializeBots() {
 		true
 	));
 	return clients;
+
 }
 
 module.exports = { initializeBots };

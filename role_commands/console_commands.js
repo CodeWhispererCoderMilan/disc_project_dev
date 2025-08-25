@@ -546,14 +546,14 @@ async function setupConsoleBotEvents(client) {
 				if(cooldown){
 					await sendInteractionReply(
 						interaction,
-						"You can only check your XP so often..."
+						"You can only check your drops so often..."
 					);
 					return;
 
 				}
 				const userXP = await CacheGetUserXP(userId);
 				await CacheSetCooldown("CheckXP", userId, CheckXpCooldown);
-				await sendInteractionReply(interaction, `You currently have ${userXP} XP`);
+				await sendInteractionReply(interaction, `You currently have ${userXP} drops`);
 			}catch(err){
 				showErrorMsg(err);
 			}

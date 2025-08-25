@@ -92,7 +92,7 @@ async function buildSelectMenu(client, roleNames, customId, chooseText) {
 			.map((member) => ({ label: member.user.username, value: member.id }));
 		members = members.concat(roleMembers);
 	}
-	console.log(`-----Fetched ${roleNames.join("|")}`, members);
+	//console.log(`-----Fetched ${roleNames.join("|")}`, members);
 	return new StringSelectMenuBuilder()
 		.setCustomId(customId)
 		.setPlaceholder(textChooseMember)

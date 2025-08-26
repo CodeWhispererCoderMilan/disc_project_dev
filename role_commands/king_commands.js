@@ -23,7 +23,7 @@ const {
 	DegradationCooldown,
 	KnightCost,
 	KnightCooldown,
-	SiegeCoolDown,
+	SiegeCooldown,
 	SiegeCost,
 	SiegeTime,
 	RoleChangeMessageDisplayTime,

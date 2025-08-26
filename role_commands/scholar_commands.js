@@ -17,7 +17,7 @@ const {
 	CacheSetCooldown,
 } = require("../apis/redis/redisCache");
 const {
-	AdviseCoolDown,
+	AdviseCooldown,
 	RoleChangeMessageDisplayTime,
 	TextScholarMessageContent,
 	TextEmperorCandidateSelectMenu,
@@ -351,7 +351,7 @@ async function setupScholarBotEvents(client, lastMessageId) {
 					eventEmitter.emit("sendMessageToRoyalCastle", userId, message);
 
 					// Set cooldown (e.g., 60 seconds)
-					await CacheSetCooldown("advise", userId, AdviseCoolDown);
+					await CacheSetCooldown("advise", userId, AdviseCooldown);
 
 					await sendInteractionReply(
 						interaction,
@@ -493,14 +493,14 @@ async function updateMessage(client, lastMessageId, emperorReelectionSelectMenu)
 				.setCustomId("JoinRevolution")
 				.setLabel(ButtonLabelJoinRevolution)
 				.setStyle(ButtonStyle.Danger);
-			revolutionStatusMsg = `\n Revolution washes over the Land. (Joined ${gameState.getRevoultionarySize()} / ${gameState.getPeopleSize()}.)`;
+			revolutionStatusMsg = `\n Revolution washes over the Land. (Joined ${gameState.getRevolutionarySize()} / ${gameState.getPeopleSize()}.)`;
 			if (gameState.isRevolutionSecondPhase()) {
 				actionRow_1.components[2] = new ButtonBuilder()
 					.setCustomId("WithdrawRevolution")
 					.setLabel(ButtonLabelWithdrawRevolution)
 					.setStyle(ButtonStyle.Primary);
 
-				revolutionStatusMsg = `\nRevolution moved in the next phase. townsfolk may still join, those who've joined may withdraw. (Joined ${gameState.getRevoultionarySize()} / ${gameState.getPeopleSize()}.)`;
+				revolutionStatusMsg = `\nRevolution moved in the next phase. townsfolk may still join, those who've joined may withdraw. (Joined ${gameState.getRevolutionarySize()} / ${gameState.getPeopleSize()}.)`;
 				if (gameState.isEmperorElectionActive()) {
 					actionRow_0 = new ActionRowBuilder().addComponents(
 						await buildSelectMenu(

@@ -56,6 +56,7 @@ module.exports = {
 	setPlayerCount: (count) => { playerCount = count; },
 	//struggleMethod
 	setStruggleMethod: (method) => { struggleMethod = method; },
+	getStruggleMethod: () => struggleMethod,
 	isCoupActive: () => struggleMethod === "Coup",
 	// Revolution Flags
 	isRevolutionActive: () => revolutionActive,

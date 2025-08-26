@@ -40,6 +40,7 @@ const {
 	RevolutionEmperorElectionTime,
 	RevolutionKnightWeight,
 	RevolutionCooldown,
+	CoupCooldown,
 	CoupKillNoble,
 	CoupKillLord,
 	CoupKillKing,
@@ -644,7 +645,7 @@ async function setupConsoleBotEvents(client) {
 			}, RevolutionFirstPhaseTime);
 		} catch (err) {
 			throw err;
-		}
+		} 
 	});
 
 	eventEmitter.on("StartCoup", async (intiatorId,targetId) => {
@@ -652,6 +653,7 @@ async function setupConsoleBotEvents(client) {
 			gameState.setRevolutionActive(true);
 			gameState.setStruggleMethod("Coup");
 			changeRevolutionStatus("Knight", intiatorId, targetId);
+			await CacheSetCooldown("Coup", "Global", CoupCooldown);
 			eventEmitter.emit("CoupStarted");
 			setTimeout(async () => {
 				await handleFirstPhaseRevolutionEnd(client);
@@ -697,6 +699,7 @@ function checkAndFailRevolution() {
 	const revolutionarySize = gameState.getRevolutionarySize();
 	const peopleSize = gameState.getPeopleSize();
 	const coupActive = gameState.isCoupActive();
+	const revolutionSecondPhase = gameState.isRevolutionSecondPhase();
 	const struggleMethod = gameState.getStruggleMethod();
 	if (revolutionSecondPhase && !emperorElectionActive) {
 		let success = revolutionarySize / peopleSize >= REVOLUTIONTHRESHOLD2;
@@ -769,8 +772,9 @@ async function handleFirstPhaseRevolutionEnd(client) {
 		}
 	} else {
 		gameState.resetRevolution();
+		console.log(`Struggle method is ${struggleMethod}`);
 		eventEmitter.emit(`${struggleMethod}Finished`);
-		notifyRevolutionResult(`${struggleMethod}Failed.`);
+		notifyRevolutionResult(`${struggleMethod} Failed.`);
 
 	}
 }
@@ -895,8 +899,8 @@ async function handleSecondPhaseRevolutionEnd(client) {
 		}, RevolutionEmperorElectionTime);
 	} else {
 		gameState.resetRevolution();
-		eventEmitter.emit(`${struggleMethod}Finished`);
-		notifyRevolutionResult(`${struggleMethod} Finished.`);
+		eventEmitter.emit(`${struggleMethod}Complete. `);
+		notifyRevolutionResult(`${struggleMethod} Complete.`);
 	}
 }
 
@@ -974,6 +978,7 @@ async function notifyRevolutionResult(message) {
 	eventEmitter.emit("NotifyKnightChannel", message);
 	eventEmitter.emit("NotifyMerchantChannel", message);
 	eventEmitter.emit("NotifyScholarChannel", message);
+
 }
 
 
@@ -999,6 +1004,7 @@ async function handleAdminRoleChange(client, interaction, targetId, roleName, ke
 	interaction.reply(`Role changed to ${roleName} for ${member.user.username}.`);
 }
 async function updateRevolutionAndCoupMessages(){
+	const coupActive = gameState.isCoupActive();
 	if(!coupActive)eventEmitter.emit("UpdateRevolutionMessage");
 	else eventEmitter.emit("UpdateCoupMessage");
 }

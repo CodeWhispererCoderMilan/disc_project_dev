@@ -21,7 +21,7 @@ const {
 const {
 	AssassinationTime,
 	AssassinationThreadshold,
-	GlobalCoolDown,
+	GlobalCooldown,
 	RoleChangeMessageDisplayTime,
 	HighWritCooldown,
 	TextNobleMessageContent,
@@ -365,7 +365,7 @@ async function setupNobleBotEvents(client, lastMessageId) {
 			if (lastMessageId) {
 				try {
 					// Set cooldown
-					await CacheSetCooldown("NobleCooldown", userId, GlobalCoolDown);
+					await CacheSetCooldown("NobleCooldown", userId, GlobalCooldown);
 					await updateMessage(client, lastMessageId);
 					await startAssassination(client, lastMessageId, AssassinationTime);
 

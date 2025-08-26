@@ -22,7 +22,7 @@ const {
 } = require("../apis/redis/redisCache");
 const { DBUpdateXP } = require("../apis/firebase/querys");
 const {
-	BribeCoolDown,
+	BribeCooldown,
 	RoleChangeMessageDisplayTime,
 	EndowDuration,
 	EndowCost,
@@ -595,7 +595,7 @@ async function setupMerchantBotEvents(client, lastMessageId) {
 					content: `Successfully granted ${xpAmount} XP to ${targetMember.user.username}. Message: ${optionalMessage}`,
 					ephemeral: true,
 				});
-				await CacheSetCooldown("Bribe", userId, BribeCoolDown);
+				await CacheSetCooldown("Bribe", userId, BribeCooldown);
 				eventEmitter.emit("BribeComplete", targetMember.user.id);
 			} catch (err) {
 				showErrorMsg(err);

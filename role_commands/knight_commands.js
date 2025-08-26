@@ -685,6 +685,7 @@ async function setupKnightBotEvents(client, lastMessageId) {
 	});
 	eventEmitter.on("CoupFinished", async () => {
 		try {
+			console.log(`Coup Message will update: ${!gameState.isRevolutionActive() && !gameState.isCoupActive()}`);
 			if(!gameState.isRevolutionActive() && !gameState.isCoupActive()) await updateMessage(client, lastMessageId);
 		} catch (err) {
 			throw err;
@@ -725,6 +726,14 @@ async function setupKnightBotEvents(client, lastMessageId) {
 	eventEmitter.on("UpdateRevolutionMessage", async () => {
 		try {
 			if(gameState.isRevolutionActive()) 
+				await updateMessage(client, lastMessageId);
+		} catch (err) {
+			showErrorMsg(err);
+		}
+	});
+	eventEmitter.on("UpdateCoupMessage", async () => {
+		try {
+			if(gameState.isRevolutionActive() && gameState.isCoupActive()) 
 				await updateMessage(client, lastMessageId);
 		} catch (err) {
 			showErrorMsg(err);
@@ -832,7 +841,7 @@ async function executeCutDown(interaction, userId, targetId, client) {
 		if (userXP < CutDownCost) {
 			await sendInteractionReply(
 				interaction,
-				`Not enough XP (current XP: ${userXP})`
+				`Not enough drops (current drops: ${userXP})`
 			);
 			return;
 		}
@@ -840,7 +849,7 @@ async function executeCutDown(interaction, userId, targetId, client) {
 		await performCutDown(interaction, targetId);
 		await sendInteractionReply(
 			interaction,
-			`(${userXP - CutDownCost} XP left) Cut Down successful with no writ`
+			`(${userXP - CutDownCost} drops left) Cut Down successful with no writ`
 		);
 		return;
 	}
@@ -870,7 +879,7 @@ async function executeCutDown(interaction, userId, targetId, client) {
 		.join(", ");
 	await sendInteractionReply(
 		interaction,
-		`(${newXP} XP) Cut Down successful. Executed ${relevantWrits.length} writ(s): ${writDetails}. Total reward: ${totalXpReward} XP`
+		`(${newXP} drops) Cut Down successful. Executed ${relevantWrits.length} writ(s): ${writDetails}. Total reward: ${totalXpReward} drops`
 	);
 }
 
@@ -948,6 +957,8 @@ async function updateMessage(client, lastMessageId, emperorReelectionSelectMenu)
 			.setStyle(ButtonStyle.Danger)
 			.setDisabled(gameState.getDisableCoup())
 		);
+		revolutionStatusMsg = "";
+		siegeStatusMsg = "";
 		const siegeActive = gameState.isSiegeActive();
 		if (siegeActive) {
 			const joinSiegeBtn = new ButtonBuilder()

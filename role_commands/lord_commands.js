@@ -23,7 +23,7 @@ const {
 	LordKingElectionTime,
 	NobleLordElectionSuccessThreadshold,
 	LordKingElectionSuccessThreadshold,
-	LordElectionCoolDown,
+	LordElectionCooldown,
 	RoleChangeMessageDisplayTime,
 	EminentWritCooldown,
 	TextLordMessageContent,
@@ -480,7 +480,7 @@ async function setupLordBotEvents(client, lastMessageId) {
 			if (lastMessageId) {
 				try {
 					// Set cooldown
-					await CacheSetCooldown("Election", userId, LordElectionCoolDown);
+					await CacheSetCooldown("Election", userId, LordElectionCooldown);
 					await updateMessage(client, lastMessageId);
 					if (electionType === "Noble")
 						await startElection(client, lastMessageId, NobleLordElectionTime);

@@ -18,7 +18,7 @@ const {
 const {
 	MobFlayingTime,
 	MobFlayingSuccessThreadshold,
-	MobFlayingCoolDown,
+	MobFlayingCooldown,
 	RoleChangeMessageDisplayTime,
 	TextPeasantMessageContent,
 	TextRevolutionTargetSelectMenu,
@@ -341,7 +341,7 @@ async function setupPeasantBotEvents(client, lastMessageId) {
 			if (lastMessageId) {
 				try {
 					// Set cooldown
-					await CacheSetCooldown("MobFlaying", userId, MobFlayingCoolDown);
+					await CacheSetCooldown("MobFlaying", userId, MobFlayingCooldown);
 
 					await sendInteractionReply(
 						interaction,

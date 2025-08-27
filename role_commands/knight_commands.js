@@ -487,6 +487,7 @@ async function setupKnightBotEvents(client, lastMessageId) {
 			}
 			try {
 				eventEmitter.emit("StartCoup", userId, target.user.id);
+				selectedCoupTargets[userId] = null;
 				await sendInteractionReply(
 					interaction,
 					"Coup started, waiting for others to join."

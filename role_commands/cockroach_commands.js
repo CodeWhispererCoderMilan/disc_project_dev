@@ -26,7 +26,7 @@ const {
 const { buildSelectMenu } = require(`../functions/botActions.js`);
 const { DBUpdateXP, changeRole } = require("../apis/firebase/querys.js");
 const { eventEmitter } = require("../functions/eventEmitter.js");
-
+const { gameState } = require("../gameState.js");
 const content = TextCockroachMessageContent;
 const selectedMaggots = {};
 let selectedSubhumans = {};
@@ -469,6 +469,13 @@ async function setupCockroachBotEvents(client, lastMessageId) {
 			}
 		}
 	);
+	eventEmitter.on("ServerStatusChange", async () => {
+		try{
+			await updateMessage(client, lastMessageId);
+		} catch(err){
+			console.error(err);
+		}
+	});
 }
 
 async function updateMessage(client, lastMessageId){
@@ -477,6 +484,8 @@ async function updateMessage(client, lastMessageId){
 			process.env.CHANNELIDCOCKROACH
 		);
 		const messageToEdit = await channel.messages.fetch(lastMessageId);
+		
+		const serverText = gameState.isServerDown() ? "!!!!!!!!!!!!!!!!! SERVER IS DOWN !!!!!!!!!!!!!!!!!" : "";
 
 		if(!swarmActive){
 			const selectMenuMaggots = await buildSelectMenu(
@@ -501,15 +510,17 @@ async function updateMessage(client, lastMessageId){
 				new ButtonBuilder()
 				.setCustomId("commitInfanticide")
 				.setLabel(ButtonLabelInfanticide)
-				.setStyle(ButtonStyle.Danger),
+				.setStyle(ButtonStyle.Danger)
+				.setDisabled(gameState.isServerDown()),
 				new ButtonBuilder()
 				.setCustomId("swarmInitiated")
 				.setLabel(ButtonLabelSwarm)
 				.setStyle(ButtonStyle.Primary)
+				.setDisabled(gameState.isServerDown())
 			);
 
 			await messageToEdit.edit({
-				content: content,
+				content: serverText + content,
 				components: [row_maggot_select, row_subhuman_select, buttonRow],
 			});
 
@@ -536,11 +547,13 @@ async function updateMessage(client, lastMessageId){
 				new ButtonBuilder()
 				.setCustomId("commitInfanticide")
 				.setLabel(ButtonLabelInfanticide)
-				.setStyle(ButtonStyle.Danger),
+				.setStyle(ButtonStyle.Danger)
+				.setDisabled(gameState.isServerDown()),
 				new ButtonBuilder()
 				.setCustomId("joinSwarm")
 				.setLabel(ButtonLabelSwarm)
 				.setStyle(ButtonStyle.Primary)
+				.setDisabled(gameState.isServerDown())
 			);
 
 
@@ -553,7 +566,7 @@ async function updateMessage(client, lastMessageId){
 				content +
 				`\n@${swarmInitiatorUsername} initiated a swarm (${swarmParticipants.size}/${SwarmThreshold})`;
 			await messageToEdit.edit({
-				content: swarmVote_content,
+				content: serverText + swarmVote_content,
 				components: [actionRow_0, actionRow_1, actionRow_2],
 			});
 
@@ -580,7 +593,8 @@ async function updateMessage(client, lastMessageId){
 				new ButtonBuilder()
 				.setCustomId("commitInfanticide")
 				.setLabel(ButtonLabelInfanticide)
-				.setStyle(ButtonStyle.Danger),
+				.setStyle(ButtonStyle.Danger)
+				.setDisabled(gameState.isServerDown()),
 				new ButtonBuilder()
 				.setCustomId("joinSwarm")
 				.setLabel(ButtonLabelSwarm)
@@ -594,7 +608,7 @@ async function updateMessage(client, lastMessageId){
 
 
 			await messageToEdit.edit({
-				content:content + `\n${SwarmThreshold} cockroaches gathered, the swarm is burrowing...`,
+				content:serverText + content + `\n${SwarmThreshold} cockroaches gathered, the swarm is burrowing...`,
 				components: [actionRow_0, actionRow_1, actionRow_2],
 			});
 
@@ -613,7 +627,7 @@ async function messageCockroachCommands(client) {
 		console.error(err);
 		return;
 	}
-
+	const serverText = gameState.isServerDown() ? "!!!!!!!!!!!!!!!!! SERVER IS DOWN !!!!!!!!!!!!!!!!!" : "";
 	try {
 		const selectMenuMaggots = await buildSelectMenu(
 			client,
@@ -637,15 +651,17 @@ async function messageCockroachCommands(client) {
 			new ButtonBuilder()
 			.setCustomId("commitInfanticide")
 			.setLabel("Infanticide")
-			.setStyle(ButtonStyle.Danger),
+			.setStyle(ButtonStyle.Danger)
+			.setDisabled(gameState.isServerDown()),
 			new ButtonBuilder()
 			.setCustomId("swarmInitiated")
 			.setLabel("swarm")
 			.setStyle(ButtonStyle.Primary)
+			.setDisabled(gameState.isServerDown())
 		);
 
 		const message = await channel.send({
-			content:TextCockroachMessageContent,
+			content: serverText + TextCockroachMessageContent,
 			components: [row_maggot_select, row_subhuman_select, buttonRow],
 		});
 		return message;

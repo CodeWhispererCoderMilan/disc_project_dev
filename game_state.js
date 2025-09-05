@@ -11,6 +11,7 @@ let disableCoup = true;
 let disableSiege = true;
 let struggleMethod = "Revolution";
 let playerCount = 0;
+let serverDown = true;
 // =====================
 	// PARTICIPANT STATE
 // =====================
@@ -51,6 +52,9 @@ let siegeTargetId = null;
 let siegeTimeout = null;
 
 module.exports = {
+	// Server Status
+	isServerDown: () => serverDown,
+	setServerDown: (val) => { serverDown = val; },
 	// Player Count
 	getPlayerCount: () => playerCount,
 	setPlayerCount: (count) => { playerCount = count; },

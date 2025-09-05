@@ -22,7 +22,9 @@ async function gracefulShutdown() {
     isShuttingDown = true;
     
     console.log('Graceful shutdown initiated...');
-    
+    gameState.setServerDown(true);
+    eventEmitter.emit('ServerStatusChange');
+    await new Promise(resolve => setTimeout(resolve, 10000));
     // Destroy all bot clients
     for (const client of botClients) {
         if (client) {

@@ -1,5 +1,6 @@
 const { GatewayIntentBits, Client } = require("discord.js");
 const { eventEmitter } = require("./functions/eventEmitter.js");
+const { gameState } = require("./gameState.js");
 const {
 	setupConsoleBotEvents,
 	messageConsoleCommands,
@@ -211,6 +212,8 @@ async function initializeBots() {
 		messageConsoleCommands,
 		true
 	));
+	gameState.setServerDown(false);
+	eventEmitter.emit("ServerStatusChange");
 	return clients;
 
 }

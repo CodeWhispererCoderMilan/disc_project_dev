@@ -81,7 +81,7 @@ function showErrorMsg(err) {
 	console.error("ERROR: console_commands.js", err);
 }
 
-async function setupConsoleBotEvents(client) {
+async function setupConsoleBotEvents(client, lastMessageId) {
 	
 	handleHigherRoleSizeChange();
 
@@ -681,6 +681,13 @@ async function setupConsoleBotEvents(client) {
 			showErrorMsg(err);
 		}
 	});
+	eventEmitter.on("ServerStatusChange", async () => {
+		try{
+			await updateMessage(client, lastMessageId);
+		} catch(err){
+			console.error(err);
+		}
+	});
 
 }
 
@@ -1043,25 +1050,56 @@ async function buildEmperorReelectionTargetSelectMenu(client, candidates) {
 		return null;
 	}
 }
+async function updateConsoleMessage(client, lastMessageId) {
+	try{	
+		const channel = await client.channels.fetch(
+			process.env.CHANNELIDCONSOLE
+		);
+		const messageToEdit = await channel.messages.fetch(lastMessageId);
+
+		const serverText = gameState.isServerDown() ? "!!!!!!!!!!!!!!!!! SERVER IS DOWN !!!!!!!!!!!!!!!!!" : "";
+		const buttonRow = new ActionRowBuilder().addComponents(
+			new ButtonBuilder()
+			.setCustomId("CheckXP")
+			.setLabel(ButtonLabelCheckXP)
+			.setStyle(ButtonStyle.Danger)
+			.setDisabled(gameState.isServerDown()),
+			new ButtonBuilder()
+			.setCustomId("Divination")
+			.setLabel(ButtonLabelDivination)
+			.setStyle(ButtonStyle.Primary)
+			.setDisabled(gameState.isServerDown())
+		);
+		await messageToEdit.edit({
+			content: serverText + content,
+			components: [buttonRow],
+		});
+	}catch (err) {
+		showErrorMsg(err);
+	}
+}
+
 async function messageConsoleCommands(client) {
 	try {	
 		const guild = await client.guilds.fetch(process.env.GUILDID);
 		gameState.setPlayerCount(guild.memberCount - 16);
 		const channel = await client.channels.fetch(process.env.CHANNELIDCONSOLE);
-
+		const serverText = gameState.isServerDown() ? "!!!!!!!!!!!!!!!!! SERVER IS DOWN !!!!!!!!!!!!!!!!!" : "";
 		const buttonRow = new ActionRowBuilder().addComponents(
 			new ButtonBuilder()
 			.setCustomId("CheckXP")
 			.setLabel(ButtonLabelCheckXP)
-			.setStyle(ButtonStyle.Danger),
+			.setStyle(ButtonStyle.Danger)
+			.setDisabled(gameState.isServerDown()),
 			new ButtonBuilder()
 			.setCustomId("Divination")
 			.setLabel(ButtonLabelDivination)
 			.setStyle(ButtonStyle.Primary)
+			.setDisabled(gameState.isServerDown())
 		);
 
 		const message = await channel.send({
-			content: content,
+			content: serverText + content,
 			components: [buttonRow],
 		});
 		return message;	

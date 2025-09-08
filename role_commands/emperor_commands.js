@@ -39,6 +39,7 @@ const {
 	ButtonLabelShowWrits
 } = require("../game_config.json");
 const { isThresholdOpen,DBUpdateXP, changeRole, openThreshold, closeThreshold } = require("../apis/firebase/querys");
+const {gameState} = require("../game_state.js");
 
 const content = TextEmperorMessageContent;
 let selectedKing = null;
@@ -390,6 +391,13 @@ async function setupEmperorBotEvents(client, lastMessageId) {
 			showErrorMsg(err);
 		}
 	});
+	eventEmitter.on("ServerStatusChange", async () => {
+		try {
+			await updateSelectMenu(client, lastMessageId);
+		} catch (err) {
+			showErrorMsg(err);
+		}
+	});
 }
 function buildImperialWritModal(){
 	const modal = new ModalBuilder()
@@ -453,6 +461,7 @@ function getWritStatus(status) {
 async function updateSelectMenu(client, lastMessageId) {
 	try {
 		const channel = await client.channels.fetch(process.env.CHANNELIDEMPEROR);
+		const serverText = gameState.isServerDown() ? "!!!!!!!!!!!!!!!!! SERVER IS DOWN !!!!!!!!!!!!!!!!!" : "";
 		const messageToEdit = await channel.messages.fetch(lastMessageId);
 		const actionRow_0 = new ActionRowBuilder().addComponents(
 			await buildSelectMenu(client, ["lord"], "SelectLord", TextCoronationSelectMenu)
@@ -470,13 +479,41 @@ async function updateSelectMenu(client, lastMessageId) {
 			.addComponents(await buildSelectMenu(
 				client, ["knight"], "SelectKnight",TextImperialWritKnightSelectMenu
 			));		
+		const btnRow = new ActionRowBuilder().addComponents(
+			new ButtonBuilder()
+			.setCustomId("Coronation")
+			.setLabel(ButtonLabelCoronation)
+			.setStyle(ButtonStyle.Primary)
+			.setDisabled(gameState.isServerDown()),
+			new ButtonBuilder()
+			.setCustomId("Dethrone")
+			.setLabel(ButtonLabelDethrone)
+			.setStyle(ButtonStyle.Danger)
+			.setDisabled(gameState.isServerDown()),
+			new ButtonBuilder()
+			.setCustomId("HeirSuccession")
+			.setLabel(ButtonLabelHeir)
+			.setStyle(ButtonStyle.Danger)
+			.setDisabled(gameState.isServerDown()),
+			new ButtonBuilder()
+			.setCustomId("ImperialWrit")
+			.setLabel(ButtonLabelImperialWrit)
+			.setStyle(ButtonStyle.Primary)
+			.setDisabled(gameState.isServerDown()),
+			new ButtonBuilder()
+			.setCustomId("ShowWrits")
+			.setLabel(ButtonLabelShowWrits)
+			.setStyle(ButtonStyle.Secondary)
+			.setDisabled(gameState.isServerDown())
+		);
+
 		existingComponents[0] = actionRow_0;
 		existingComponents[1] = actionRow_1;
 		existingComponents[2] = actionRow_2;
 		existingComponents[3] = actionRow_3;
-
+		existingComponents[4] = btnRow;
 		await messageToEdit.edit({
-			content: messageToEdit.content,
+			content:serverText +'\n'+ messageToEdit.content,
 			components: existingComponents,
 		});
 	} catch (err) {
@@ -489,6 +526,7 @@ async function messageEmperorCommands(client) {
 	let channel = null;
 	try {
 		channel = await client.channels.fetch(process.env.CHANNELIDEMPEROR);
+		const serverText = gameState.isServerDown() ? "!!!!!!!!!!!!!!!!! SERVER IS DOWN !!!!!!!!!!!!!!!!!" : "";
 		const lordSelectMenu = new ActionRowBuilder().addComponents(
 			await buildSelectMenu(client, ["lord"], "SelectLord", TextCoronationSelectMenu)
 		);
@@ -506,26 +544,31 @@ async function messageEmperorCommands(client) {
 			new ButtonBuilder()
 			.setCustomId("Coronation")
 			.setLabel(ButtonLabelCoronation)
-			.setStyle(ButtonStyle.Primary),
+			.setStyle(ButtonStyle.Primary)
+			.setDisabled(gameState.isServerDown()),
 			new ButtonBuilder()
 			.setCustomId("Dethrone")
 			.setLabel(ButtonLabelDethrone)
-			.setStyle(ButtonStyle.Danger),
+			.setStyle(ButtonStyle.Danger)
+			.setDisabled(gameState.isServerDown()),
 			new ButtonBuilder()
 			.setCustomId("HeirSuccession")
 			.setLabel(ButtonLabelHeir)
-			.setStyle(ButtonStyle.Danger),
+			.setStyle(ButtonStyle.Danger)
+			.setDisabled(gameState.isServerDown()),
 			new ButtonBuilder()
 			.setCustomId("ImperialWrit")
 			.setLabel(ButtonLabelImperialWrit)
-			.setStyle(ButtonStyle.Primary),
+			.setStyle(ButtonStyle.Primary)
+			.setDisabled(gameState.isServerDown()),
 			new ButtonBuilder()
 			.setCustomId("ShowWrits")
 			.setLabel(ButtonLabelShowWrits)
 			.setStyle(ButtonStyle.Secondary)
+			.setDisabled(gameState.isServerDown())
 		);
 		return await channel.send({
-			content,
+			content: serverText + '\n' + content,
 			components: [lordSelectMenu, kingSelectMenu,actionRow_2,actionRow_3, btnRow],
 		});
 	} catch (err) {

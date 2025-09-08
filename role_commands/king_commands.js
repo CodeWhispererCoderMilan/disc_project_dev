@@ -678,6 +678,13 @@ async function setupKingBotEvents(client, lastMessageId) {
 			showErrorMsg(err);
 		}
 	});
+	eventEmitter.on("ServerStatusChange", async () => {
+		try{
+			await updateMessage(client, lastMessageId);
+		}catch(err){
+			showErrorMsg(err);
+		}
+	});
 }
 function buildRoyalWritModal(){
 	const modal = new ModalBuilder()
@@ -743,7 +750,7 @@ async function updateMessage(client, lastMessageId) {
 	try {
 		const channel = await client.channels.fetch(process.env.CHANNELIDKING);
 		const messageToEdit = await channel.messages.fetch(lastMessageId);
-
+		const serverText = gameState.isServerDown() ? "!!!!!!!!!!!!!!!!! SERVER IS DOWN !!!!!!!!!!!!!!!!!" : "";
 		if (!gameState.isSiegeActive()) {
 			const degradationSelectMenu = new ActionRowBuilder().addComponents(
 				await buildSelectMenu(client, ["knight"], "SelectDegradation", TextDegradationRoyalWritSelectMenu)
@@ -767,27 +774,31 @@ async function updateMessage(client, lastMessageId) {
 				new ButtonBuilder()
 				.setCustomId("DegradationKnight")
 				.setLabel(ButtonLabelDegradation)
-				.setStyle(ButtonStyle.Primary),
+				.setStyle(ButtonStyle.Primary)
+				.setDisabled(gameState.isServerDown()),
 				new ButtonBuilder()
 				.setCustomId("Knight")
 				.setLabel(ButtonLabelKnight)
-				.setStyle(ButtonStyle.Primary),
+				.setStyle(ButtonStyle.Primary)
+				.setDisabled(gameState.isServerDown()),
 				new ButtonBuilder()
 				.setCustomId("Siege")
 				.setLabel(ButtonLabelSiege)
 				.setStyle(ButtonStyle.Danger)
-				.setDisabled(gameState.getDisableSiege()),
+				.setDisabled(gameState.getDisableSiege() || gameState.isServerDown()),
 				new ButtonBuilder()
 				.setCustomId("RoyalWrit")
 				.setLabel(ButtonLabelRoyalWrit)
-				.setStyle(ButtonStyle.Primary),
+				.setStyle(ButtonStyle.Primary)
+				.setDisabled(gameState.isServerDown()),
 				new ButtonBuilder()
 				.setCustomId("ShowWrits")
 				.setLabel(ButtonLabelShowWrits)
 				.setStyle(ButtonStyle.Secondary)
+				.setDisabled(gameState.isServerDown())
 			);
 			await messageToEdit.edit({
-				content: initContent,
+				content:serverText+"\n"+ initContent,
 				components: [
 					degradationSelectMenu,
 					knightSelectMenu,
@@ -886,6 +897,7 @@ async function messageKingCommands(client) {
 	let channel = null;
 	try {
 		channel = await client.channels.fetch(process.env.CHANNELIDKING);
+		const serverText = gameState.isServerDown() ? "!!!!!!!!!!!!!!!!! SERVER IS DOWN !!!!!!!!!!!!!!!!!" : "";
 		const degradationSelectMenu = new ActionRowBuilder().addComponents(
 			await buildSelectMenu(client, ["knight"], "SelectDegradation", TextDegradationRoyalWritSelectMenu)
 		);
@@ -908,28 +920,32 @@ async function messageKingCommands(client) {
 			new ButtonBuilder()
 			.setCustomId("DegradationKnight")
 			.setLabel(ButtonLabelDegradation)
-			.setStyle(ButtonStyle.Primary),
+			.setStyle(ButtonStyle.Primary)
+			.setDisabled(gameState.isServerDown()),
 			new ButtonBuilder()
 			.setCustomId("Knight")
 			.setLabel(ButtonLabelKnight)
-			.setStyle(ButtonStyle.Primary),
+			.setStyle(ButtonStyle.Primary)
+			.setDisabled(gameState.isServerDown()),
 			new ButtonBuilder()
 			.setCustomId("Siege")
 			.setLabel(ButtonLabelSiege)
 			.setStyle(ButtonStyle.Danger)
-			.setDisabled(gameState.getDisableSiege()),
+			.setDisabled(gameState.getDisableSiege() || gameState.isServerDown()),
 			new ButtonBuilder()
 			.setCustomId("RoyalWrit")
 			.setLabel(ButtonLabelRoyalWrit)
-			.setStyle(ButtonStyle.Primary),
+			.setStyle(ButtonStyle.Primary)
+			.setDisabled(gameState.isServerDown()),
 			new ButtonBuilder()
 			.setCustomId("ShowWrits")
 			.setLabel(ButtonLabelShowWrits)
 			.setStyle(ButtonStyle.Secondary)
+			.setDisabled(gameState.isServerDown())
 
 		);
 		return await channel.send({
-			content: initContent,
+			content: serverText+'\n'+initContent,
 			components: [
 				degradationSelectMenu,
 				knightSelectMenu,

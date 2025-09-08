@@ -759,6 +759,14 @@ async function setupKnightBotEvents(client, lastMessageId) {
 		await DBUpdateXP(userId, writAmount, client); 
 	});
 
+	eventEmitter.on('ServerStatusChange', async () => {
+		try {
+			await updateMessage(client, lastMessageId);
+		} catch (err) {
+			showErrorMsg(err);
+		}
+	});
+
 }
 async function handleShowWrits(interaction) {
 	try {
@@ -914,6 +922,7 @@ async function updateMessage(client, lastMessageId, emperorReelectionSelectMenu)
 	try {
 		const channel = await client.channels.fetch(process.env.CHANNELIDKNIGHT);
 		const messageToEdit = await channel.messages.fetch(lastMessageId);
+		const serverText = gameState.isServerDown() ? "!!!!!!!!!!!!!!!!! SERVER IS DOWN !!!!!!!!!!!!!!!!!" : "";
 
 		let actionRow_0 = new ActionRowBuilder().addComponents(
 			await buildSelectMenu(
@@ -940,23 +949,25 @@ async function updateMessage(client, lastMessageId, emperorReelectionSelectMenu)
 			new ButtonBuilder()
 			.setCustomId("CutDown")
 			.setLabel(ButtonLabelCutDown)
-			.setStyle(ButtonStyle.Primary),
+			.setStyle(ButtonStyle.Primary)
+			.setDisabled(gameState.isServerDown()),
 			new ButtonBuilder()
 			.setCustomId("ShowWrits")
 			.setLabel(ButtonLabelShowWrits)
 			.setStyle(ButtonStyle.Primary)
+			.setDisabled(gameState.isServerDown())
 		);
 		let actionRow_4 = new ActionRowBuilder().addComponents(
 			new ButtonBuilder()
 			.setCustomId("Revolution")
 			.setLabel(ButtonLabelRevolution)
 			.setStyle(ButtonStyle.Danger)
-			.setDisabled(gameState.getDisableRevolution()),
+			.setDisabled(gameState.getDisableRevolution() || gameState.isServerDown()),
 			new ButtonBuilder()
 			.setCustomId("Coup")
 			.setLabel(ButtonLabelCoup)
 			.setStyle(ButtonStyle.Danger)
-			.setDisabled(gameState.getDisableCoup())
+			.setDisabled(gameState.getDisableCoup() || gameState.isServerDown())
 		);
 		revolutionStatusMsg = "";
 		siegeStatusMsg = "";
@@ -965,7 +976,8 @@ async function updateMessage(client, lastMessageId, emperorReelectionSelectMenu)
 			const joinSiegeBtn = new ButtonBuilder()
 				.setCustomId("JoinSiege")
 				.setLabel(ButtonLabelJoinSiege)
-				.setStyle(ButtonStyle.Danger);
+				.setStyle(ButtonStyle.Danger)
+				.setDisabled(gameState.isServerDown());
 			if (gameState.isRevolutionActive()) {
 				if (gameState.isRevolutionSecondPhase && !gameState.isEmperorElectionActive()) 
 				actionRow_4.components[3] = joinSiegeBtn;
@@ -984,7 +996,8 @@ async function updateMessage(client, lastMessageId, emperorReelectionSelectMenu)
 			let revolutionBtn = new ButtonBuilder()
 				.setCustomId("JoinRevolution")
 				.setLabel(ButtonLabelJoinRevolution)
-				.setStyle(ButtonStyle.Danger);
+				.setStyle(ButtonStyle.Danger)
+				.setDisabled(gameState.isServerDown());
 			const coupBtn = new ButtonBuilder()
 				.setCustomId("Coup")
 				.setLabel(ButtonLabelCoup)
@@ -996,12 +1009,15 @@ async function updateMessage(client, lastMessageId, emperorReelectionSelectMenu)
 					actionRow_4.components[3] = new ButtonBuilder()
 						.setCustomId("WithdrawRevolution")
 						.setLabel(ButtonLabelWithdrawRevolution)
-						.setStyle(ButtonStyle.Primary);
+						.setStyle(ButtonStyle.Primary)
+						.setDisabled(gameState.isServerDown());
+						
 				else
 					actionRow_4.components[2] = new ButtonBuilder()
 						.setCustomId("WithdrawRevolution")
 						.setLabel(ButtonLabelWithdrawRevolution)
-						.setStyle(ButtonStyle.Primary);
+						.setStyle(ButtonStyle.Primary)
+						.setDisabled(gameState.isServerDown());
 
 				revolutionStatusMsg = `\nRevolution moved in the next phase. townsfolk may still join, those who've joined may withdraw.(Joined ${gameState.getRevolutionarySize()} / ${gameState.getPeopleSize()}.)`;
 				if (gameState.isEmperorElectionActive()) {
@@ -1015,7 +1031,8 @@ async function updateMessage(client, lastMessageId, emperorReelectionSelectMenu)
 					revolutionBtn = new ButtonBuilder()
 						.setCustomId("VoteEmperor")
 						.setLabel(ButtonLabelVoteEmperor)
-						.setStyle(ButtonStyle.Danger);
+						.setStyle(ButtonStyle.Danger)
+						.setDisabled(gameState.isServerDown());
 					if (siegeActive) {
 						if (actionRow_4.components[3]) actionRow_4.components.splice(3, 1);
 					} else {
@@ -1039,7 +1056,8 @@ async function updateMessage(client, lastMessageId, emperorReelectionSelectMenu)
 			let coupBtn = new ButtonBuilder()
 				.setCustomId("JoinCoup")
 				.setLabel(ButtonLabelJoinCoup)
-				.setStyle(ButtonStyle.Danger);
+				.setStyle(ButtonStyle.Danger)
+				.setDisabled(gameState.isServerDown());
 			revolutionStatusMsg = `\nCoup initiated by sword of the Two Gods. May Heaven's Favour flood the land and sprout a new rule in its likeness. (${gameState.getRevolutionarySize()} / ${gameState.getRoleSize("Knight")} votes cast)`;
 			if (gameState.isRevolutionSecondPhase()) {
 				revolutionStatusMsg = `\n Coup brimming, its second phase is underway. (Joined ${gameState.GetRevolutionarySize()} / ${gameState.getRoleSize("Knight")}.)`;
@@ -1054,12 +1072,12 @@ async function updateMessage(client, lastMessageId, emperorReelectionSelectMenu)
 					coupBtn = new ButtonBuilder()
 						.setCustomId("VoteEmperor")
 						.setLabel(ButtonLabelVoteEmperor)
-						.setStyle(ButtonStyle.Danger);
+						.setStyle(ButtonStyle.Danger)
+						.setDisabled(gameState.isServerDown());
 					revolutionStatusMsg = `\nThe stagnant Emperor has fallen, as channels of the gods, knigfhts must vote in our next proclamation.  (${gameState.getRevolutionarySize()} votes cast)`;
 				}
 				if (gameState.isReelectionActive()) {
 					actionRow_2 = emperorReelectionSelectMenu;
-
 					revolutionStatusMsg = `\nThere may only be a single Emperor, a new vote is underway amongst notable contenders. (${gameState.getRevolutionarySize()} votes cast)`;
 				}
 			}
@@ -1068,7 +1086,7 @@ async function updateMessage(client, lastMessageId, emperorReelectionSelectMenu)
 		}
 
 		await messageToEdit.edit({
-			content: initContent + siegeStatusMsg + revolutionStatusMsg,
+			content: serverText + '\n' + initContent + siegeStatusMsg + revolutionStatusMsg,
 			components: [
 				actionRow_0,
 				actionRow_1,
@@ -1086,6 +1104,7 @@ async function messageKnightCommands(client) {
 	let channel = null;
 	try {
 		channel = await client.channels.fetch(process.env.CHANNELIDKNIGHT);
+		const serverText = gameState.isServerDown() ? "!!!!!!!!!!!!!!!!! SERVER IS DOWN !!!!!!!!!!!!!!!!!" : "";
 		const actionRow_0 = new ActionRowBuilder().addComponents(
 			await buildSelectMenu(
 				client,
@@ -1111,27 +1130,29 @@ async function messageKnightCommands(client) {
 			new ButtonBuilder()
 			.setCustomId("CutDown")
 			.setLabel(ButtonLabelCutDown)
-			.setStyle(ButtonStyle.Primary),
+			.setStyle(ButtonStyle.Primary)
+			.setDisabled(gameState.isServerDown()),
 			new ButtonBuilder()
 			.setCustomId("ShowWrits")
 			.setLabel(ButtonLabelShowWrits)
 			.setStyle(ButtonStyle.Primary)
+			.setDisabled(gameState.isServerDown())
 		);
 		const actionRow_4 = new ActionRowBuilder().addComponents(
 			new ButtonBuilder()
 			.setCustomId("Revolution")
 			.setLabel(ButtonLabelRevolution)
 			.setStyle(ButtonStyle.Danger)
-			.setDisabled(gameState.getDisableRevolution()),
+			.setDisabled(gameState.getDisableRevolution() || gameState.isServerDown()),
 			new ButtonBuilder()
 			.setCustomId("Coup")
 			.setLabel(ButtonLabelCoup)
 			.setStyle(ButtonStyle.Danger)
-			.setDisabled(gameState.getDisableCoup())
+			.setDisabled(gameState.getDisableCoup() || gameState.isServerDown())
 		);
 
 		const message = await channel.send({
-			content: initContent,
+			content: serverText + '\n' + initContent,
 			components: [
 				actionRow_0,
 				actionRow_1,

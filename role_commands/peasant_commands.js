@@ -127,7 +127,6 @@ async function setupPeasantBotEvents(client, lastMessageId) {
 					await updateMessage(client,lastMessageId);
 				}
 			}
-
 			// Clear revolution targets
 			if (hadRoleBeforeKnight || hadRoleBeforeNoble || hadRoleBeforeLord || 
 				hadRoleBeforeKing || hadRoleBeforeEmperor) {
@@ -402,7 +401,7 @@ async function setupPeasantBotEvents(client, lastMessageId) {
 			}
 		}
 		if (interaction.customId === "JoinRevolution") {
-			if(!gameState.isRevolutionActive()){
+			if(!gameState.isRevolutionActive()){	
 				await sendInteractionReply(interaction, "No revolution ongoing, messages will sync soon.");
 				return;
 			}
@@ -429,7 +428,7 @@ async function setupPeasantBotEvents(client, lastMessageId) {
 				target.user.id
 			);
 
-			await sendInteractionReply(
+			await sendInteractionReply(	
 				interaction,
 				`You have joined the revolution with target @${target.user.username}.`
 			);
@@ -479,9 +478,7 @@ async function setupPeasantBotEvents(client, lastMessageId) {
 					return;
 				}
 
-				if (
-					gameState.isRevolutionParticipant(userId)
-				) {
+				if (gameState.isRevolutionParticipant(userId)) {
 					await sendInteractionReply(
 						interaction,
 						"You've already joined the election."
@@ -513,7 +510,52 @@ async function setupPeasantBotEvents(client, lastMessageId) {
 					);
 					return;
 				}
-eventEmitter.on("RevolutionStarted", async () => {
+				const userId = interaction.user.id;
+				if (userId === mobFlayingInitiatorId) {
+					await sendInteractionReply(
+						interaction,
+						"Once you initiated mob flaying, you don't need to join since you are alreday a participant."
+					);
+					return;
+				}
+
+				if (userId === mobFlayingTargetId) {
+					await sendInteractionReply(
+						interaction,
+						"You cannot join mob flyaing targeted yourself."
+					);
+					return;
+				}
+
+				if (mobFlayingParticipants.has(userId)) {
+					await sendInteractionReply(interaction, "You've already joined.");
+					return;
+				}
+
+				mobFlayingParticipants.add(userId);
+				await sendInteractionReply(
+					interaction,
+					"You have joind the mob flaying."
+				);
+
+				const participationRate = mobFlayingParticipants.size / peasantsSize;
+				if (
+					mobFlayingActive &&
+					participationRate >= MobFlayingSuccessThreadshold
+				) {
+					//If poll succeeded within voting ending time.
+						ceaseMobFlaying(client, lastMessageId);
+					return;
+				} else {
+					updateMessage(client, lastMessageId);
+				}
+			} catch (err) {
+				throw err;
+			}
+		}
+	});
+
+	eventEmitter.on("RevolutionStarted", async () => {
 		try {
 			if(gameState.isRevolutionActive() && !gameState.isCoupActive())await updateMessage(client, lastMessageId);
 		} catch (err) {
@@ -587,55 +629,11 @@ eventEmitter.on("RevolutionStarted", async () => {
 			showErrorMsg(err);
 		}
 	});
-				const userId = interaction.user.id;
-				if (userId === mobFlayingInitiatorId) {
-					await sendInteractionReply(
-						interaction,
-						"Once you initiated mob flaying, you don't need to join since you are alreday a participant."
-					);
-					return;
-				}
-
-				if (userId === mobFlayingTargetId) {
-					await sendInteractionReply(
-						interaction,
-						"You cannot join mob flyaing targeted yourself."
-					);
-					return;
-				}
-
-				if (mobFlayingParticipants.has(userId)) {
-					await sendInteractionReply(interaction, "You've already joined.");
-					return;
-				}
-
-				mobFlayingParticipants.add(userId);
-				await sendInteractionReply(
-					interaction,
-					"You have joind the mob flaying."
-				);
-
-				const participationRate = mobFlayingParticipants.size / peasantsSize;
-				if (
-					mobFlayingActive &&
-					participationRate >= MobFlayingSuccessThreadshold
-				) {
-					//If poll succeeded within voting ending time.
-						ceaseMobFlaying(client, lastMessageId);
-					return;
-				} else {
-					updateMessage(client, lastMessageId);
-				}
-			} catch (err) {
-				throw err;
-			}
-		}
-});
-	eventEmitter.on("NotifyPeasantChannel", async (msg) => {
+					eventEmitter.on("NotifyPeasantChannel", async (msg) => {
 		try {
 			let channel = await client.channels.fetch(process.env.CHANNELIDPEASANT);
 			const message = await channel.send({
-				content: msg,
+				content: msg,	
 			});
 			setTimeout(async () => {
 				await message.delete().catch(console.error);
@@ -719,6 +717,13 @@ eventEmitter.on("RevolutionStarted", async () => {
 			showErrorMsg(err);
 		}
 	});
+	eventEmitter.on("ServerStatusChange", async () => {
+		try {
+			await updateMessage(client, lastMessageId);
+		} catch (err) {
+			showErrorMsg(err);
+		}
+	});
 }
 
 async function startMobFlaying(client, lastMessageId, timeout) {
@@ -753,7 +758,7 @@ async function updateMessage(client, lastMessageId,emperorReelectionSelectMenu) 
 	try {
 		const channel = await client.channels.fetch(process.env.CHANNELIDPEASANT);
 		const messageToEdit = await channel.messages.fetch(lastMessageId);
-
+		const serverText = gameState.isServerDown() ? "!!!!!!!!!!!!!!!!! SERVER IS DOWN !!!!!!!!!!!!!!!!!" : "";
 		let actionRow_0 = new ActionRowBuilder().addComponents(
 			await buildSelectMenu(
 				client,
@@ -772,12 +777,13 @@ async function updateMessage(client, lastMessageId,emperorReelectionSelectMenu) 
 			new ButtonBuilder()
 			.setCustomId("MobFlaying")
 			.setLabel(ButtonLabelMobFlaying)
-			.setStyle(ButtonStyle.Danger),
+			.setStyle(ButtonStyle.Danger)
+			.setDisabled(gameState.isServerDown()),
 			new ButtonBuilder()
 			.setCustomId("Revolution")
 			.setLabel(ButtonLabelRevolution)
 			.setStyle(ButtonStyle.Danger)
-			.setDisabled(gameState.getDisableRevolution())
+			.setDisabled(gameState.getDisableRevolution() || gameState.isServerDown())
 		);
 		let coupActive = gameState.isCoupActive();
 		if (coupActive) {
@@ -799,7 +805,8 @@ async function updateMessage(client, lastMessageId,emperorReelectionSelectMenu) 
 			const joinMobFlayingBtn = new ButtonBuilder()
 				.setCustomId("JoinMobFlaying")
 				.setLabel(ButtonLabelJoinMobFlaying)
-				.setStyle(ButtonStyle.Primary);
+				.setStyle(ButtonStyle.Primary)
+				.setDisabled(false);
 			actionRow_2.components[0] = joinMobFlayingBtn;
 
 			mobFlayingStatusMsg = `\n@${mobFlayingInitiator} initiated a mob flaying. Join to downgrade ${mobFlayingTarget}. (Joined ${mobFlayingParticipants.size} / ${gameState.getRoleSize("Peasant")}.)`;
@@ -808,13 +815,15 @@ async function updateMessage(client, lastMessageId,emperorReelectionSelectMenu) 
 			let revolutionBtn = new ButtonBuilder()
 				.setCustomId("JoinRevolution")
 				.setLabel(ButtonLabelJoinRevolution)
-				.setStyle(ButtonStyle.Danger);
+				.setStyle(ButtonStyle.Danger)
+				.setDisabled(gameState.isServerDown());
 			revolutionStatusMsg = `\nRevolution washes over the land. (Joined ${gameState.getRevolutionarySize()} / ${gameState.getPeopleSize()}.)`;
 			if (gameState.isRevolutionSecondPhase()) {
 				actionRow_2.components[2] = new ButtonBuilder()
 					.setCustomId("WithdrawRevolution")
 					.setLabel(ButtonLabelWithdrawRevolution)
-					.setStyle(ButtonStyle.Primary);
+					.setStyle(ButtonStyle.Primary)
+					.setDisabled(gameState.isServerDown());
 				revolutionStatusMsg = `\nRevolution moved in the next phase. townsfolk may still join, those who've joined may withdraw.(Joined ${gameState.getRevolutionarySize()} / ${gameState.getPeopleSize()}.)`;
 				if (gameState.isEmperorElectionActive()) {
 					actionRow_1 = new ActionRowBuilder().addComponents(
@@ -827,7 +836,8 @@ async function updateMessage(client, lastMessageId,emperorReelectionSelectMenu) 
 					revolutionBtn = new ButtonBuilder()
 						.setCustomId("VoteEmperor")
 						.setLabel(ButtonLabelVoteEmperor)
-						.setStyle(ButtonStyle.Danger);
+						.setStyle(ButtonStyle.Danger)
+						.setDisabled(gameState.isServerDown());
 					if (actionRow_2.components[2]) actionRow_2.components.splice(2, 1);
 					revolutionStatusMsg = `\nA vote for a new Emperor is underway. (${gameState.getRevolutionarySize()} votes cast)`;
 				}
@@ -842,7 +852,7 @@ async function updateMessage(client, lastMessageId,emperorReelectionSelectMenu) 
 		}
 
 		await messageToEdit.edit({
-			content: initContent + mobFlayingStatusMsg + revolutionStatusMsg,
+			content: serverText + '\n' + initContent + mobFlayingStatusMsg + revolutionStatusMsg,
 			components: [actionRow_0, actionRow_1, actionRow_2],
 		});
 	} catch (err) {
@@ -854,12 +864,7 @@ async function messagePeasantCommands(client) {
 	let channel = null;
 	try {
 		channel = await client.channels.fetch(process.env.CHANNELIDPEASANT);
-	} catch (err) {
-		showErrorMsg(err);
-		return;
-	}
-
-	try {
+		const serverText = gameState.isServerDown() ? "!!!!!!!!!!!!!!!!! SERVER IS DOWN !!!!!!!!!!!!!!!!!" : "";
 		const actionRow_0 = new ActionRowBuilder().addComponents(
 			await buildSelectMenu(
 				client,
@@ -878,16 +883,17 @@ async function messagePeasantCommands(client) {
 			new ButtonBuilder()
 			.setCustomId("MobFlaying")
 			.setLabel(ButtonLabelMobFlaying)
-			.setStyle(ButtonStyle.Danger),
+			.setStyle(ButtonStyle.Danger)
+			.setDisabled(gameState.isServerDown()),
 			new ButtonBuilder()
 			.setCustomId("Revolution")
 			.setLabel(ButtonLabelRevolution)
 			.setStyle(ButtonStyle.Danger)
-			.setDisabled(gameState.getDisableRevolution())
+			.setDisabled(gameState.getDisableRevolution() || gameState.isServerDown())
 		);
 
 		const message = await channel.send({
-			content: initContent,
+			content: serverText + '\n' + initContent,
 			components: [actionRow_0, actionRow_1, actionRow_2],
 		});
 		return message;

@@ -36,6 +36,7 @@ const {
 } = require("../game_config.json");
 const { eventEmitter } = require("../functions/eventEmitter.js");
 const { DBUpdateXP, isThresholdOpen, changeRole, openThreshold, closeThreshold } = require("../apis/firebase/querys");
+const { gameState } = require("../gameState");
 
 let selectedTargets = {};
 let nobles = [];
@@ -359,7 +360,7 @@ async function setupNobleBotEvents(client, lastMessageId) {
 
 			if (assassinationTargetId === userId) {
 				sendInteractionReply(interaction, "You cannot target yourself.");
-				return;
+				return;	
 			}
 
 			if (lastMessageId) {
@@ -448,6 +449,13 @@ async function setupNobleBotEvents(client, lastMessageId) {
 			}, RoleChangeMessageDisplayTime);
 		} catch (err) {
 			throw err;
+		}
+	});
+	eventEmitter.on('ServerStatusChange', async () => {
+		try{
+			await updateMessage(client, lastMessageId);
+		} catch (err) {
+			showErrorMsg(err);
 		}
 	});
 }
@@ -542,6 +550,7 @@ async function updateMessage(client, lastMessageId) {
 	try {
 		const channel = await client.channels.fetch(process.env.CHANNELIDNOBLE);
 		const messageToEdit = await channel.messages.fetch(lastMessageId);
+		const serverText = gameState.isServerDown() ? "!!!!!!!!!!!!!!!!! SERVER IS DOWN !!!!!!!!!!!!!!!!!" : "";
 
 		if (!assassinationActive) {
 
@@ -567,22 +576,24 @@ async function updateMessage(client, lastMessageId) {
 				.setCustomId("Assassination")
 				.setLabel(ButtonLabelAssassination)
 				.setStyle(ButtonStyle.Danger)
-				.setDisabled(disableAssassination),
+				.setDisabled(disableAssassination || gameState.isServerDown()),
 				new ButtonBuilder()
 				.setCustomId("HighWrit")
 				.setLabel(ButtonLabelHighWrit)
 				.setStyle(ButtonStyle.Primary)
+				.setDisabled(gameState.isServerDown())
 			);
 			const infoBtnRow = new ActionRowBuilder().addComponents(
 				new ButtonBuilder()
 				.setCustomId("ShowWrits")
 				.setLabel(ButtonLabelShowWrits)
 				.setStyle(ButtonStyle.Secondary)
+				.setDisabled(gameState.isServerDown())
 			);
 
 
 			await messageToEdit.edit({
-				content: initContent,
+				content: serverText + '\n' + initContent,
 				components: [actionRow_0, actionRow_1, actionRow_2, buttonRow, infoBtnRow],
 			});
 		} else {
@@ -608,20 +619,24 @@ async function updateMessage(client, lastMessageId) {
 				new ButtonBuilder()
 				.setCustomId("JoinAssassination")
 				.setLabel(ButtonLabelAssassination)
-				.setStyle(ButtonStyle.Primary),
+				.setStyle(ButtonStyle.Primary)
+				.setDisabled(gameState.isServerDown()),
 				new ButtonBuilder()
 				.setCustomId("HighWrit")
 				.setLabel(ButtonLabelHighWrit)
 				.setStyle(ButtonStyle.Primary)
+				.setDisabled(gameState.isServerDown())
 			);
 			const infoBtnRow = new ActionRowBuilder().addComponents(
 				new ButtonBuilder()
 				.setCustomId("ShowWrits")
 				.setLabel(ButtonLabelShowWrits)
 				.setStyle(ButtonStyle.Secondary)
+				.setDisabled(gameState.isServerDown())
 			);
 			await messageToEdit.edit({
 				content:
+				serverText + '\n' +
 				initContent +
 				`\n@${assassinationInitiator} initiated assassination. Join assassination to kill @${assassinationTarget}. (Joined ${assassinationParticipants.size} / ${noblesSize} nobles.)`,
 				components: [actionRow_0, actionRow_1, actionRow_2, buttonRow, infoBtnRow],
@@ -636,12 +651,7 @@ async function messageNobleCommands(client) {
 	let channel = null;
 	try {
 		channel = await client.channels.fetch(process.env.CHANNELIDNOBLE);
-	} catch (err) {
-		showErrorMsg(err);
-		return;
-	}
-
-	try {
+		const serverText = gameState.isServerDown() ? "!!!!!!!!!!!!!!!!! SERVER IS DOWN !!!!!!!!!!!!!!!!!" : "";
 		const assassinationSelectMenu = await buildSelectMenu(
 			client,
 			["knight", "noble", "lord"],
@@ -664,20 +674,22 @@ async function messageNobleCommands(client) {
 			.setCustomId("Assassination")
 			.setLabel(ButtonLabelAssassination)
 			.setStyle(ButtonStyle.Danger)
-			.setDisabled(disableAssassination),
+			.setDisabled(disableAssassination || gameState.isServerDown()),
 			new ButtonBuilder()
 			.setCustomId("HighWrit")
 			.setLabel(ButtonLabelHighWrit)
 			.setStyle(ButtonStyle.Primary)
+			.setDisabled(gameState.isServerDown())
 		);
 		const infoBtnRow = new ActionRowBuilder().addComponents(
 			new ButtonBuilder()
 			.setCustomId("ShowWrits")
 			.setLabel(ButtonLabelShowWrits)
 			.setStyle(ButtonStyle.Secondary)
+			.setDisabled(gameState.isServerDown())
 		);
 		const message = await channel.send({
-			content: initContent,
+			content:serverText + '\n' + initContent,
 			components: [actionRow_0, actionRow_1, actionRow_2, buttonRow, infoBtnRow],
 		});
 		return message;

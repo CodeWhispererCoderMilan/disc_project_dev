@@ -13,8 +13,9 @@ const {
 	TextFesterSelectMenu,
 	TextFesterEmptySelectMenu
 } = require('../game_config.json');
-const {eventEmitter} = require('../functions/eventEmitter');
+const { eventEmitter } = require('../functions/eventEmitter');
 const {sendInteractionReply} = require("../functions/botActions");
+const { gameState } = require("../gameState");
 
 const selectedPoops = {};
 const content = TextMaggotMessageContent;
@@ -132,12 +133,20 @@ async function setupMaggotBotEvents(client, lastMessageId) {
 	client.on('festeringStatusChanged', async () => {
 		await updateFesterSelectMenu(client, lastMessageId);
 	});
+	eventEmitter.on('ServerStatusChanged', async () => {
+		try{
+			await updateFesterSelectMenu(client, lastMessageId);
+		} catch (err) {
+			showErrorMsg(err);
+		}
+	});
 }
 
 async function messageMaggotCommands(client) {
 	let channel = null;
 	try {
 		channel = await client.channels.fetch(process.env.CHANNELIDMAGGOT);
+		const serverText = gameState.isServerDown() ? "!!!!!!!!!!!!!!!!! SERVER IS DOWN !!!!!!!!!!!!!!!!!" : "";
 		const selectMenu = await buildUnfesteredPoopSelectMenu(client);
 		const row = new ActionRowBuilder()
 			.addComponents(selectMenu); 	
@@ -147,10 +156,11 @@ async function messageMaggotCommands(client) {
 				.setCustomId('fester')
 				.setLabel(ButtonLabelFester)
 				.setStyle(ButtonStyle.Danger)
+				.setDisabled(gameState.isServerDown())
 			);
 
 		return await channel.send({ // this is a message.
-			content: content,
+			content: serverText + '\n' + content,
 			components: [row, buttonRow],
 		});
 	} catch (err) {
@@ -209,6 +219,7 @@ async function fester(client, maggotId, poopId) {
 async function updateFesterSelectMenu(client, lastMessageId) {
 	try {
 		const channel = await client.channels.fetch(process.env.CHANNELIDMAGGOT);
+		const serverText = gameState.isServerDown() ? "!!!!!!!!!!!!!!!!! SERVER IS DOWN !!!!!!!!!!!!!!!!!" : "";
 		const messageToEdit = await channel.messages.fetch(lastMessageId);
 		const selectMenu = await buildUnfesteredPoopSelectMenu(client);
 		const actionRow_0 = new ActionRowBuilder().addComponents(selectMenu);
@@ -216,7 +227,7 @@ async function updateFesterSelectMenu(client, lastMessageId) {
 		existingComponents[0] = actionRow_0;
 
 		await messageToEdit.edit({
-			content: messageToEdit.content,
+			content:serverText + '\n' + messageToEdit.content,
 			components: existingComponents
 		});
 	} catch (err) {

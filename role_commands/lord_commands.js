@@ -43,6 +43,8 @@ const {
 } = require("../game_config.json");
 const { eventEmitter } = require("../functions/eventEmitter.js");
 const { DBUpdateXP, isThresholdOpen, changeRole, openThreshold, closeThreshold } = require("../apis/firebase/querys");
+const { gameState } = require("../gameState");
+
 
 let selectedElectionCandidates = {};
 let selectedExileUsers = {};
@@ -574,6 +576,13 @@ async function setupLordBotEvents(client, lastMessageId) {
 			throw err;
 		}
 	});
+	eventEmitter.on("ServerStatusChange", async () => {
+		try{
+			await updateMessage(client, lastMessageId);
+		}catch(err){
+			showErrorMsg(err);
+		}
+	});
 }
 
 async function startElection(client, lastMessageId, timeout) {
@@ -682,6 +691,7 @@ async function updateMessage(client, lastMessageId) {
 	try {
 		const channel = await client.channels.fetch(process.env.CHANNELIDLORD);
 		const messageToEdit = await channel.messages.fetch(lastMessageId);
+		const serverText = gameState.isServerDown() ? "!!!!!!!!!!!!!!!!! SERVER IS DOWN !!!!!!!!!!!!!!!!!" : "";
 
 		if (!electionActive) {
 
@@ -711,24 +721,27 @@ async function updateMessage(client, lastMessageId) {
 				new ButtonBuilder()
 				.setCustomId("Exile")
 				.setLabel(ButtonLabelExile)
-				.setStyle(ButtonStyle.Primary),
+				.setStyle(ButtonStyle.Primary)
+				.setDisabled(gameState.isServerDown()),
 				new ButtonBuilder()
 				.setCustomId("Election")
 				.setLabel(ButtonLabelElection)
 				.setStyle(ButtonStyle.Primary)
-				.setDisabled(disableElection),
+				.setDisabled(disableElection || gameState.isServerDown()),
 				new ButtonBuilder()
 				.setCustomId("EminentWrit")
 				.setLabel(ButtonLabelEminentWrit)
-				.setStyle(ButtonStyle.Primary),
+				.setStyle(ButtonStyle.Primary)
+				.setDisabled(gameState.isServerDown()),
 				new ButtonBuilder()
 				.setCustomId("ShowWrits")
 				.setLabel(ButtonLabelShowWrits)
 				.setStyle(ButtonStyle.Secondary)
+				.setDisabled(gameState.isServerDown())
 			);			
 
 			await messageToEdit.edit({
-				content: initContent,
+				content: serverText + '\n' + initContent,
 				components: [actionRow_0, actionRow_1, actionRow_2, actionRow_3, buttonRow],
 			});
 		} else {
@@ -755,23 +768,28 @@ async function updateMessage(client, lastMessageId) {
 				new ButtonBuilder()
 				.setCustomId("Exile")
 				.setLabel(ButtonLabelExile)
-				.setStyle(ButtonStyle.Primary),
+				.setStyle(ButtonStyle.Primary)
+				.setDisabled(gameState.isServerDown()),
 				new ButtonBuilder()
 				.setCustomId("Vote")
 				.setLabel(ButtonLabelElectionVote)
-				.setStyle(ButtonStyle.Primary),
+				.setStyle(ButtonStyle.Primary)
+				.setDisabled(gameState.isServerDown()),
 				new ButtonBuilder()
 				.setCustomId("EminentWrit")
 				.setLabel(ButtonLabelEminentWrit)
-				.setStyle(ButtonStyle.Primary),
+				.setStyle(ButtonStyle.Primary)
+				.setDisabled(gameState.isServerDown()),
 				new ButtonBuilder()
 				.setCustomId("ShowWrits")
 				.setLabel(ButtonLabelShowWrits)
 				.setStyle(ButtonStyle.Secondary)
+				.setDisabled(gameState.isServerDown())
 			);
 
 			await messageToEdit.edit({
 				content:
+				serverText + '\n' +
 				initContent +
 				`\n@${electionInitiator} started election. Let's vote for ${electionType} @${electionCandidate}. (Joined ${electionParticipants.size} / ${lordsSize}.)`,
 				components: [actionRow_0,actionRow_1,actionRow_2,actionRow_3, buttonRow],
@@ -786,12 +804,7 @@ async function messageLordCommands(client) {
 	let channel = null;
 	try {
 		channel = await client.channels.fetch(process.env.CHANNELIDLORD);
-	} catch (err) {
-		showErrorMsg(err);
-		return;
-	}
-
-	try {
+		const serverText = gameState.isServerDown() ? "!!!!!!!!!!!!!!!!! SERVER IS DOWN !!!!!!!!!!!!!!!!!" : "";
 		const actionRow_0 = new ActionRowBuilder().addComponents(
 			await buildSelectMenu(client, ["peasant", "scholar", "merchant"], "SelectExile", TextExileSelectMenu));
 
@@ -815,23 +828,26 @@ async function messageLordCommands(client) {
 			new ButtonBuilder()
 			.setCustomId("Exile")
 			.setLabel(ButtonLabelExile)
-			.setStyle(ButtonStyle.Primary),
+			.setStyle(ButtonStyle.Primary)
+			.setDisabled(gameState.isServerDown()),
 			new ButtonBuilder()
 			.setCustomId("Election")
 			.setLabel(ButtonLabelElection)
 			.setStyle(ButtonStyle.Primary)
-			.setDisabled(disableElection),
+			.setDisabled(disableElection || gameState.isServerDown()),
 			new ButtonBuilder()
 			.setCustomId("EminentWrit")
 			.setLabel(ButtonLabelEminentWrit)
-			.setStyle(ButtonStyle.Primary),
+			.setStyle(ButtonStyle.Primary)
+			.setDisabled(gameState.isServerDown()),
 			new ButtonBuilder()
 			.setCustomId("ShowWrits")
 			.setLabel(ButtonLabelShowWrits)
 			.setStyle(ButtonStyle.Secondary)
+			.setDisabled(gameState.isServerDown())
 		);
 		const message = await channel.send({
-			content: initContent,
+			content:serverText + '\n' +  initContent,
 			components: [actionRow_0,actionRow_1,actionRow_2, actionRow_3, buttonRow],
 		});
 		return message;

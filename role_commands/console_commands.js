@@ -1071,7 +1071,7 @@ async function updateConsoleMessage(client, lastMessageId) {
 			.setDisabled(gameState.isServerDown())
 		);
 		await messageToEdit.edit({
-			content: serverText + content,
+			content: serverText + '\n' + content,
 			components: [buttonRow],
 		});
 	}catch (err) {
@@ -1099,7 +1099,7 @@ async function messageConsoleCommands(client) {
 		);
 
 		const message = await channel.send({
-			content: serverText + content,
+			content: serverText+ '\n'  + content,
 			components: [buttonRow],
 		});
 		return message;	

@@ -520,7 +520,7 @@ async function updateMessage(client, lastMessageId){
 			);
 
 			await messageToEdit.edit({
-				content: serverText + content,
+				content: serverText+ '\n'  + content,
 				components: [row_maggot_select, row_subhuman_select, buttonRow],
 			});
 
@@ -566,7 +566,7 @@ async function updateMessage(client, lastMessageId){
 				content +
 				`\n@${swarmInitiatorUsername} initiated a swarm (${swarmParticipants.size}/${SwarmThreshold})`;
 			await messageToEdit.edit({
-				content: serverText + swarmVote_content,
+				content: serverText+ '\n'  + swarmVote_content,
 				components: [actionRow_0, actionRow_1, actionRow_2],
 			});
 
@@ -608,7 +608,7 @@ async function updateMessage(client, lastMessageId){
 
 
 			await messageToEdit.edit({
-				content:serverText + content + `\n${SwarmThreshold} cockroaches gathered, the swarm is burrowing...`,
+				content:serverText + '\n' + content + `\n${SwarmThreshold} cockroaches gathered, the swarm is burrowing...`,
 				components: [actionRow_0, actionRow_1, actionRow_2],
 			});
 
@@ -661,7 +661,7 @@ async function messageCockroachCommands(client) {
 		);
 
 		const message = await channel.send({
-			content: serverText + TextCockroachMessageContent,
+			content: serverText+ '\n'  + TextCockroachMessageContent,
 			components: [row_maggot_select, row_subhuman_select, buttonRow],
 		});
 		return message;

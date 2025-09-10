@@ -26,7 +26,7 @@ const {
 const { buildSelectMenu } = require(`../functions/botActions.js`);
 const { DBUpdateXP, changeRole } = require("../apis/firebase/querys.js");
 const { eventEmitter } = require("../functions/eventEmitter.js");
-const { gameState } = require("../gameState.js");
+const gameState = require("../game_state.js");
 const content = TextCockroachMessageContent;
 const selectedMaggots = {};
 let selectedSubhumans = {};

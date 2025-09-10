@@ -1,6 +1,6 @@
 const { GatewayIntentBits, Client } = require("discord.js");
 const { eventEmitter } = require("./functions/eventEmitter.js");
-const { gameState } = require("./gameState.js");
+const gameState = require("./game_state.js");
 const {
 	setupConsoleBotEvents,
 	messageConsoleCommands,

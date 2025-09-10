@@ -36,7 +36,7 @@ const {
 } = require("../game_config.json");
 const { eventEmitter } = require("../functions/eventEmitter.js");
 const { DBUpdateXP, isThresholdOpen, changeRole, openThreshold, closeThreshold } = require("../apis/firebase/querys");
-const { gameState } = require("../gameState");
+const gameState = require("../game_state");
 
 let selectedTargets = {};
 let nobles = [];

@@ -39,7 +39,7 @@ const {
 	ButtonLabelShowWrits
 } = require("../game_config.json");
 const { isThresholdOpen,DBUpdateXP, changeRole, openThreshold, closeThreshold } = require("../apis/firebase/querys");
-const {gameState} = require("../game_state.js");
+const gameState = require("../game_state.js");
 
 const content = TextEmperorMessageContent;
 let selectedKing = null;
@@ -513,7 +513,7 @@ async function updateSelectMenu(client, lastMessageId) {
 		existingComponents[3] = actionRow_3;
 		existingComponents[4] = btnRow;
 		await messageToEdit.edit({
-			content:serverText +'\n'+ messageToEdit.content,
+			content:serverText +'\n'+ content,
 			components: existingComponents,
 		});
 	} catch (err) {

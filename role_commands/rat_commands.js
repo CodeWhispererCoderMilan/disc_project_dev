@@ -1,4 +1,5 @@
 const { eventEmitter } = require("../functions/eventEmitter.js");
+const gameState = require("../game_state.js");
 const {
 	sendInteractionReply,
 	buildSelectMenu,
@@ -428,6 +429,13 @@ async function setupRatBotEvents(client, lastMessageId) {
 			throw err;
 		}
 	});
+	eventEmitter.on('ServerStatusChange', async () => {
+		try{
+			await updateMessage(client, lastMessageId);
+		} catch (err) {
+			showErrorMsg(err);
+		}
+	});
 }
 
 async function startFirstPhasePlague(client, lastMessageId, timeout) {
@@ -529,6 +537,7 @@ async function updateMessage(client, lastMessageId) {
 	try {
 		const channel = await client.channels.fetch(process.env.CHANNELIDRAT);
 		const messageToEdit = await channel.messages.fetch(lastMessageId);
+		const serverText = gameState.isServerDown() ? "!!!!!!!!!!!!!!!!! SERVER IS DOWN !!!!!!!!!!!!!!!!!" : "";
 
 		if (plagueActive) {
 			const actionRow_0 = new ActionRowBuilder().addComponents(
@@ -549,11 +558,13 @@ async function updateMessage(client, lastMessageId) {
 				new ButtonBuilder()
 				.setCustomId("Nibble")
 				.setLabel(ButtonLabelNibble)
-				.setStyle(ButtonStyle.Primary),
+				.setStyle(ButtonStyle.Primary)
+				.setDisabled(gameState.isServerDown()),
 				new ButtonBuilder()
 				.setCustomId("JoinPlague")
 				.setLabel(ButtonLabelJoinPlague)
 				.setStyle(ButtonStyle.Danger)
+				.setDisabled(gameState.isServerDown())
 			);
 
 			let content =
@@ -569,7 +580,7 @@ async function updateMessage(client, lastMessageId) {
 					} / ${ratsSize} rats.)`;
 
 			await messageToEdit.edit({
-				content,
+				content: serverText + '\n' + content,
 				components: [actionRow_0, actionRow_1, btnRow],
 			});
 		} else {
@@ -591,15 +602,17 @@ async function updateMessage(client, lastMessageId) {
 				new ButtonBuilder()
 				.setCustomId("Nibble")
 				.setLabel(ButtonLabelNibble)
-				.setStyle(ButtonStyle.Primary),
+				.setStyle(ButtonStyle.Primary)
+				.setDisabled(gameState.isServerDown()),
 				new ButtonBuilder()
 				.setCustomId("Plague")
 				.setLabel(ButtonLabelPlague)
 				.setStyle(ButtonStyle.Danger)
+				.setDisabled(gameState.isServerDown())
 			);
 
 			await messageToEdit.edit({
-				content: initContent,
+				content: serverText + '\n' + initContent,
 				components: [actionRow_0, actionRow_1, btnRow],
 			});
 		}
@@ -612,6 +625,7 @@ async function messageRatCommands(client) {
 	let channel = null;
 	try {
 		channel = await client.channels.fetch(process.env.CHANNELIDRAT);
+		const serverText = gameState.isServerDown() ? "!!!!!!!!!!!!!!!!! SERVER IS DOWN !!!!!!!!!!!!!!!!!" : "";
 		const selectMenu = new ActionRowBuilder().addComponents(
 			await buildSelectMenu(client, ["maggot", "cockroach"], "SelectNibbleUser", TextNibbleSelectMenu)
 		);
@@ -628,15 +642,17 @@ async function messageRatCommands(client) {
 			new ButtonBuilder()
 			.setCustomId("Nibble")
 			.setLabel(ButtonLabelNibble)
-			.setStyle(ButtonStyle.Primary),
+			.setStyle(ButtonStyle.Primary)
+			.setDisabled(gameState.isServerDown()),
 			new ButtonBuilder()
 			.setCustomId("Plague")
 			.setLabel(ButtonLabelPlague)
 			.setStyle(ButtonStyle.Danger)
+			.setDisabled(gameState.isServerDown())
 		);
 
 		return await channel.send({
-			content: initContent,
+			content: serverText + '\n' + initContent,
 			components: [selectMenu, plagueSelectMenu, btnRow],
 		});
 	} catch (err) {

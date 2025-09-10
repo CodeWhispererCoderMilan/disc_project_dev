@@ -1,5 +1,5 @@
 const {eventEmitter} = require('../functions/eventEmitter.js');
-const { gameState } = require("../gameState.js");
+const gameState = require("../game_state.js");
 const {
 	RoleChangeMessageDisplayTime,
 	TextPoopMessageContent
@@ -122,11 +122,10 @@ async function messagePoopCommands(client) {
 	try {
 		channel = await client.channels.fetch(process.env.CHANNELIDPOOP);
 		const serverText = gameState.isServerDown() ? "!!!!!!!!!!!!!!!!! SERVER IS DOWN !!!!!!!!!!!!!!!!!" : "";
-
+		return await channel.send({content: serverText + '\n' + content}); // message
 	} catch (err) {
 		return showErrorMsg(err);
 	}
-	return await channel.send({content: serverText + '\n' + content}); // message
 }
 
 module.exports = {setupPoopBotEvents, messagePoopCommands};

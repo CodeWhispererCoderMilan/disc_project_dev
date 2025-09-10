@@ -15,7 +15,7 @@ const {
 } = require('../game_config.json');
 const { eventEmitter } = require('../functions/eventEmitter');
 const {sendInteractionReply} = require("../functions/botActions");
-const { gameState } = require("../gameState");
+const gameState = require("../game_state");
 
 const selectedPoops = {};
 const content = TextMaggotMessageContent;
@@ -133,7 +133,7 @@ async function setupMaggotBotEvents(client, lastMessageId) {
 	client.on('festeringStatusChanged', async () => {
 		await updateFesterSelectMenu(client, lastMessageId);
 	});
-	eventEmitter.on('ServerStatusChanged', async () => {
+	eventEmitter.on('ServerStatusChange', async () => {
 		try{
 			await updateFesterSelectMenu(client, lastMessageId);
 		} catch (err) {
@@ -158,7 +158,6 @@ async function messageMaggotCommands(client) {
 				.setStyle(ButtonStyle.Danger)
 				.setDisabled(gameState.isServerDown())
 			);
-
 		return await channel.send({ // this is a message.
 			content: serverText + '\n' + content,
 			components: [row, buttonRow],
@@ -224,10 +223,19 @@ async function updateFesterSelectMenu(client, lastMessageId) {
 		const selectMenu = await buildUnfesteredPoopSelectMenu(client);
 		const actionRow_0 = new ActionRowBuilder().addComponents(selectMenu);
 		const existingComponents = messageToEdit.components.map(component => ActionRowBuilder.from(component.toJSON()));
+		const buttonRow = new ActionRowBuilder()
+			.addComponents(
+				new ButtonBuilder()
+				.setCustomId('fester')
+				.setLabel(ButtonLabelFester)
+				.setStyle(ButtonStyle.Danger)
+				.setDisabled(gameState.isServerDown())
+			);
 		existingComponents[0] = actionRow_0;
+		existingComponents[1] = buttonRow;
 
 		await messageToEdit.edit({
-			content:serverText + '\n' + messageToEdit.content,
+			content:serverText + '\n' + content,
 			components: existingComponents
 		});
 	} catch (err) {

@@ -1050,7 +1050,7 @@ async function buildEmperorReelectionTargetSelectMenu(client, candidates) {
 		return null;
 	}
 }
-async function updateConsoleMessage(client, lastMessageId) {
+async function updateMessage(client, lastMessageId) {
 	try{	
 		const channel = await client.channels.fetch(
 			process.env.CHANNELIDCONSOLE

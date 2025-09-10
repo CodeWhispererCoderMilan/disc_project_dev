@@ -452,12 +452,21 @@ async function setupScholarBotEvents(client, lastMessageId) {
 		}
 	});
 
+	eventEmitter.on("ServerStatusChange", async () => {
+		try {
+			await updateMessage(client, lastMessageId);
+		} catch (err) {
+			showErrorMsg(err);
+		}
+	});
+
 
 }
 
 async function updateMessage(client, lastMessageId, emperorReelectionSelectMenu) {
 	try {
 		const channel = await client.channels.fetch(process.env.CHANNELIDSCHOLAR);
+		const serverText = gameState.isServerDown() ? "!!!!!!!!!!!!!!!!! SERVER IS DOWN !!!!!!!!!!!!!!!!!" : "";
 		const messageToEdit = await channel.messages.fetch(lastMessageId);
 
 		let actionRow_0 = new ActionRowBuilder().addComponents(
@@ -471,12 +480,13 @@ async function updateMessage(client, lastMessageId, emperorReelectionSelectMenu)
 			new ButtonBuilder()
 			.setCustomId("Advise")
 			.setLabel(ButtonLabelAdvise)
-			.setStyle(ButtonStyle.Primary),
+			.setStyle(ButtonStyle.Primary)
+			.setDisabled(gameState.isServerDown()),
 			new ButtonBuilder()
 			.setCustomId("Revolution")
 			.setLabel(ButtonLabelRevolution)
 			.setStyle(ButtonStyle.Danger)
-			.setDisabled(gameState.getDisableRevolution())
+			.setDisabled(gameState.getDisableRevolution() || gameState.isServerDown())
 		);
 		let coupActive = gameState.isCoupActive();
 		if (coupActive) {
@@ -492,13 +502,15 @@ async function updateMessage(client, lastMessageId, emperorReelectionSelectMenu)
 			let revolutionBtn = new ButtonBuilder()
 				.setCustomId("JoinRevolution")
 				.setLabel(ButtonLabelJoinRevolution)
-				.setStyle(ButtonStyle.Danger);
+				.setStyle(ButtonStyle.Danger)
+				.setDisabled(gameState.isServerDown());
 			revolutionStatusMsg = `\n Revolution washes over the Land. (Joined ${gameState.getRevolutionarySize()} / ${gameState.getPeopleSize()}.)`;
 			if (gameState.isRevolutionSecondPhase()) {
 				actionRow_1.components[2] = new ButtonBuilder()
 					.setCustomId("WithdrawRevolution")
 					.setLabel(ButtonLabelWithdrawRevolution)
-					.setStyle(ButtonStyle.Primary);
+					.setStyle(ButtonStyle.Primary)
+					.setDisabled(gameState.isServerDown());
 
 				revolutionStatusMsg = `\nRevolution moved in the next phase. townsfolk may still join, those who've joined may withdraw. (Joined ${gameState.getRevolutionarySize()} / ${gameState.getPeopleSize()}.)`;
 				if (gameState.isEmperorElectionActive()) {
@@ -512,7 +524,8 @@ async function updateMessage(client, lastMessageId, emperorReelectionSelectMenu)
 					revolutionBtn = new ButtonBuilder()
 						.setCustomId("VoteEmperor")
 						.setLabel(ButtonLabelVoteEmperor)
-						.setStyle(ButtonStyle.Danger);
+						.setStyle(ButtonStyle.Danger)
+						.setDisabled(gameState.isServerDown());
 					if (actionRow_1.components[2]) actionRow_1.components.splice(2, 1);
 					revolutionStatusMsg = `\nLet's vote a new emperor.  (Joined ${revolutionarySize} members.)`;
 				}
@@ -525,7 +538,7 @@ async function updateMessage(client, lastMessageId, emperorReelectionSelectMenu)
 		}
 
 		await messageToEdit.edit({
-			content: initContent + revolutionStatusMsg,
+			content: serverText + initContent + revolutionStatusMsg,
 			components: [actionRow_0, actionRow_1],
 		});
 	} catch (err) {
@@ -537,6 +550,7 @@ async function updateMessage(client, lastMessageId, emperorReelectionSelectMenu)
 async function messageScholarCommands(client) {
 	try {
 		const channel = await client.channels.fetch(process.env.CHANNELIDSCHOLAR);
+		const serverText = gameState.isServerDown() ? "!!!!!!!!!!!!!!!!! SERVER IS DOWN !!!!!!!!!!!!!!!!!" : "";
 		const actionRow_0 = new ActionRowBuilder().addComponents(
 			await buildSelectMenu(
 				client,
@@ -548,16 +562,17 @@ async function messageScholarCommands(client) {
 			new ButtonBuilder()
 			.setCustomId("Advise")
 			.setLabel(ButtonLabelAdvise)
-			.setStyle(ButtonStyle.Primary),
+			.setStyle(ButtonStyle.Primary)
+			.setDisabled(gameState.isServerDown()),
 			new ButtonBuilder()
 			.setCustomId("Revolution")
 			.setLabel(ButtonLabelRevolution)
 			.setStyle(ButtonStyle.Danger)
-			.setDisabled(gameState.getDisableRevolution())
+			.setDisabled(gameState.getDisableRevolution() || gameState.isServerDown())
 		);
 
 		return await channel.send({
-			content: initContent,
+			content: serverText + '\n' + initContent,
 			components: [actionRow_0, actionRow_1],
 		});
 	} catch (err) {

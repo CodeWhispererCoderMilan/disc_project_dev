@@ -856,7 +856,7 @@ async function messageMerchantCommands(client) {
 			.setCustomId("Endow")
 			.setLabel(ButtonLabelEndow)
 			.setStyle(ButtonStyle.Danger)
-			.setDisabled(gamestate.isServerDown())
+			.setDisabled(gameState.isServerDown())
 
 		);
 

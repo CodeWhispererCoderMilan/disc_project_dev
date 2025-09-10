@@ -1,4 +1,5 @@
 const {eventEmitter} = require('../functions/eventEmitter.js');
+const gameState = require("../game_state.js");
 const {sendInteractionReply, buildSelectMenu} = require("../functions/botActions");
 const { CacheGetUserXP, CacheGetCooldown, CacheSetCooldown} = require("../apis/redis/redisCache");
 const {ActionRowBuilder, ButtonBuilder, ButtonStyle} = require("discord.js");
@@ -254,11 +255,19 @@ async function setupSubhumanBotEvents(client, lastMessageId) {
 			showErrorMsg(err);
 		}
 	});
+	eventEmitter.on("ServerStatusChange", async () => {
+		try{
+			await updateSelectMenu(client, lastMessageId);
+		} catch (err) {
+			showErrorMsg(err);
+		}
+	});
 }
 
 async function updateSelectMenu(client, lastMessageId) {
 	try {
 		const channel = await client.channels.fetch(process.env.CHANNELIDSUBHUMAN);
+		const serverText = gameState.isServerDown() ? "!!!!!!!!!!!!!!!!! SERVER IS DOWN !!!!!!!!!!!!!!!!!" : "";
 		const messageToEdit = await channel.messages.fetch(lastMessageId);
 		const actionRow_0 = new ActionRowBuilder()
 			.addComponents(await buildSelectMenu(client, ["subhuman"], "SelectSubHuman", TextDepravitySelectMenu)); 
@@ -266,12 +275,32 @@ async function updateSelectMenu(client, lastMessageId) {
 			.addComponents(await buildSelectMenu(client, ["peasant"], "SelectPeasant",TextManhuntSelectMenu));
 		const actionRow_2 = new ActionRowBuilder()
 			.addComponents(await buildSelectMenu(client, ["maggot", "rat"], "SelectPicking", TextPickingsSelectMenu));
+		const btnRows = new ActionRowBuilder()
+			.addComponents(
+				new ButtonBuilder()
+				.setCustomId("Depravity")
+				.setLabel(ButtonLabelDepravity)
+				.setStyle(ButtonStyle.Primary)
+				.setDisabled(gameState.isServerDown()),
+				new ButtonBuilder()
+				.setCustomId("Manhunt")
+				.setLabel(ButtonLabelManhunt)
+				.setStyle(ButtonStyle.Primary)
+				.setDisabled(gameState.isServerDown()),
+				new ButtonBuilder()
+				.setCustomId("Picking")
+				.setLabel(ButtonLabelPickings)
+				.setStyle(ButtonStyle.Danger)
+				.setDisabled(gameState.isServerDown()),
+			);
+
 		const existingComponents = messageToEdit.components.map(component => ActionRowBuilder.from(component.toJSON()));
 		existingComponents[0] = actionRow_0;
 		existingComponents[1] = actionRow_1;
 		existingComponents[2] = actionRow_2;
+		existingComponents[3] = btnRows;
 		await messageToEdit.edit({
-			content: messageToEdit.content,
+			content: serverText + '\n' + content,
 			components: existingComponents
 		});
 
@@ -286,6 +315,7 @@ async function messageSubhumanCommands(client) {
 	let channel = null;
 	try {
 		channel = await client.channels.fetch(process.env.CHANNELIDSUBHUMAN);
+		const serverText = gameState.isServerDown() ? "!!!!!!!!!!!!!!!!! SERVER IS DOWN !!!!!!!!!!!!!!!!!" : "";
 		const subHumanSelectMenu = new ActionRowBuilder()
 			.addComponents(await buildSelectMenu(client, ["subhuman"], "SelectSubHuman", TextDepravitySelectMenu));
 		const peasantSelectMenu = new ActionRowBuilder()
@@ -298,19 +328,22 @@ async function messageSubhumanCommands(client) {
 				new ButtonBuilder()
 				.setCustomId("Depravity")
 				.setLabel(ButtonLabelDepravity)
-				.setStyle(ButtonStyle.Primary),
+				.setStyle(ButtonStyle.Primary)
+				.setDisabled(gameState.isServerDown()),
 				new ButtonBuilder()
 				.setCustomId("Manhunt")
 				.setLabel(ButtonLabelManhunt)
-				.setStyle(ButtonStyle.Primary),
+				.setStyle(ButtonStyle.Primary)
+				.setDisabled(gameState.isServerDown()),
 				new ButtonBuilder()
 				.setCustomId("Picking")
 				.setLabel(ButtonLabelPickings)
-				.setStyle(ButtonStyle.Danger),
+				.setStyle(ButtonStyle.Danger)
+				.setDisabled(gameState.isServerDown()),
 			);
 
 		return await channel.send({
-			content,
+			content: serverText + '\n' + content,
 			components: [subHumanSelectMenu, peasantSelectMenu, pickingSelectMenu, btnRows]
 		});
 	} catch (err) {

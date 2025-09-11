@@ -93,6 +93,7 @@ module.exports = {
 	},
 	getRevolutionParticipants: () => revolutionParticipants,
 	addRevolutionParticipant: (role, userId, targetId) => {
+		console.log(`Adding revolution participant: role=${role}, userId=${userId}, targetId=${targetId}`);
 		revolutionParticipants.add({
 			role: role,
 			userId: userId,

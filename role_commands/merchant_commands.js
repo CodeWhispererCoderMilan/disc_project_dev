@@ -408,7 +408,6 @@ async function setupMerchantBotEvents(client, lastMessageId) {
 				}
 
 				const target = selectedRevolutionTargets[userId];
-
 				eventEmitter.emit(
 					"AddRevolutionParticipant",
 					"Merchant",
@@ -705,7 +704,7 @@ async function updateMessage(client, lastMessageId, emperorReelectionSelectMenu)
 		const channel = await client.channels.fetch(process.env.CHANNELIDMERCHANT);
 		const messageToEdit = await channel.messages.fetch(lastMessageId);
 		const serverText = gameState.isServerDown() ? "!!!!!!!!!!!!!!!!! SERVER IS DOWN !!!!!!!!!!!!!!!!!" : "";
-	
+		revolutionStatusMsg = "";
 		let actionRow_0 = new ActionRowBuilder().addComponents(
 			await buildSelectMenu(
 				client,

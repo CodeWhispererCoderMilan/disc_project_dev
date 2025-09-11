@@ -291,7 +291,7 @@ async function DBBoostXPForAllUsers(BoostCount, client) {
                 	await DBUpdateXP(userId, BoostCount*XpBoostMaggot, client);
 			break;
 
-			case("Cockroach"):
+			case("Fly"):
                 	await DBUpdateXP(userId, BoostCount*XpBoostCoockroach, client);
 			break;
 
@@ -413,6 +413,7 @@ async function DBGetActiveFestering() {
     return snapshot.val() || {};
 }
 async function changeRole(member, roleName, keepXP) {
+
 	console.log(`Change Role called for ${member.id} with role ${roleName}`);
 	const memberRoleArr = member.roles.cache.filter(
 		(r) => r.name !== "@everyone"

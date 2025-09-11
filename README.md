@@ -70,7 +70,7 @@ Discord roles are the "levels" players go through. Each has their own read-only 
 * Roles are:
 	* Poop
 	* Maggot
-	* Cockroach
+	* Fly
 	* Rat
 	* Sub-human
 	* Peasant

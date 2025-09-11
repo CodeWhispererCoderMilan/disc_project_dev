@@ -244,7 +244,7 @@ async function setupConsoleBotEvents(client, lastMessageId) {
 				await handleHigherRoleSizeChange();
 				if (hadRoleBeforePeasant && gameState.isRevolutionActive() 
 					&& !gameState.isCoupActive()){
-					const wasParticipant = gameState.removeRevolutionParticipant(member.id);
+					const wasParticipant = gameState.removeRevolutionParticipant(newMember.id);
 					if(wasParticipant){
 						updateRevolutionAndCoupMessages();
 						updatedRevolutionAndCoupMessages = true;
@@ -259,7 +259,7 @@ async function setupConsoleBotEvents(client, lastMessageId) {
 				handleHigherRoleSizeChange();
 				if (hadRoleBeforeScholar && gameState.isRevolutionActive() &&
 					!gameState.isCoupActive()){
-					const wasParticipant = gameState.removeRevolutionParticipant(member.id);
+					const wasParticipant = gameState.removeRevolutionParticipant(newMember.id);
 					if(wasParticipant){
 						updateRevolutionAndCoupMessages();
 						updatedRevolutionAndCoupMessages = true;
@@ -273,7 +273,7 @@ async function setupConsoleBotEvents(client, lastMessageId) {
 				handleHigherRoleSizeChange();
 				if (hadRoleBeforeMerchant && gameState.isRevolutionActive() &&
 					!gameState.isCoupActive()){
-					const wasParticipant = gameState.removeRevolutionParticipant(member.id);
+					const wasParticipant = gameState.removeRevolutionParticipant(newMember.id);
 					if(wasParticipant){
 						updateRevolutionAndCoupMessages();
 						updatedRevolutionAndCoupMessages = true;
@@ -286,7 +286,7 @@ async function setupConsoleBotEvents(client, lastMessageId) {
 				gameState.setRoleSize("Knight", knights.size);
 				handleHigherRoleSizeChange();
 				if (hadRoleBeforeKnight && gameState.isRevolutionActive()){
-					const wasParticipant = gameState.removeRevolutionParticipant(member.id);
+					const wasParticipant = gameState.removeRevolutionParticipant(newMember.id);
 					if(wasParticipant){
 						updateRevolutionAndCoupMessages();
 						updatedRevolutionAndCoupMessages = true;
@@ -300,7 +300,7 @@ async function setupConsoleBotEvents(client, lastMessageId) {
 				gameState.setRoleSize("Lord", lords.size);
 				handleHigherRoleSizeChange();
 				if (hadRoleBeforeLord && gameState.isRevolutionActive()){
-					gameState.removeRevolutionParticipant(member.id);
+					gameState.removeRevolutionParticipant(newMember.id);
 				}
 				break;
 			case hadRoleBeforeKing || hasRoleNowKing:
@@ -310,7 +310,7 @@ async function setupConsoleBotEvents(client, lastMessageId) {
 				gameState.setRoleSize("King", kings.size);
 				handleHigherRoleSizeChange();
 				if (hadRoleBeforeKing && gameState.isRevolutionActive())
-					gameState.removeRevolutionParticipant(member.id);
+					gameState.removeRevolutionParticipant(newMember.id);
 				break;
 			case hadRoleBeforeNoble || hasRoleNowNoble:
 				const nobles = guild.members.cache.filter((member) =>
@@ -319,7 +319,7 @@ async function setupConsoleBotEvents(client, lastMessageId) {
 				gameState.setRoleSize("Noble", nobles.size);
 				handleHigherRoleSizeChange();
 				if (hadRoleBeforeNoble && gameState.isRevolutionActive())
-					gameState.removeRevolutionParticipant(member.id);
+					gameState.removeRevolutionParticipant(newMember.id);
 				break;
 			case hadRoleBeforeEmperor || hasRoleNowEmperor:
 				const emperors = guild.members.cache.filter((member) =>
@@ -328,7 +328,7 @@ async function setupConsoleBotEvents(client, lastMessageId) {
 				gameState.setRoleSize("Emperor", emperors.size);
 				handleHigherRoleSizeChange();
 				if (hadRoleBeforeEmperor && gameState.isRevolutionActive())
-					gameState.removeRevolutionParticipant(member.id);
+					gameState.removeRevolutionParticipant(newMember.id);
 				break;
 			default:
 				handleHigherRoleSizeChange();
@@ -665,7 +665,6 @@ async function setupConsoleBotEvents(client, lastMessageId) {
 
 	eventEmitter.on("AddRevolutionParticipant", (roleName, userId, targetId) => {
 		try {
-			const coupActive = gameState.isCoupActive();
 			changeRevolutionStatus(roleName, userId, targetId);
 			updateRevolutionAndCoupMessages();
 
@@ -708,6 +707,7 @@ function checkAndFailRevolution() {
 	const coupActive = gameState.isCoupActive();
 	const revolutionSecondPhase = gameState.isRevolutionSecondPhase();
 	const struggleMethod = gameState.getStruggleMethod();
+	const emperorElectionActive = gameState.isEmperorElectionActive();
 	if (revolutionSecondPhase && !emperorElectionActive) {
 		let success = revolutionarySize / peopleSize >= REVOLUTIONTHRESHOLD2;
 		if (coupActive)
@@ -792,14 +792,15 @@ async function handleSecondPhaseRevolutionEnd(client) {
 	const civilParticipants = gameState.getCivilParticipants();
 	const knightParticipants = gameState.getKnightParticipants();
 	const coupActive = gameState.isCoupActive();
-	for(const participant in revolutionParticipants){
+	for(const participant of revolutionParticipants){
 		const targetId = participant.targetId;
+		console.log(`revolution ParticipantId: ${participant.userId}  targetId: ${targetId}`);
 		if(!gameState.checkSelectedRevolutionTarget(targetId)){
 			let targetedNumber = 0;
-			for(const civilParticipant in civilParticipants) {
+			for(const civilParticipant of civilParticipants) {
 				if (targetId === civilParticipant.targetId) targetedNumber++;
 			}
-			for(const knightParticipant in knightParticipants) {
+			for(const knightParticipant of knightParticipants) {
 				if (targetId === knightParticipant.targetId) {
 					if (coupActive) targetedNumber++;
 					else targetedNumber += RevolutionKnightWeight;
@@ -811,38 +812,39 @@ async function handleSecondPhaseRevolutionEnd(client) {
 	let isEmperorDead = false;
 	const targets = gameState.getSelectedRevolutionTargets();
 	const struggleMethod = gameState.getStruggleMethod();
-	for (const target in targets){
+	for (const target of targets){
 		let killTarget = false;
+		console.log(`Revolution targetId: ${target.targetId}  targetCount: ${target.targetCount}`);
 		const guild = await client.guilds.fetch(process.env.GUILDID);
 		await guild.members.fetch();
-		const member = await guild.members.fetch(memberId);
+		const member = await guild.members.fetch(target.targetId);
 		if (coupActive) {
 			if (
 				member.roles.cache.has(
 					process.env.ROLEID_NOBLE
 				) &&
-				target.targetCount > CoupKillNoble
+				target.targetCount >= CoupKillNoble
 			)
 				killTarget = true;
 			else if (
 				member.roles.cache.has(
 					process.env.ROLEID_LORD
 				) &&
-				target.targetCount > CoupKillLord
+				target.targetCount >= CoupKillLord
 			)
 				killTarget = true;
 			else if (
 				member.roles.cache.has(
 					process.env.ROLEID_KING
 				) &&
-				target.targetCount > CoupKillKing
+				target.targetCount >= CoupKillKing
 			)
 				killTarget = true;
 			else if (
 				member.roles.cache.has(
 					process.env.ROLEID_EMPEROR
 				) &&
-				target.targetCount > CoupKillEmperor
+				target.targetCount >= CoupKillEmperor
 			) {
 				killTarget = true;
 				isEmperorDead = true;
@@ -852,35 +854,35 @@ async function handleSecondPhaseRevolutionEnd(client) {
 				member.roles.cache.has(
 					process.env.ROLEID_KNIGHT
 				) &&
-				target.targetCount > RevolutionKillKnight
+				target.targetCount >= RevolutionKillKnight
 			)
 				killTarget = true;
 			else if (
 				member.roles.cache.has(
 					process.env.ROLEID_NOBLE
 				) &&
-				target.targetCount > RevolutionKillNoble
+				target.targetCount >= RevolutionKillNoble
 			)
 				killTarget = true;
 			else if (
 				member.roles.cache.has(
 					process.env.ROLEID_LORD
 				) &&
-				target.targetCount > RevolutionKillLord
+				target.targetCount >= RevolutionKillLord
 			)
 				killTarget = true;
 			else if (
 				member.roles.cache.has(
 					process.env.ROLEID_KING
 				) &&
-				target.targetCount > RevolutionKillKing
+				target.targetCount >= RevolutionKillKing
 			)
 				killTarget = true;
 			else if (
 				member.roles.cache.has(
 					process.env.ROLEID_EMPEROR
 				) &&
-				target.targetCount > RevolutionKillEmperor
+				target.targetCount >= RevolutionKillEmperor
 			) {
 				killTarget = true;
 				isEmperorDead = true;
@@ -889,8 +891,9 @@ async function handleSecondPhaseRevolutionEnd(client) {
 
 		if (killTarget) {
 			await changeRole( member, "Poop", false);
+			
 			await notifyRevolutionResult(
-				`@${target.user.username} has fallen beanth the waves of the ${struggleMethod}.`
+				`@${member.user.username} has fallen beanth the waves of the ${struggleMethod}.`
 			);
 		}
 	};
@@ -918,14 +921,14 @@ async function handleEmperorElectionEnd(client) {
 	const struggleMethod = gameState.getStruggleMethod();
 	const refinedCandidates = {};
 	let maximumVotes = 0;
-	for(const participant in emperorElectionParticipants){
+	for(const participant of emperorElectionParticipants){
 		const candidateId = participant.targetId;
 		if(!gameState.checkSelectedRevolutionTarget(targetId)){
 			let voteCount = 0;
-			for(const civilParticipant in civilParticipants) {
+			for(const civilParticipant of civilParticipants) {
 				if (candidateId === civilParticipant.targetId) voteCount++;
 			}
-			for(const knightParticipant in knightParticipants) {
+			for(const knightParticipant of knightParticipants) {
 				if (candidateId === knightParticipant.targetId) {
 					voteCount += RevolutionKnightWeight;
 				}
@@ -937,7 +940,7 @@ async function handleEmperorElectionEnd(client) {
 		}
 	}
 	const initialCandidates = gameState.getSelectedRevolutionTargets();
-	for(const candidate in initialCandidates) {
+	for(const candidate of initialCandidates) {
 		if (candidate.targetCount != maximumVotes) {
 			gameState.removeRevolutionTarget(candidate.targetId);		
 		}	

@@ -759,6 +759,7 @@ async function updateMessage(client, lastMessageId,emperorReelectionSelectMenu) 
 		const channel = await client.channels.fetch(process.env.CHANNELIDPEASANT);
 		const messageToEdit = await channel.messages.fetch(lastMessageId);
 		const serverText = gameState.isServerDown() ? "!!!!!!!!!!!!!!!!! SERVER IS DOWN !!!!!!!!!!!!!!!!!" : "";
+		revolutionStatusMsg = "";
 		let actionRow_0 = new ActionRowBuilder().addComponents(
 			await buildSelectMenu(
 				client,

@@ -468,7 +468,7 @@ async function updateMessage(client, lastMessageId, emperorReelectionSelectMenu)
 		const channel = await client.channels.fetch(process.env.CHANNELIDSCHOLAR);
 		const serverText = gameState.isServerDown() ? "!!!!!!!!!!!!!!!!! SERVER IS DOWN !!!!!!!!!!!!!!!!!" : "";
 		const messageToEdit = await channel.messages.fetch(lastMessageId);
-
+		revolutionStatusMsg = "";
 		let actionRow_0 = new ActionRowBuilder().addComponents(
 			await buildSelectMenu(
 				client,
@@ -527,7 +527,7 @@ async function updateMessage(client, lastMessageId, emperorReelectionSelectMenu)
 						.setStyle(ButtonStyle.Danger)
 						.setDisabled(gameState.isServerDown());
 					if (actionRow_1.components[2]) actionRow_1.components.splice(2, 1);
-					revolutionStatusMsg = `\nLet's vote a new emperor.  (Joined ${revolutionarySize} members.)`;
+					revolutionStatusMsg = `\nLet's vote a new emperor.  (Joined ${gameState.getRevolutionarySize()} members.)`;
 				}
 				if (gameState.isReelectionActive()) {
 					actionRow_0 = emperorReelectionSelectMenu;

@@ -908,6 +908,7 @@ function getWritType(type) {
 	}
 }
 
+
 async function performCutDown(interaction, targetId) {
 	const target = await interaction.guild.members.fetch(targetId);
 	await changeRole(target, "Poop", false);
@@ -923,6 +924,7 @@ async function updateMessage(client, lastMessageId, emperorReelectionSelectMenu)
 		const channel = await client.channels.fetch(process.env.CHANNELIDKNIGHT);
 		const messageToEdit = await channel.messages.fetch(lastMessageId);
 		const serverText = gameState.isServerDown() ? "!!!!!!!!!!!!!!!!! SERVER IS DOWN !!!!!!!!!!!!!!!!!" : "";
+		revolutionStatusMsg = "";
 
 		let actionRow_0 = new ActionRowBuilder().addComponents(
 			await buildSelectMenu(
@@ -1105,6 +1107,7 @@ async function messageKnightCommands(client) {
 	try {
 		channel = await client.channels.fetch(process.env.CHANNELIDKNIGHT);
 		const serverText = gameState.isServerDown() ? "!!!!!!!!!!!!!!!!! SERVER IS DOWN !!!!!!!!!!!!!!!!!" : "";
+		revolutionStatusMsg = "";
 		const actionRow_0 = new ActionRowBuilder().addComponents(
 			await buildSelectMenu(
 				client,

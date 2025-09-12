@@ -20,7 +20,8 @@ const {
 	DBClearFestering,
 	DBSetRole,
 	DBResetXP,
-	changeRole
+	changeRole,
+	openThreshold
 } = require("../apis/firebase/querys.js");
 const {
 	CacheIsPoopBeingFestered,
@@ -732,6 +733,7 @@ function handleHigherRoleSizeChange(){
 	const disableCoup = gameState.getDisableCoup();
 	const knightSize = gameState.getRoleSize("Knight");
 	const playerCount = gameState.getPlayerCount();
+	console.log(`HigherRoleSize: ${higherRoleSize}  PlayerCount: ${playerCount}  HigherRoleRatio: ${higherRoleSize/playerCount}  DisableRevolution: ${disableRevolution}  DisableCoup: ${disableCoup}`);
 	if (((higherRoleSize >= MinimumHigherRoleSizeForRevolution) &&
 		(higherRoleSize/playerCount >= MinimumHigherRoleRatioForRevolution)) &&
 		disableRevolution === true){
@@ -971,6 +973,13 @@ async function handleEmperorElectionEnd(client) {
 			await handleEmperorElectionEnd(client);
 		}, RevolutionEmperorElectionTime);
 	} else {
+	 	if(gameState.getEmperorElectionRoleSize() === 0){
+			gameState.resetRevolution();
+			eventEmitter.emit(`${struggleMethod}Finished`);
+			eventEmitter.emit("EmperorElectionNoCandidates");
+			notifyRevolutionResult(`No one is eligible to be elected as emperor. The struggle has ended in chaos. A worhy emperor will spring forth soon enough.`);
+			return;
+		}
 		notifyRevolutionResult(
 			`No one participated in election! Let's vote a new emperor.`
 		);

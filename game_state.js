@@ -195,6 +195,9 @@ module.exports = {
 	getHigherRoleSize: () => {
 		return roleSizes["Lord"] + roleSizes["King"] + roleSizes["Noble"] + roleSizes["Emperor"]; 
 	},
+	getEmperorElectionRoleSize: () => {
+		return roleSize["Knight"] + roleSizes["Lord"] + roleSizes["King"] + roleSizes["Noble"];
+	},
 	getAllRoleSizes: () => ({ ...roleSizes }),
 
 	// Knight & King Sizes

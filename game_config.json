@@ -134,7 +134,7 @@
 	"RevolutionKillNoble": 3,
 	"RevolutionKillLord": 3,
 	"RevolutionKillKing": 1,
-	"RevolutionKillEmperor": 2,
+	"RevolutionKillEmperor": 1,
 	"REVOLUTIONTHRESHOLD" : 0.1,
 	"REVOLUTIONTHRESHOLD2" : 0.1,
 	"COUPTHRESHOLD" : 0.5,

@@ -398,6 +398,16 @@ async function setupEmperorBotEvents(client, lastMessageId) {
 			showErrorMsg(err);
 		}
 	});
+	eventEmitter.on("EmperorElectionNoCandidates", async () => {
+			selectedKing = null;
+			selectedLord = null;
+			selectedKnight = null;
+			selectedHuman = null;
+			await openThreshold(12, client);
+			eventEmitter.emit("EmperorVanished", member.username);
+			await updateSelectMenu(client, lastMessageId);
+	});
+
 }
 function buildImperialWritModal(){
 	const modal = new ModalBuilder()

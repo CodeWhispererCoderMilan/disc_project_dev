@@ -43,6 +43,7 @@ const { eventEmitter } = require("../functions/eventEmitter.js");
 const gameState = require("../game_state.js");
 
 let selectedRevolutionTargets = {};
+let selectedEmperorCandidates = {};
 let selectedBribeTargets = {};
 let bribeTargetId = null;
 let selectedEndowTargets = {};
@@ -96,7 +97,22 @@ async function setupMerchantBotEvents(client, lastMessageId) {
 			await CacheClearTargetEndows(member.id);
 			await CacheClearMerchantEndows(member.id);
 		}
-
+		if ((hadRoleBeforeKnight || hadRoleBeforeNoble || hadRoleBeforeLord || 
+			hadRoleBeforeKing || hadRoleBeforeEmperor) && !gameState.isEmperorElectionActive()) {
+			for (let userId in selectedRevolutionTargets) {
+				if (selectedRevolutionTargets[userId] && selectedRevolutionTargets[userId].id === member.id) {
+					selectedRevolutionTargets[userId] = null;
+				}
+			}
+		}
+		if ((hadRoleBeforeKnight || hadRoleBeforeNoble || hadRoleBeforeLord || 
+			hadRoleBeforeKing) && gameState.isEmperorElectionActive()) {
+			for (let userId in selectedEmperorCandidates) {
+				if (selectedEmperorCandidates[userId] && selectedEmperorCandidates[userId].id === member.id) {
+					selectedEmperorCandidates[userId] = null;
+				}
+			}
+		}
 		if (
 			hadRoleBeforePeasant ||
 			hadRoleBeforeScholar ||
@@ -159,6 +175,22 @@ async function setupMerchantBotEvents(client, lastMessageId) {
 		if(hadRoleBeforeMerchant || hasRoleNowMerchant){
 			await CacheClearTargetEndows(oldMember.id);
 			await CacheClearMerchantEndows(oldMember.id);
+		}
+		if ((hadRoleBeforeKnight || hadRoleBeforeNoble || hadRoleBeforeLord || 
+			hadRoleBeforeKing || hadRoleBeforeEmperor) && !gameState.isEmperorElectionActive()) {
+			for (let userId in selectedRevolutionTargets) {
+				if (selectedRevolutionTargets[userId] && selectedRevolutionTargets[userId].id === oldMember.id) {
+					selectedRevolutionTargets[userId] = null;
+				}
+			}
+		}
+		if ((hadRoleBeforeKnight || hadRoleBeforeNoble || hadRoleBeforeLord || 
+			hadRoleBeforeKing) && gameState.isEmperorElectionActive()) {
+			for (let userId in selectedEmperorCandidates) {
+				if (selectedEmperorCandidates[userId] && selectedEmperorCandidates[userId].id === oldMember.id) {
+					selectedEmperorCandidates[userId] = null;
+				}
+			}
 		}
 		if (
 			hadRoleBeforePeasant ||
@@ -234,7 +266,7 @@ async function setupMerchantBotEvents(client, lastMessageId) {
 			const userId = interaction.user.id;
 			let selectedCandidateId = interaction.values[0];
 			try {
-				selectedRevolutionTargets[userId] =
+				selectedEmperorCandidates[userId] =
 					await interaction.guild.members.cache.get(selectedCandidateId);
 				await interaction.deferUpdate();
 			} catch (err) {
@@ -380,6 +412,7 @@ async function setupMerchantBotEvents(client, lastMessageId) {
 				try {
 
 					eventEmitter.emit("StartRevolution", userId, target.user.id, "Merchant");
+					selectedRevolutionTargets.delete(userId);
 					await sendInteractionReply(
 						interaction,
 						"Revolution started, waiting for others to join."
@@ -414,6 +447,7 @@ async function setupMerchantBotEvents(client, lastMessageId) {
 					userId,
 					target.user.id
 				);
+				selectedRevolutionTargets.delete(userId);
 
 				await sendInteractionReply(
 					interaction,
@@ -447,80 +481,7 @@ async function setupMerchantBotEvents(client, lastMessageId) {
 				await sendInteractionReply(
 					interaction,
 					`You have withdrawn the revolution`
-				);eventEmitter.on("RevolutionStarted", async () => {
-		try {
-			if(gameState.isRevolutionActive() && !gameState.isCoupActive())await updateMessage(client, lastMessageId);
-		} catch (err) {
-			throw err;
-		}
-	});
-	eventEmitter.on("CoupStarted", async () => {
-		try {
-			if(gameState.isRevolutionActive() && gameState.isCoupActive())
-				await updateMessage(client, lastMessageId);
-		} catch (err) {
-			throw err;
-		}
-	});
-	eventEmitter.on("CoupFinished", async () => {
-		try {
-			if(!gameState.isRevolutionActive() && !gameState.isCoupActive()) 
-				await updateMessage(client, lastMessageId);
-		} catch (err) {
-			throw err;
-		}
-	});
-	eventEmitter.on("RevolutionFinished", async () => {
-		try {
-			if(!gameState.isRevolutionActive()) 
-				await updateMessage(client, lastMessageId);
-		} catch (err) {
-			throw err;
-		}
-	});
-	eventEmitter.on("RevolutionMovedToSecondPhase", async () => {
-		try {
-			if(gameState.isRevolutionSecondPhase() && !gameState.isCoupActive())await updateMessage(client, lastMessageId);
-		} catch (err) {
-			throw err;
-		}
-	});
-	eventEmitter.on("RevolutionMovedInEmperorElection", async () => {
-		try {
-			if(gameState.isEmperorElectionActive() && !gameState.isCoupActive()) await updateMessage(client, lastMessageId);
-		} catch (err) {
-			throw err;
-		}
-	});
-	eventEmitter.on("RevolutionMovedInEmperorReelection", async (emperorReelectionSelectMenu) => {
-		try {
-			if(gameState.isReelectionActive() && !gameState.isCoupActive())
-				await updateMessage(client, lastMessageId, emperorReelectionSelectMenu);
-		} catch (err) {
-			throw err;
-		}
-	});
-	eventEmitter.on("UpdateRevolutionMessage", async () => {
-		try {
-			if(gameState.isRevolutionActive() && !gameState.isCoupActive()) 
-				await updateMessage(client, lastMessageId);
-		} catch (err) {
-			showErrorMsg(err);
-		}
-	});
-	eventEmitter.on("ElectionEnthronement", async (emperorUsername) => {
-		try {
-			const channel = await client.channels.fetch(process.env.CHANNELIDSCHOLAR);
-			const tmpMessage = await channel.send(
-				`Hail our new Emperor! ${emperorUsername}, youy have risen to the mountain spring in the spray of revolution, may your rule last 1000 years!`
-			);
-			setTimeout(() => {
-				tmpMessage.delete().catch(showErrorMsg);
-			}, 30000);
-		} catch (err) {
-			showErrorMsg(err);
-		}
-	});
+				);
 			}
 			if (interaction.customId === "VoteEmperor") {
 				try {
@@ -533,7 +494,7 @@ async function setupMerchantBotEvents(client, lastMessageId) {
 					}
 
 					const userId = interaction.user.id;
-					if (!selectedRevolutionTargets[userId]) {
+					if (!selectedEmperorCandidates[userId]) {
 						await sendInteractionReply(interaction, "No member selected");
 						return;
 					}
@@ -553,8 +514,9 @@ async function setupMerchantBotEvents(client, lastMessageId) {
 						"AddRevolutionParticipant",
 						"Merchant",
 						userId,
-						selectedRevolutionTargets[userId].user.id
+						selectedEmperorCandidates[userId].user.id
 					);
+					selectedEmperorCandidates.delete(userId);
 
 					await sendInteractionReply(
 						interaction,

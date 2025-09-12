@@ -36,6 +36,7 @@ const gameState = require("../game_state.js");
 
 let selectedRevolutionTargets = {};
 let selectedMobFlayingTargets = {};
+let selectedEmperorCandidates = {};
 let peasants = [];
 let peasantsSize = 1;
 let mobFlayingInitiatorId = null;
@@ -121,18 +122,32 @@ async function setupPeasantBotEvents(client, lastMessageId) {
 			// Clear mob flaying targets
 			if ((hadRoleBeforePeasant||hadRoleBeforeSubHuman) && !mobFlayingActive && !gameState.isRevolutionActive()) {
 				for (let userId in selectedMobFlayingTargets) {
-					if (selectedMobFlayingTargets[userId] && selectedMobFlayingTargets[userId].id === member.id) {let selectedRevolutionTargets = {};
+					if (selectedMobFlayingTargets[userId] && selectedMobFlayingTargets[userId].id === member.id) {
 						selectedMobFlayingTargets[userId] = null;
 					}
 					await updateMessage(client,lastMessageId);
 				}
 			}
 			// Clear revolution targets
-			if (hadRoleBeforeKnight || hadRoleBeforeNoble || hadRoleBeforeLord || 
-				hadRoleBeforeKing || hadRoleBeforeEmperor) {
-
+			if ((hadRoleBeforeKnight || hadRoleBeforeNoble || hadRoleBeforeLord || 
+				hadRoleBeforeKing || hadRoleBeforeEmperor) && !gameState.isEmperorElectionActive()) {
+				for (let userId in selectedRevolutionTargets) {
+					if (selectedRevolutionTargets[userId] && selectedRevolutionTargets[userId].id === member.id) {
+						selectedRevolutionTargets[userId] = null;
+					}
+				}
 				await updateMessage(client, lastMessageId);
 			}
+			if ((hadRoleBeforeKnight || hadRoleBeforeNoble || hadRoleBeforeLord || 
+				hadRoleBeforeKing) && gameState.isEmperorElectionActive()) {
+				for (let userId in selectedEmperorCandidates) {
+					if (selectedEmperorCandidates[userId] && selectedEmperorCandidates[userId].id === member.id) {
+						selectedEmperorCandidates[userId] = null;
+					}
+				}
+				await updateMessage(client, lastMessageId);
+			}
+
 		} catch (err) {
 			showErrorMsg(err);
 		}
@@ -200,7 +215,7 @@ async function setupPeasantBotEvents(client, lastMessageId) {
 							await ceaseMobFlaying(client, lastMessageId);
 							return;
 						} else if (participationRate >= MobFlayingSuccessThreadshold) {
-							await ceaseMobFlaying(client, lastMessageId);let selectedRevolutionTargets = {};
+							await ceaseMobFlaying(client, lastMessageId);
 						} else {
 							await updateMessage(client, lastMessageId);
 						}
@@ -229,11 +244,6 @@ async function setupPeasantBotEvents(client, lastMessageId) {
 			}
 		}
 		if (
-			hadRoleBeforeKnight ||
-			hadRoleBeforeNoble ||
-			hadRoleBeforeLord ||
-			hadRoleBeforeKing ||
-			hadRoleBeforeEmperor ||
 			hasRoleNowKnight ||
 			hasRoleNowNoble ||
 			hasRoleNowLord ||
@@ -251,7 +261,7 @@ async function setupPeasantBotEvents(client, lastMessageId) {
 			!gameState.isRevolutionActive()
 		) {
 			for (let userId in selectedMobFlayingTargets) {
-				if (selectedMobFlayingTargets[userId] && selectedMobFlayingTargets[userId].id === member.id) {
+				if (selectedMobFlayingTargets[userId] && selectedMobFlayingTargets[userId].id === oldMember.id) {
 					selectedMobFlayingTargets[userId] = null;
 				}
 			}
@@ -260,6 +270,24 @@ async function setupPeasantBotEvents(client, lastMessageId) {
 			} catch (err) {
 				showErrorMsg(err);
 			}
+		}
+		if ((hadRoleBeforeKnight || hadRoleBeforeNoble || hadRoleBeforeLord || 
+			hadRoleBeforeKing || hadRoleBeforeEmperor) && !gameState.isEmperorElectionActive()) {
+			for (let userId in selectedRevolutionTargets) {
+				if (selectedRevolutionTargets[userId] && selectedRevolutionTargets[userId].id === oldMember.id) {
+					selectedRevolutionTargets[userId] = null;
+				}
+			}
+			await updateMessage(client, lastMessageId);
+		}
+		if ((hadRoleBeforeKnight || hadRoleBeforeNoble || hadRoleBeforeLord || 
+			hadRoleBeforeKing) && gameState.isEmperorElectionActive()) {
+			for (let userId in selectedEmperorCandidates) {
+				if (selectedEmperorCandidates[userId] && selectedEmperorCandidates[userId].id === oldMember.id) {
+					selectedEmperorCandidates[userId] = null;
+				}
+			}
+			await updateMessage(client, lastMessageId);
 		}
 	});
 
@@ -294,7 +322,7 @@ async function setupPeasantBotEvents(client, lastMessageId) {
 			const userId = interaction.user.id;
 			let selectedCandidateId = interaction.values[0];
 			try {
-				selectedRevolutionTargets[userId] =
+				selectedEmperorCandidates[userId] =
 					await interaction.guild.members.cache.get(selectedCandidateId);
 				await interaction.deferUpdate();
 			} catch (err) {
@@ -388,10 +416,11 @@ async function setupPeasantBotEvents(client, lastMessageId) {
 				return;
 			}
 
-			
+
 			try {
 
 				eventEmitter.emit("StartRevolution", userId, target.user.id, "Peasant");
+				selectedRevolutionTargets.delete(userId);
 				await sendInteractionReply(
 					interaction,
 					"Revolution started, waiting for others to join."
@@ -427,7 +456,7 @@ async function setupPeasantBotEvents(client, lastMessageId) {
 				userId,
 				target.user.id
 			);
-
+			selectedRevolutionTargets.delete(userId);
 			await sendInteractionReply(	
 				interaction,
 				`You have joined the revolution with target @${target.user.username}.`
@@ -473,7 +502,7 @@ async function setupPeasantBotEvents(client, lastMessageId) {
 				}
 
 				const userId = interaction.user.id;
-				if (!selectedRevolutionTargets[userId]) {
+				if (!selectedEmperorCandidates[userId]) {
 					await sendInteractionReply(interaction, "No member selected");
 					return;
 				}
@@ -490,7 +519,7 @@ async function setupPeasantBotEvents(client, lastMessageId) {
 					"AddRevolutionParticipant",
 					"Peasant",
 					userId,
-					selectedRevolutionTargets[userId].user.id
+					selectedEmperorCandidates[userId].user.id
 				);
 
 				await sendInteractionReply(
@@ -629,7 +658,7 @@ async function setupPeasantBotEvents(client, lastMessageId) {
 			showErrorMsg(err);
 		}
 	});
-					eventEmitter.on("NotifyPeasantChannel", async (msg) => {
+	eventEmitter.on("NotifyPeasantChannel", async (msg) => {
 		try {
 			let channel = await client.channels.fetch(process.env.CHANNELIDPEASANT);
 			const message = await channel.send({
@@ -667,8 +696,9 @@ async function setupPeasantBotEvents(client, lastMessageId) {
 	});
 	eventEmitter.on("RevolutionFinished", async () => {
 		try {
-			if(!gameState.isRevolutionActive()) 
+			if(!gameState.isRevolutionActive()){
 				await updateMessage(client, lastMessageId);
+			}
 		} catch (err) {
 			throw err;
 		}

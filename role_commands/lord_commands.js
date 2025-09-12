@@ -85,12 +85,12 @@ async function setupLordBotEvents(client, lastMessageId) {
 			hadRoleBeforeNoble ||hadRoleBeforeKnight || hadRoleBeforeSubhuman
 			) {
 			if(member.id != electionCandidateId) await updateMessage(client, lastMessageId);
-			for(let userId in selectedHumans){
+			for(let userId of selectedHumans){
 				if(selectedHumans[userId] && selectedHumans[userId].id === member.id){
 					selectedHumans[userId] = null;
 				}
 			}
-			for(let userId in selectedKnights){
+			for(let userId of selectedKnights){
 				if(selectedKnights[userId] && selectedKnights[userId].id === member.id){
 					selectedKnights[userId] = null;
 				}
@@ -209,12 +209,12 @@ async function setupLordBotEvents(client, lastMessageId) {
 			newMember.roles.cache.has(process.env.ROLEID_MERCHANT) ||
 			newMember.roles.cache.has(process.env.ROLEID_NOBLE)) {
 			if(newMember.id != electionCandidateId) await updateMessage(client, lastMessageId);
-			for(let userId in selectedHumans){
+			for(let userId of selectedHumans){
 				if(selectedHumans[userId] && selectedHumans[userId].id === oldMember.id){
 					selectedHumans[userId] = null;
 				}
 			}
-			for(let userId in selectedKnights){
+			for(let userId of selectedKnights){
 				if(selectedKnights[userId] && selectedKnights[userId].id === oldMember.id){
 					selectedKnights[userId] = null;
 				}

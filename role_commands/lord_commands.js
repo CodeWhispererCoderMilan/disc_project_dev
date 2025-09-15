@@ -209,12 +209,12 @@ async function setupLordBotEvents(client, lastMessageId) {
 			newMember.roles.cache.has(process.env.ROLEID_MERCHANT) ||
 			newMember.roles.cache.has(process.env.ROLEID_NOBLE)) {
 			if(newMember.id != electionCandidateId) await updateMessage(client, lastMessageId);
-			for(let userId of selectedHumans){
+			for(let userId in selectedHumans){
 				if(selectedHumans[userId] && selectedHumans[userId].id === oldMember.id){
 					selectedHumans[userId] = null;
 				}
 			}
-			for(let userId of selectedKnights){
+			for(let userId in selectedKnights){
 				if(selectedKnights[userId] && selectedKnights[userId].id === oldMember.id){
 					selectedKnights[userId] = null;
 				}

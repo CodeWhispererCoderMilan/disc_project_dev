@@ -31,6 +31,7 @@ const {
 const { eventEmitter } = require("../functions/eventEmitter.js");
 
 let selectedRevolutionTargets = {};
+let selectedEmperorCandidates = {};
 const initContent =TextScholarMessageContent;
 let revolutionStatusMsg = "";
 
@@ -64,7 +65,22 @@ async function setupScholarBotEvents(client, lastMessageId) {
 		const hadRoleBeforeEmperor = member.roles.cache.has(
 			process.env.ROLEID_EMPEROR
 		);
-
+		if ((hadRoleBeforeKnight || hadRoleBeforeNoble || hadRoleBeforeLord || 
+			hadRoleBeforeKing || hadRoleBeforeEmperor) && !gameState.isEmperorElectionActive()) {
+			for (let userId in selectedRevolutionTargets) {
+				if (selectedRevolutionTargets[userId] && selectedRevolutionTargets[userId].id === member.id) {
+					selectedRevolutionTargets[userId] = null;
+				}
+			}
+		}
+		if ((hadRoleBeforeKnight || hadRoleBeforeNoble || hadRoleBeforeLord || 
+			hadRoleBeforeKing) && gameState.isEmperorElectionActive()) {
+			for (let userId in selectedEmperorCandidates) {
+				if (selectedEmperorCandidates[userId] && selectedEmperorCandidates[userId].id === member.id) {
+					selectedEmperorCandidates[userId] = null;
+				}
+			}
+		}
 		if (
 			hadRoleBeforeKnight ||
 			hadRoleBeforeNoble ||
@@ -106,7 +122,22 @@ async function setupScholarBotEvents(client, lastMessageId) {
 		const hasRoleNowEmperor = newMember.roles.cache.has(
 			process.env.ROLEID_EMPEROR
 		);
-
+		if ((hadRoleBeforeKnight || hadRoleBeforeNoble || hadRoleBeforeLord || 
+			hadRoleBeforeKing || hadRoleBeforeEmperor) && !gameState.isEmperorElectionActive()) {
+			for (let userId in selectedRevolutionTargets) {
+				if (selectedRevolutionTargets[userId] && selectedRevolutionTargets[userId].id === newMember.id) {
+					selectedRevolutionTargets[userId] = null;
+				}
+			}
+		}
+		if ((hadRoleBeforeKnight || hadRoleBeforeNoble || hadRoleBeforeLord || 
+			hadRoleBeforeKing) && gameState.isEmperorElectionActive()) {
+			for (let userId in selectedEmperorCandidates) {
+				if (selectedEmperorCandidates[userId] && selectedEmperorCandidates[userId].id === newMember.id) {
+					selectedEmperorCandidates[userId] = null;
+				}
+			}
+		}
 
 		if (
 			hadRoleBeforeKnight ||
@@ -146,7 +177,7 @@ async function setupScholarBotEvents(client, lastMessageId) {
 			const userId = interaction.user.id;
 			let selectedCandidateId = interaction.values[0];
 			try {
-				selectedRevolutionTargets[userId] =
+				selectedEmperorCandidates[userId] =
 					await interaction.guild.members.cache.get(selectedCandidateId);
 				await interaction.deferUpdate();
 			} catch (err) {
@@ -220,6 +251,7 @@ async function setupScholarBotEvents(client, lastMessageId) {
 				try {
 
 					eventEmitter.emit("StartRevolution", userId, target.user.id, "Scholar");
+					delete selectedRevolutionTargets[userId];
 					await sendInteractionReply(
 						interaction,
 						"Revolution started, waiting for others to join."
@@ -258,7 +290,7 @@ async function setupScholarBotEvents(client, lastMessageId) {
 					userId,
 					target.user.id
 				);
-
+				delete selectedRevolutionTargets[userId];
 				await sendInteractionReply(
 					interaction,
 					`You have joined the revolution with target @${target.user.username}.`
@@ -327,7 +359,7 @@ async function setupScholarBotEvents(client, lastMessageId) {
 						userId,
 						selectedRevolutionTargets[userId].user.id
 					);
-
+					delete selectedRevolutionTargets[userId];
 					await sendInteractionReply(
 						interaction,
 						"You have joined the election."

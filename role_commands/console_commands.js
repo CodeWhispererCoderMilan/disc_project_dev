@@ -925,7 +925,7 @@ async function handleEmperorElectionEnd(client) {
 	let maximumVotes = 0;
 	for(const participant of emperorElectionParticipants){
 		const candidateId = participant.targetId;
-		if(!gameState.checkSelectedRevolutionTarget(targetId)){
+		if(!gameState.checkSelectedRevolutionTarget(candidateId)){
 			let voteCount = 0;
 			for(const civilParticipant of civilParticipants) {
 				if (candidateId === civilParticipant.targetId) voteCount++;
@@ -959,7 +959,7 @@ async function handleEmperorElectionEnd(client) {
 		await changeRole( targetMember, "Emperor", true);
 		gameState.resetRevolution();
 		eventEmitter.emit(`${struggleMethod}Finished`);
-		eventEmitter.emit("ElectionEnthronement", target.user.username);
+		eventEmitter.emit("ElectionEnthronement", targetMember.user.username);
 		notifyRevolutionResult(`${targetMember.user.username} has been elected Emperor. Order has been restored to Griefhem`);
 	} else if (finalCandidatesCount > 1) {
 		gameState.resetRevolutionParticipants();

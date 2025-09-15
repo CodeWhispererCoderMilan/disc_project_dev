@@ -420,7 +420,7 @@ async function setupPeasantBotEvents(client, lastMessageId) {
 			try {
 
 				eventEmitter.emit("StartRevolution", userId, target.user.id, "Peasant");
-				selectedRevolutionTargets.delete(userId);
+				delete selectedRevolutionTargets[userId];
 				await sendInteractionReply(
 					interaction,
 					"Revolution started, waiting for others to join."
@@ -456,7 +456,7 @@ async function setupPeasantBotEvents(client, lastMessageId) {
 				userId,
 				target.user.id
 			);
-			selectedRevolutionTargets.delete(userId);
+			delete selectedRevolutionTargets[userId];
 			await sendInteractionReply(	
 				interaction,
 				`You have joined the revolution with target @${target.user.username}.`
@@ -521,7 +521,7 @@ async function setupPeasantBotEvents(client, lastMessageId) {
 					userId,
 					selectedEmperorCandidates[userId].user.id
 				);
-
+				delete selectedEmperorCandidates[userId];
 				await sendInteractionReply(
 					interaction,
 					"You have joined the election."

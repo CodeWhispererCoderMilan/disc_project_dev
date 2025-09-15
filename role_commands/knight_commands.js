@@ -52,6 +52,7 @@ let siegeActive = false;
 let siegeParticipants = new Set();
 let siegeTimeout;
 let selectedRevolutionTargets = {};
+let selectedEmperorCandidates = {};
 let selectedCoupTargets = {};
 const initContent = TextKnightMessageContent;
 let siegeStatusMsg = "";
@@ -132,6 +133,22 @@ async function setupKnightBotEvents(client, lastMessageId) {
 					console.log(
 						`Removed ${member.user.username} from Cut Dowm targets`
 					);
+				}
+			}
+		}
+		if ((hadRoleBeforeKnight || hadRoleBeforeNoble || hadRoleBeforeLord || 
+			hadRoleBeforeKing || hadRoleBeforeEmperor) && !gameState.isEmperorElectionActive()) {
+			for (let userId in selectedRevolutionTargets) {
+				if (selectedRevolutionTargets[userId] && selectedRevolutionTargets[userId].id === member.id) {
+					selectedRevolutionTargets[userId] = null;
+				}
+			}
+		}
+		if ((hadRoleBeforeKnight || hadRoleBeforeNoble || hadRoleBeforeLord || 
+			hadRoleBeforeKing) && gameState.isEmperorElectionActive()) {
+			for (let userId in selectedEmperorCandidates) {
+				if (selectedEmperorCandidates[userId] && selectedEmperorCandidates[userId].id === member.id) {
+					selectedEmperorCandidates[userId] = null;
 				}
 			}
 		}
@@ -230,6 +247,22 @@ async function setupKnightBotEvents(client, lastMessageId) {
 				}
 			}
 		}
+		if ((hadRoleBeforeKnight || hadRoleBeforeNoble || hadRoleBeforeLord || 
+			hadRoleBeforeKing || hadRoleBeforeEmperor) && !gameState.isEmperorElectionActive()) {
+			for (let userId in selectedRevolutionTargets) {
+				if (selectedRevolutionTargets[userId] && selectedRevolutionTargets[userId].id === newMember.id) {
+					selectedRevolutionTargets[userId] = null;
+				}
+			}
+		}
+		if ((hadRoleBeforeKnight || hadRoleBeforeNoble || hadRoleBeforeLord || 
+			hadRoleBeforeKing) && gameState.isEmperorElectionActive()) {
+			for (let userId in selectedEmperorCandidates) {
+				if (selectedEmperorCandidates[userId] && selectedEmperorCandidates[userId].id === newMember.id) {
+					selectedEmperorCandidates[userId] = null;
+				}
+			}
+		}
 		if (
 			hadRoleBeforePeasant ||
 			hadRoleBeforeScholar ||
@@ -296,7 +329,7 @@ async function setupKnightBotEvents(client, lastMessageId) {
 			const userId = interaction.user.id;
 			let selectedCandidateId = interaction.values[0];
 			try {
-				selectedRevolutionTargets[userId] =
+				selectedEmperorCandidatess[userId] =
 					await interaction.guild.members.cache.get(selectedCandidateId);
 				await interaction.deferUpdate();
 			} catch (err) {
@@ -455,6 +488,7 @@ async function setupKnightBotEvents(client, lastMessageId) {
 			try {
 
 				eventEmitter.emit("StartRevolution", userId, target.user.id, "Knight");
+				delete selectedRevolutionTargets[userId];
 				await sendInteractionReply(
 					interaction,
 					"Revolution started, waiting for others to join."
@@ -523,7 +557,7 @@ async function setupKnightBotEvents(client, lastMessageId) {
 				userId,
 				target.user.id
 			);
-
+			delete selectedRevolutionTargets[userId];
 			await sendInteractionReply(
 				interaction,
 				`You have joined the revolution with target @${target.user.username}.`
@@ -553,7 +587,7 @@ async function setupKnightBotEvents(client, lastMessageId) {
 				userId,
 				target.user.id
 			);
-
+			delete selectedCoupTargets[userId];
 			await sendInteractionReply(
 				interaction,
 				`You have joined the coup with target @${target.user.username}.`
@@ -619,9 +653,9 @@ async function setupKnightBotEvents(client, lastMessageId) {
 					"AddRevolutionParticipant",
 					"Knight",
 					userId,
-					selectedRevolutionTargets[userId].user.id
+					selectedEmperorCandidates[userId].user.id
 				);
-
+				delete selectedEmperorCandidates[userId];
 				await sendInteractionReply(
 					interaction,
 					"You have joined the election."

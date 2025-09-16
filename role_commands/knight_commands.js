@@ -329,7 +329,7 @@ async function setupKnightBotEvents(client, lastMessageId) {
 			const userId = interaction.user.id;
 			let selectedCandidateId = interaction.values[0];
 			try {
-				selectedEmperorCandidatess[userId] =
+				selectedEmperorCandidates[userId] =
 					await interaction.guild.members.cache.get(selectedCandidateId);
 				await interaction.deferUpdate();
 			} catch (err) {
@@ -633,7 +633,7 @@ async function setupKnightBotEvents(client, lastMessageId) {
 				}
 
 				const userId = interaction.user.id;
-				if (!selectedRevolutionTargets[userId]) {
+				if (!selectedEmperorCandidates[userId]) {
 					await sendInteractionReply(interaction, "No member selected");
 					return;
 				}
@@ -728,7 +728,6 @@ async function setupKnightBotEvents(client, lastMessageId) {
 	});
 	eventEmitter.on("RevolutionFinished", async () => {
 		try {
-			if(!gameState.isRevolutionActive())
 				await updateMessage(client, lastMessageId);
 		} catch (err) {
 			throw err;
@@ -778,7 +777,7 @@ async function setupKnightBotEvents(client, lastMessageId) {
 		try {
 			const channel = await client.channels.fetch(process.env.CHANNELIDKNIGHT);
 			const tmpMessage = await channel.send(
-				`Hail our new Emperor! ${emperorUsername}, youy have risen to the mountain spring in the spray of revolution, may your rule last 1000 years!`
+				`Hail our new Emperor! ${emperorUsername}, you have risen to the mountain spring in the spray of revolution, may your rule last 1000 years!`
 			);
 			setTimeout(() => {
 				tmpMessage.delete().catch(showErrorMsg);
@@ -1015,7 +1014,7 @@ async function updateMessage(client, lastMessageId, emperorReelectionSelectMenu)
 				.setStyle(ButtonStyle.Danger)
 				.setDisabled(gameState.isServerDown());
 			if (gameState.isRevolutionActive()) {
-				if (gameState.isRevolutionSecondPhase && !gameState.isEmperorElectionActive()) 
+				if (gameState.isRevolutionSecondPhase() && !gameState.isEmperorElectionActive()) 
 				actionRow_4.components[3] = joinSiegeBtn;
 				else actionRow_4.components[2] = joinSiegeBtn;
 			} else {
@@ -1096,7 +1095,7 @@ async function updateMessage(client, lastMessageId, emperorReelectionSelectMenu)
 				.setDisabled(gameState.isServerDown());
 			revolutionStatusMsg = `\nCoup initiated by sword of the Two Gods. May Heaven's Favour flood the land and sprout a new rule in its likeness. (${gameState.getRevolutionarySize()} / ${gameState.getRoleSize("Knight")} votes cast)`;
 			if (gameState.isRevolutionSecondPhase()) {
-				revolutionStatusMsg = `\n Coup brimming, its second phase is underway. (Joined ${gameState.GetRevolutionarySize()} / ${gameState.getRoleSize("Knight")}.)`;
+				revolutionStatusMsg = `\n Coup brimming, its second phase is underway. (Joined ${gameState.getRevolutionarySize()} / ${gameState.getRoleSize("Knight")}.)`;
 				if (gameState.isEmperorElectionActive()) {
 					actionRow_2 = new ActionRowBuilder().addComponents( 
 						await buildSelectMenu(

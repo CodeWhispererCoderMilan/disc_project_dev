@@ -642,7 +642,7 @@ async function setupMerchantBotEvents(client, lastMessageId) {
 			const channel = await client
 				.channels.fetch(process.env.CHANNELIDMERCHANT);
 			const tmpMessage = await channel.send(
-				`Hail our new Emperor! ${emperorUsername}, youy have risen to the mountain spring in the spray of revolution, may your rule last 1000 years!`
+				`Hail our new Emperor! ${emperorUsername}, you have risen to the mountain spring in the spray of revolution, may your rule last 1000 years!`
 			);
 			setTimeout(() => {
 				tmpMessage.delete().catch(showErrorMsg);

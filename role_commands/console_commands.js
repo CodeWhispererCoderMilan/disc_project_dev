@@ -234,8 +234,8 @@ async function setupConsoleBotEvents(client, lastMessageId) {
 		
 		const hadOrHasRevolutionRole = hadRoleBeforePeasant || hasRoleNowPeasant || hadRoleBeforeScholar || hasRoleNowScholar ||
 			hadRoleBeforeMerchant || hasRoleNowMerchant || hadRoleBeforeKnight || hasRoleNowKnight ||
-			hadRoleBeforeLord || hasRoleNowLord || hadRoleBeforeKing ||
-			hadRoleBeforeNoble || hadRoleBeforeEmperor;
+			hadRoleBeforeLord || hasRoleNowLord || hadRoleBeforeKing || hasRoleNowKing ||
+			hadRoleBeforeNoble || hasRoleNowNoble || hadRoleBeforeEmperor || hasRoleNowEmperor;
 		switch (hadOrHasRevolutionRole) {
 			case hadRoleBeforePeasant || hasRoleNowPeasant:
 				const peasants = guild.members.cache.filter((member) =>
@@ -588,7 +588,7 @@ async function setupConsoleBotEvents(client, lastMessageId) {
 				}
 				const success = await grantAstralRealmAccess(interaction.member, client, divinationType);
 				if (success) {
-					if(divinationType = "scholar"){
+					if(divinationType === "scholar"){
 						await CacheSetCooldown("AstralRealm", userId, ScholarAstralRealmCooldown);
 						await sendInteractionReply(
 							interaction,
@@ -733,7 +733,7 @@ function handleHigherRoleSizeChange(){
 	const disableCoup = gameState.getDisableCoup();
 	const knightSize = gameState.getRoleSize("Knight");
 	const playerCount = gameState.getPlayerCount();
-	console.log(`HigherRoleSize: ${higherRoleSize}  PlayerCount: ${playerCount}  HigherRoleRatio: ${higherRoleSize/playerCount}  DisableRevolution: ${disableRevolution}  DisableCoup: ${disableCoup}`);
+
 	if (((higherRoleSize >= MinimumHigherRoleSizeForRevolution) &&
 		(higherRoleSize/playerCount >= MinimumHigherRoleRatioForRevolution)) &&
 		disableRevolution === true){
@@ -758,6 +758,7 @@ function handleHigherRoleSizeChange(){
 		gameState.setDisableCoup(true);
 		eventEmitter.emit("DisableCoup");
 	}
+	console.log(`HigherRoleSize: ${higherRoleSize}  PlayerCount: ${playerCount}  HigherRoleRatio: ${higherRoleSize/playerCount}  DisableRevolution: ${disableRevolution}  DisableCoup: ${disableCoup}`);
 
 }
 async function handleFirstPhaseRevolutionEnd(client) {
@@ -911,7 +912,7 @@ async function handleSecondPhaseRevolutionEnd(client) {
 		}, RevolutionEmperorElectionTime);
 	} else {
 		gameState.resetRevolution();
-		eventEmitter.emit(`${struggleMethod}Complete. `);
+		eventEmitter.emit(`${struggleMethod}Finished`);
 		notifyRevolutionResult(`${struggleMethod} Complete.`);
 	}
 }
@@ -958,9 +959,10 @@ async function handleEmperorElectionEnd(client) {
 		const targetMember = await guild.members.fetch(target.targetId);
 		await changeRole( targetMember, "Emperor", true);
 		gameState.resetRevolution();
-		eventEmitter.emit(`${struggleMethod}Finished`);
 		eventEmitter.emit("ElectionEnthronement", targetMember.user.username);
+		eventEmitter.emit(`${struggleMethod}Finished`);
 		notifyRevolutionResult(`${targetMember.user.username} has been elected Emperor. Order has been restored to Griefhem`);
+	
 	} else if (finalCandidatesCount > 1) {
 		gameState.resetRevolutionParticipants();
 		gameState.resetRevolutionTargets();

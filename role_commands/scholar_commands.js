@@ -33,7 +33,6 @@ const { eventEmitter } = require("../functions/eventEmitter.js");
 let selectedRevolutionTargets = {};
 let selectedEmperorCandidates = {};
 const initContent =TextScholarMessageContent;
-let revolutionStatusMsg = "";
 
 function showErrorMsg(err) {
 	console.error("ERROR: scholar_commands.js", err);
@@ -336,7 +335,7 @@ async function setupScholarBotEvents(client, lastMessageId) {
 					}
 
 					const userId = interaction.user.id;
-					if (!selectedRevolutionTargets[userId]) {
+					if (!selectedEmperorCandidates[userId]) {
 						await sendInteractionReply(interaction, "No member selected");
 						return;
 					}
@@ -351,15 +350,15 @@ async function setupScholarBotEvents(client, lastMessageId) {
 						return;
 					}
 
-					const candidate = selectedRevolutionTargets[userId];
+					const candidate = selectedEmperorCandidates[userId];
 
 					eventEmitter.emit(
 						"AddRevolutionParticipant",
 						"Scholar",
 						userId,
-						selectedRevolutionTargets[userId].user.id
+						selectedEmperorCandidates[userId].user.id
 					);
-					delete selectedRevolutionTargets[userId];
+					delete selectedEmperorCandidates[userId];
 					await sendInteractionReply(
 						interaction,
 						"You have joined the election."
@@ -434,8 +433,7 @@ async function setupScholarBotEvents(client, lastMessageId) {
 	});
 	eventEmitter.on("RevolutionFinished", async () => {
 		try {
-			if(!gameState.isRevolutionActive()) 
-				await updateMessage(client, lastMessageId);
+			if(!gameState.isRevolutionActive() && !gameState.isCoupActive())	await updateMessage(client, lastMessageId);
 		} catch (err) {
 			throw err;
 		}
@@ -474,7 +472,7 @@ async function setupScholarBotEvents(client, lastMessageId) {
 		try {
 			const channel = await client.channels.fetch(process.env.CHANNELIDSCHOLAR);
 			const tmpMessage = await channel.send(
-				`Hail our new Emperor! ${emperorUsername}, youy have risen to the mountain spring in the spray of revolution, may your rule last 1000 years!`
+				`Hail our new Emperor! ${emperorUsername}, you have risen to the mountain spring in the spray of revolution, may your rule last 1000 years!`
 			);
 			setTimeout(() => {
 				tmpMessage.delete().catch(showErrorMsg);
@@ -500,7 +498,7 @@ async function updateMessage(client, lastMessageId, emperorReelectionSelectMenu)
 		const channel = await client.channels.fetch(process.env.CHANNELIDSCHOLAR);
 		const serverText = gameState.isServerDown() ? "!!!!!!!!!!!!!!!!! SERVER IS DOWN !!!!!!!!!!!!!!!!!" : "";
 		const messageToEdit = await channel.messages.fetch(lastMessageId);
-		revolutionStatusMsg = "";
+		let revolutionStatusMsg = "";
 		let actionRow_0 = new ActionRowBuilder().addComponents(
 			await buildSelectMenu(
 				client,
@@ -570,7 +568,7 @@ async function updateMessage(client, lastMessageId, emperorReelectionSelectMenu)
 		}
 
 		await messageToEdit.edit({
-			content: serverText + initContent + revolutionStatusMsg,
+			content: serverText + '\n' + initContent + revolutionStatusMsg,
 			components: [actionRow_0, actionRow_1],
 		});
 	} catch (err) {

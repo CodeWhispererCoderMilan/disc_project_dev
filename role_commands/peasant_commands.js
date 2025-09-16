@@ -3,6 +3,7 @@ const {
 	ActionRowBuilder,
 	ButtonBuilder,
 	ButtonStyle,
+    WebhookMixin,
 } = require("discord.js");
 const {
 	buildSelectMenu,
@@ -48,7 +49,6 @@ let mobFlayingParticipants = new Set();
 let mobFlayingTimeout;
 const initContent = TextPeasantMessageContent;
 let mobFlayingStatusMsg = "";
-let revolutionStatusMsg = "";
 
 function showErrorMsg(err) {
 	console.error("ERROR: peasant_commands.js", err);
@@ -584,80 +584,7 @@ async function setupPeasantBotEvents(client, lastMessageId) {
 		}
 	});
 
-	eventEmitter.on("RevolutionStarted", async () => {
-		try {
-			if(gameState.isRevolutionActive() && !gameState.isCoupActive())await updateMessage(client, lastMessageId);
-		} catch (err) {
-			throw err;
-		}
-	});
-	eventEmitter.on("CoupStarted", async () => {
-		try {
-			if(gameState.isRevolutionActive() && gameState.isCoupActive())
-				await updateMessage(client, lastMessageId);
-		} catch (err) {
-			throw err;
-		}
-	});
-	eventEmitter.on("CoupFinished", async () => {
-		try {
-			if(!gameState.isRevolutionActive() && !gameState.isCoupActive()) 
-				await updateMessage(client, lastMessageId);
-		} catch (err) {
-			throw err;
-		}
-	});
-	eventEmitter.on("RevolutionFinished", async () => {
-		try {
-			if(!gameState.isRevolutionActive()) 
-				await updateMessage(client, lastMessageId);
-		} catch (err) {
-			throw err;
-		}
-	});
-	eventEmitter.on("RevolutionMovedToSecondPhase", async () => {
-		try {
-			if(gameState.isRevolutionSecondPhase() && !gameState.isCoupActive())await updateMessage(client, lastMessageId);
-		} catch (err) {
-			throw err;
-		}
-	});
-	eventEmitter.on("RevolutionMovedInEmperorElection", async () => {
-		try {
-			if(gameState.isEmperorElectionActive() && !gameState.isCoupActive()) await updateMessage(client, lastMessageId);
-		} catch (err) {
-			throw err;
-		}
-	});
-	eventEmitter.on("RevolutionMovedInEmperorReelection", async (emperorReelectionSelectMenu) => {
-		try {
-			if(gameState.isReelectionActive() && !gameState.isCoupActive())
-				await updateMessage(client, lastMessageId, emperorReelectionSelectMenu);
-		} catch (err) {
-			throw err;
-		}
-	});
-	eventEmitter.on("UpdateRevolutionMessage", async () => {
-		try {
-			if(gameState.isRevolutionActive() && !gameState.isCoupActive()) 
-				await updateMessage(client, lastMessageId);
-		} catch (err) {
-			showErrorMsg(err);
-		}
-	});
-	eventEmitter.on("ElectionEnthronement", async (emperorUsername) => {
-		try {
-			const channel = await client.channels.fetch(process.env.CHANNELIDSCHOLAR);
-			const tmpMessage = await channel.send(
-				`Hail our new Emperor! ${emperorUsername}, youy have risen to the mountain spring in the spray of revolution, may your rule last 1000 years!`
-			);
-			setTimeout(() => {
-				tmpMessage.delete().catch(showErrorMsg);
-			}, 30000);
-		} catch (err) {
-			showErrorMsg(err);
-		}
-	});
+	
 	eventEmitter.on("NotifyPeasantChannel", async (msg) => {
 		try {
 			let channel = await client.channels.fetch(process.env.CHANNELIDPEASANT);
@@ -696,9 +623,7 @@ async function setupPeasantBotEvents(client, lastMessageId) {
 	});
 	eventEmitter.on("RevolutionFinished", async () => {
 		try {
-			if(!gameState.isRevolutionActive()){
 				await updateMessage(client, lastMessageId);
-			}
 		} catch (err) {
 			throw err;
 		}
@@ -738,7 +663,7 @@ async function setupPeasantBotEvents(client, lastMessageId) {
 			const channel = await client
 				.channels.fetch(process.env.CHANNELIDPEASANT);
 			const tmpMessage = await channel.send(
-				`Hail our new Emperor! ${emperorUsername}, youy have risen to the mountain spring in the spray of revolution, may your rule last 1000 years!`
+				`Hail our new Emperor! ${emperorUsername},you have risen to the mountain spring in the spray of revolution, may your rule last 1000 years!`
 			);
 			setTimeout(() => {
 				tmpMessage.delete().catch(showErrorMsg);
@@ -789,7 +714,7 @@ async function updateMessage(client, lastMessageId,emperorReelectionSelectMenu) 
 		const channel = await client.channels.fetch(process.env.CHANNELIDPEASANT);
 		const messageToEdit = await channel.messages.fetch(lastMessageId);
 		const serverText = gameState.isServerDown() ? "!!!!!!!!!!!!!!!!! SERVER IS DOWN !!!!!!!!!!!!!!!!!" : "";
-		revolutionStatusMsg = "";
+		let revolutionStatusMsg = "";
 		let actionRow_0 = new ActionRowBuilder().addComponents(
 			await buildSelectMenu(
 				client,

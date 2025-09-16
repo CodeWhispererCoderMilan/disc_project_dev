@@ -193,10 +193,11 @@ module.exports = {
 	setRoleSize: (role, size) => { roleSizes[role] = size; },
 	getRoleSize: (role) => roleSizes[role],
 	getHigherRoleSize: () => {
-		return roleSizes["Lord"] + roleSizes["King"] + roleSizes["Noble"] + roleSizes["Emperor"]; 
+		return roleSizes["Lord"] + roleSizes["King"] + roleSizes["Noble"] +
+			roleSizes["Emperor"]; 
 	},
 	getEmperorElectionRoleSize: () => {
-		return roleSize["Knight"] + roleSizes["Lord"] + roleSizes["King"] + roleSizes["Noble"];
+		return roleSizes["Knight"] + roleSizes["Lord"] + roleSizes["King"] + roleSizes["Noble"];
 	},
 	getAllRoleSizes: () => ({ ...roleSizes }),
 

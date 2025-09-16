@@ -382,7 +382,7 @@ async function setupEmperorBotEvents(client, lastMessageId) {
 			selectedKnight = null;
 			const channel = await client.channels.fetch(process.env.CHANNELIDEMPEROR);
 			const tmpMessage = await channel.send(
-				`Hail our new Emperor! ${emperorUsername}, youy have risen to the mountain spring in the spray of revolution, may your rule last 1000 years!`
+				`Hail our new Emperor! ${emperorUsername}, you have risen to the mountain spring in the spray of revolution, may your rule last 1000 years!`
 			);
 			setTimeout(() => {
 				tmpMessage.delete().catch(showErrorMsg);
@@ -398,13 +398,13 @@ async function setupEmperorBotEvents(client, lastMessageId) {
 			showErrorMsg(err);
 		}
 	});
-	eventEmitter.on("EmperorElectionNoCandidates", async () => {
+	eventEmitter.on("EmperorElectionNoCandidates", async (username) => {
 			selectedKing = null;
 			selectedLord = null;
 			selectedKnight = null;
 			selectedHuman = null;
 			await openThreshold(12, client);
-			eventEmitter.emit("EmperorVanished", member.username);
+			eventEmitter.emit("EmperorVanished", username);
 			await updateSelectMenu(client, lastMessageId);
 	});
 

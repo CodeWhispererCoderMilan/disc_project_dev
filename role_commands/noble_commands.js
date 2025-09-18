@@ -20,7 +20,7 @@ const {
 } = require("../apis/redis/redisCache");
 const {
 	AssassinationTime,
-	AssassinationThreadshold,
+	AssassinationThreshold,
 	GlobalCooldown,
 	RoleChangeMessageDisplayTime,
 	HighWritCooldown,
@@ -374,7 +374,7 @@ async function setupNobleBotEvents(client, lastMessageId) {
 						interaction,
 						"Assassination initiated, waiting for other nobles to join."
 					);
-					if (assassinationParticipants.size >= AssassinationThreadshold) {
+					if (assassinationParticipants.size >= AssassinationThreshold) {
 						ceaseAssassination(client, lastMessageId);
 						return;
 					}
@@ -425,7 +425,7 @@ async function setupNobleBotEvents(client, lastMessageId) {
 
 				if (
 					assassinationActive &&
-					assassinationParticipants.size >= AssassinationThreadshold
+					assassinationParticipants.size >= AssassinationThreshold
 				) {
 					//If assassination succeeded within voting ending time.
 						ceaseAssassination(client, lastMessageId);
@@ -469,7 +469,7 @@ async function startAssassination(client, lastMessageId, timeout) {
 async function handleAssassinationEnd(client, lastMessageId) {
 	if (
 		assassinationActive &&
-		assassinationParticipants.size >= AssassinationThreadshold
+		assassinationParticipants.size >= AssassinationThreshold
 	) {
 		const target = selectedTargets[assassinationInitiatorId];
 		if (target) await changeRole(target, "Poop", false);

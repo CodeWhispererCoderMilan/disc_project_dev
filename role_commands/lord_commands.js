@@ -21,8 +21,8 @@ const {
 const {
 	NobleLordElectionTime,
 	LordKingElectionTime,
-	NobleLordElectionSuccessThreadshold,
-	LordKingElectionSuccessThreadshold,
+	NobleLordElectionSuccessThreshold,
+	LordKingElectionSuccessThreshold,
 	LordElectionCooldown,
 	RoleChangeMessageDisplayTime,
 	EminentWritCooldown,
@@ -133,13 +133,13 @@ async function setupLordBotEvents(client, lastMessageId) {
 						return;
 					} else if (
 						electionType === "Noble" &&
-						participationRate >= NobleLordElectionSuccessThreadshold
+						participationRate >= NobleLordElectionSuccessThreshold
 					) {
 						ceaseElection(client, lastMessageId);
 						return;
 					} else if (
 						electionType === "Lord" &&
-						participationRate >= LordKingElectionSuccessThreadshold
+						participationRate >= LordKingElectionSuccessThreshold
 					) {
 						ceaseElection(client, lastMessageId);
 						return;
@@ -170,12 +170,12 @@ async function setupLordBotEvents(client, lastMessageId) {
 					const participationRate = electionParticipants.size / lordsSize;
 					if (
 						electionType === "Noble" &&
-						participationRate >= NobleLordElectionSuccessThreadshold
+						participationRate >= NobleLordElectionSuccessThreshold
 					) {
 						ceaseElection(client, lastMessageId);
 					} else if (
 						electionType === "Lord" &&
-						participationRate >= LordKingElectionSuccessThreadshold
+						participationRate >= LordKingElectionSuccessThreshold
 					) {
 						ceaseElection(client, lastMessageId);
 					} else {
@@ -262,13 +262,13 @@ async function setupLordBotEvents(client, lastMessageId) {
 						return;
 					} else if (
 						electionType === "Noble" &&
-						participationRate >= NobleLordElectionSuccessThreadshold
+						participationRate >= NobleLordElectionSuccessThreshold
 					) {
 						ceaseElection(client, lastMessageId);
 						return;
 					} else if (
 						electionType === "Lord" &&
-						participationRate >= LordKingElectionSuccessThreadshold
+						participationRate >= LordKingElectionSuccessThreshold
 					) {
 						ceaseElection(client, lastMessageId);
 						return;
@@ -299,12 +299,12 @@ async function setupLordBotEvents(client, lastMessageId) {
 					const participationRate = electionParticipants.size / lordsSize;
 					if (
 						electionType === "Noble" &&
-						participationRate >= NobleLordElectionSuccessThreadshold
+						participationRate >= NobleLordElectionSuccessThreshold
 					) {
 						ceaseElection(client, lastMessageId);
 					} else if (
 						electionType === "Lord" &&
-						participationRate >= LordKingElectionSuccessThreadshold
+						participationRate >= LordKingElectionSuccessThreshold
 					) {
 						ceaseElection(client, lastMessageId);
 					} else {
@@ -496,13 +496,13 @@ async function setupLordBotEvents(client, lastMessageId) {
 					const participationRate = electionParticipants.size / lordsSize;
 					if (
 						electionType === "Noble" &&
-						participationRate >= NobleLordElectionSuccessThreadshold
+						participationRate >= NobleLordElectionSuccessThreshold
 					) {
 						ceaseElection(client, lastMessageId);
 						return;
 					} else if (
 						electionType === "Lord" &&
-						participationRate >= LordKingElectionSuccessThreadshold
+						participationRate >= LordKingElectionSuccessThreshold
 					) {
 						ceaseElection(client, lastMessageId);
 						return;
@@ -547,9 +547,9 @@ async function setupLordBotEvents(client, lastMessageId) {
 				if (electionActive) {
 					if (
 						(electionType === "Noble" &&
-							participationRate >= NobleLordElectionSuccessThreadshold) ||
+							participationRate >= NobleLordElectionSuccessThreshold) ||
 						(electionType === "Lord" &&
-							participationRate >= LordKingElectionSuccessThreadshold)
+							participationRate >= LordKingElectionSuccessThreshold)
 					) {
 						//If poll succeeded within voting ending time.
 							ceaseElection(client, lastMessageId);
@@ -596,9 +596,9 @@ async function handleElectionEnd(client, lastMessageId) {
 	if (
 		electionActive &&
 		((electionType === "Noble" &&
-			participationRate >= NobleLordElectionSuccessThreadshold) ||
+			participationRate >= NobleLordElectionSuccessThreshold) ||
 			(electionType === "Lord" &&
-				participationRate >= LordKingElectionSuccessThreadshold))
+				participationRate >= LordKingElectionSuccessThreshold))
 	) {
 		let msg = "";
 		const target = selectedElectionCandidates[electionInitiatorId];

@@ -18,7 +18,7 @@ const {
 } = require("../apis/firebase/querys.js");
 const {
 	MobFlayingTime,
-	MobFlayingSuccessThreadshold,
+	MobFlayingSuccessThreshold,
 	MobFlayingCooldown,
 	RoleChangeMessageDisplayTime,
 	TextPeasantMessageContent,
@@ -98,7 +98,7 @@ async function setupPeasantBotEvents(client, lastMessageId) {
 							mobFlayingParticipants.delete(member.id);
 
 							const participationRate = mobFlayingParticipants.size / peasantsSize;
-							if (participationRate >= MobFlayingSuccessThreadshold) {
+							if (participationRate >= MobFlayingSuccessThreshold) {
 								await ceaseMobFlaying(client, lastMessageId);
 							} else {
 								await updateMessage(client, lastMessageId);
@@ -214,7 +214,7 @@ async function setupPeasantBotEvents(client, lastMessageId) {
 							eventEmitter.emit("NotifyPeasantChannel", msg);
 							await ceaseMobFlaying(client, lastMessageId);
 							return;
-						} else if (participationRate >= MobFlayingSuccessThreadshold) {
+						} else if (participationRate >= MobFlayingSuccessThreshold) {
 							await ceaseMobFlaying(client, lastMessageId);
 						} else {
 							await updateMessage(client, lastMessageId);
@@ -379,7 +379,7 @@ async function setupPeasantBotEvents(client, lastMessageId) {
 					await updateMessage(client, lastMessageId);
 
 					const participationRate = mobFlayingParticipants.size / peasantsSize;
-					if (participationRate >= MobFlayingSuccessThreadshold) {
+					if (participationRate >= MobFlayingSuccessThreshold) {
 						await ceaseMobFlaying(client, lastMessageId);
 						return;
 					}
@@ -570,7 +570,7 @@ async function setupPeasantBotEvents(client, lastMessageId) {
 				const participationRate = mobFlayingParticipants.size / peasantsSize;
 				if (
 					mobFlayingActive &&
-					participationRate >= MobFlayingSuccessThreadshold
+					participationRate >= MobFlayingSuccessThreshold
 				) {
 					//If poll succeeded within voting ending time.
 						ceaseMobFlaying(client, lastMessageId);
@@ -689,7 +689,7 @@ async function startMobFlaying(client, lastMessageId, timeout) {
 
 async function handleMobFlayingEnd(client, lastMessageId) {
 	const participationRate = mobFlayingParticipants.size / peasantsSize;
-	if (mobFlayingActive && participationRate >= MobFlayingSuccessThreadshold) {
+	if (mobFlayingActive && participationRate >= MobFlayingSuccessThreshold) {
 		const target = selectedMobFlayingTargets[mobFlayingInitiatorId];
 		if (target) await changeRole( target, "Poop", false);
 		const msg = `Mob flaying successful! @${mobFlayingTarget} has become a poop by @${mobFlayingInitiator}.`;

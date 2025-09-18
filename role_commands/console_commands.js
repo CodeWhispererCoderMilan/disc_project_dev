@@ -5,7 +5,8 @@ const{
 	ActionRowBuilder,
 	ButtonBuilder,
 	ButtonStyle,
-	SelectMenuBuilder
+	SelectMenuBuilder,
+	StringSelectMenuBuilder
 } = require("discord.js");
 
 const {
@@ -677,6 +678,7 @@ async function setupConsoleBotEvents(client, lastMessageId) {
 		try {
 			gameState.removeRevolutionParticipant(userId);
 			updateRevolutionAndCoupMessages();
+			checkAndFailRevolution();
 		} catch (err) {
 			showErrorMsg(err);
 		}
@@ -770,6 +772,7 @@ async function handleFirstPhaseRevolutionEnd(client) {
 	if (coupActive) success = revolutionarySize / peopleSize > COUPTHRESHOLD;
 	if (success) {
 		gameState.setRevolutionSecondPhase(true);
+		checkAndFailRevolution();
 		eventEmitter.emit(`${struggleMethod}MovedToSecondPhase`);
 		if (coupActive) {
 			revolutionTimeout = setTimeout(async () => {
@@ -782,9 +785,8 @@ async function handleFirstPhaseRevolutionEnd(client) {
 		}
 	} else {
 		gameState.resetRevolution();
-		console.log(`Struggle method is ${struggleMethod}`);
 		eventEmitter.emit(`${struggleMethod}Finished`);
-		notifyRevolutionResult(`${struggleMethod} Failed.`);
+		notifyRevolutionResult(`${struggleMethod} Failed. The unrest is but a simmer`);
 
 	}
 }

@@ -335,7 +335,9 @@ async function setupConsoleBotEvents(client, lastMessageId) {
 			default:
 				handleHigherRoleSizeChange();
 		}
-		if(gameState.isRevolutionActive())checkAndFailRevolution();
+		if(gameState.isRevolutionActive()){
+			checkAndFailRevolution();
+		}
 		if(gameState.isRevolutionActive() && !updatedRevolutionAndCoupMessages && oldPeopleCount != peopleCount){
 			updateRevolutionAndCoupMessages();
 		}
@@ -493,7 +495,9 @@ async function setupConsoleBotEvents(client, lastMessageId) {
 			default:
 				handleHigherRoleSizeChange();
 		}
-		if(gameState.isRevolutionActive()) checkAndFailRevolution();
+		if(gameState.isRevolutionActive()){
+			checkAndFailRevolution();
+		}
 		if(gameState.isRevolutionActive() && !updatedRevolutionAndCoupMessages && oldPeopleCount != peopleCount){
 			updateRevolutionAndCoupMessages();
 		}
@@ -507,7 +511,7 @@ async function setupConsoleBotEvents(client, lastMessageId) {
 			const guild = await client.guilds.fetch(process.env.GUILDID);
 			gameState.setPlayerCount(guild.memberCount - 16);
 			handleHigherRoleSizeChange();
-			 
+
 			if(gameState.isRevolutionActive()) checkAndFailRevolution();
 			const channel = await client.channels.fetch(process.env.CHANNELIDSEWERS);
 			if (!channel) {
@@ -677,8 +681,8 @@ async function setupConsoleBotEvents(client, lastMessageId) {
 	eventEmitter.on("RemoveRevolutionParticipant", (userId) => {
 		try {
 			gameState.removeRevolutionParticipant(userId);
-			updateRevolutionAndCoupMessages();
 			checkAndFailRevolution();
+			updateRevolutionAndCoupMessages();
 		} catch (err) {
 			showErrorMsg(err);
 		}
@@ -713,8 +717,9 @@ function checkAndFailRevolution() {
 	const emperorElectionActive = gameState.isEmperorElectionActive();
 	if (revolutionSecondPhase && !emperorElectionActive) {
 		let success = revolutionarySize / peopleSize >= REVOLUTIONTHRESHOLD2;
+		console.log("Revolution second phase check success value: ", success);
 		if (coupActive)
-			success = revolutionarySize / peopleSize > COUPTHRESHOLD;
+			success = revolutionarySize / peopleSize >= COUPTHRESHOLD;
 
 		if (!success) {
 			clearTimeout(revolutionTimeout);
@@ -896,7 +901,7 @@ async function handleSecondPhaseRevolutionEnd(client) {
 
 		if (killTarget) {
 			await changeRole( member, "Poop", false);
-			
+
 			await notifyRevolutionResult(
 				`@${member.user.username} has fallen beanth the waves of the ${struggleMethod}.`
 			);
@@ -964,7 +969,7 @@ async function handleEmperorElectionEnd(client) {
 		eventEmitter.emit("ElectionEnthronement", targetMember.user.username);
 		eventEmitter.emit(`${struggleMethod}Finished`);
 		notifyRevolutionResult(`${targetMember.user.username} has been elected Emperor. Order has been restored to Griefhem`);
-	
+
 	} else if (finalCandidatesCount > 1) {
 		gameState.resetRevolutionParticipants();
 		gameState.resetRevolutionTargets();
@@ -977,7 +982,7 @@ async function handleEmperorElectionEnd(client) {
 			await handleEmperorElectionEnd(client);
 		}, RevolutionEmperorElectionTime);
 	} else {
-	 	if(gameState.getEmperorElectionRoleSize() === 0){
+		if(gameState.getEmperorElectionRoleSize() === 0){
 			gameState.resetRevolution();
 			eventEmitter.emit(`${struggleMethod}Finished`);
 			eventEmitter.emit("EmperorElectionNoCandidates");

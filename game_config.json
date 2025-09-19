@@ -127,7 +127,7 @@
 	"BribeCooldown": 20000,
 	"RevolutionCooldown": 400000,
 	"RevolutionFirstPhaseTime": 15000,
-	"RevolutionSecondPhaseTime": 10000,
+	"RevolutionSecondPhaseTime": 30000,
 	"RevolutionEmperorElectionTime": 30000,
 	"RevolutionKnightWeight": 4,
 	"RevolutionKillKnight": 2,

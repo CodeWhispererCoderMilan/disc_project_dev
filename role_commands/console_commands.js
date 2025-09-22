@@ -903,7 +903,7 @@ async function handleSecondPhaseRevolutionEnd(client) {
 			await changeRole( member, "Poop", false);
 
 			await notifyRevolutionResult(
-				`@${member.user.username} has fallen beanth the waves of the ${struggleMethod}.`
+				`@${member.user.username} has fallen below the waves of the ${struggleMethod}.`
 			);
 		}
 	};

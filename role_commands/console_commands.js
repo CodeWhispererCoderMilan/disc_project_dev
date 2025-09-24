@@ -774,7 +774,7 @@ async function handleFirstPhaseRevolutionEnd(client) {
 	let coupActive = gameState.isCoupActive();
 	const struggleMethod = gameState.getStruggleMethod();
 	let success = revolutionarySize / peopleSize >= REVOLUTIONTHRESHOLD;
-	if (coupActive) success = revolutionarySize / peopleSize > COUPTHRESHOLD;
+	if (coupActive) success = revolutionarySize / peopleSize >= COUPTHRESHOLD;
 	if (success) {
 		gameState.setRevolutionSecondPhase(true);
 		checkAndFailRevolution();
@@ -824,6 +824,7 @@ async function handleSecondPhaseRevolutionEnd(client) {
 	const struggleMethod = gameState.getStruggleMethod();
 	for (const target of targets){
 		let killTarget = false;
+		if(!target.targetId) continue;
 		console.log(`Revolution targetId: ${target.targetId}  targetCount: ${target.targetCount}`);
 		const guild = await client.guilds.fetch(process.env.GUILDID);
 		await guild.members.fetch();

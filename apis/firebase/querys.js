@@ -303,7 +303,7 @@ async function DBBoostXPForAllUsers(BoostCount, client) {
 						await DBUpdateXP(userId, BoostCount*XpBoostRat, client);
 						break;
 
-					case("Subhuman"):
+					case("Sub-human"):
 						await DBUpdateXP(userId, BoostCount*XpBoostSubhuman, client);
 						break;	
 

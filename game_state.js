@@ -46,9 +46,7 @@ let kingsSize = 0;
 	// SIEGE TARGET INFO
 // =====================
 let siegeInitiator = null;
-let siegeInitiatorId = null;
 let siegeTarget = null;
-let siegeTargetId = null;
 let siegeTimeout = null;
 
 module.exports = {
@@ -176,11 +174,10 @@ module.exports = {
 	clearSiegeParticipants: () => siegeParticipants.clear(),
 	getSiegeInitiator: () => siegeInitiator,
 	setSiegeInitiator: (val) => { siegeInitiator = val; },	
-	getSiegeInitiatorId: () => siegeInitiatorId,
-	setSiegeInitiatorId: (val) => { siegeInitiatorId = val; },
+	getSiegeInitiatorId: () => siegeInitiator.id,
 	getSiegeTarget: () => siegeTarget,	
-	getSiegeTargetId: () => siegeTargetId,
-	setSiegeTargetId: (val) => { siegeTargetId = val; },
+	getSiegeTargetId: () => siegeTarget.id,
+	getSiegeTargetUsername: () => siegeTarget.user.username,
 	setSiegeTarget: (val) => { siegeTarget = val; },
 	getSiegeTimeout: () => siegeTimeout,
 	setSiegeTimeout: (val) => { siegeTimeout = val; },

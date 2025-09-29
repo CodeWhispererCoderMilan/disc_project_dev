@@ -113,7 +113,6 @@
 	"SiegeCost": 0,
 	"SiegeCooldown": 10000,
 	"SiegeTime": 60000,
-	"KingSiegeTimedPollWinningRate": 0.5,
 	"AdviseCooldown": 10000,
 	"AssassinationTime": 40000,
 	"AssassinationThreshold": 3,

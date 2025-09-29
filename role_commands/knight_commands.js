@@ -560,7 +560,7 @@ async function setupKnightBotEvents(client, lastMessageId) {
 			delete selectedRevolutionTargets[userId];
 			await sendInteractionReply(
 				interaction,
-				`You have joined the revolution with target @${target.user.username}.`
+				`You have joined the revolution with target ${target.user.username}.`
 			);
 		}
 		if (interaction.customId === "JoinCoup") {
@@ -590,7 +590,7 @@ async function setupKnightBotEvents(client, lastMessageId) {
 			delete selectedCoupTargets[userId];
 			await sendInteractionReply(
 				interaction,
-				`You have joined the coup with target @${target.user.username}.`
+				`You have joined the coup with target ${target.user.username}.`
 			);
 		}
 		if (interaction.customId === "WithdrawRevolution") {
@@ -812,7 +812,7 @@ async function handleShowWrits(interaction) {
 		}
 
 		const writDescriptions = writs.map((writ, index) => {
-			return `${index + 1}. Type: ${getWritType(writ.writType)}, Target: <@${
+			return `${index + 1}. Type: ${getWritType(writ.writType)}, Target: <${
 				writ.targetId
 			}>, Status: ${getWritStatus(writ.writStatus)}, Message: ${
 				writ.writMessage
@@ -1024,7 +1024,7 @@ async function updateMessage(client, lastMessageId, emperorReelectionSelectMenu)
 			const siegeTarget = gameState.getSiegeTarget();
 			const siegeParticipantsSize = gameState.getSiegeParticipantsSize();
 			const knightsSize = gameState.getKnightsSize();
-			siegeStatusMsg = `\nKing @${siegeInitiator} initiated a siege. Join siege to downgrade ${siegeTarget}. (Joined ${siegeParticipantsSize} / ${knightsSize}.)`;
+			siegeStatusMsg = `\nKing ${siegeInitiator} initiated a siege. Join siege to downgrade ${siegeTarget}. (Joined ${siegeParticipantsSize} / ${knightsSize}.)`;
 		}
 
 		if (gameState.isRevolutionActive() && !gameState.isCoupActive()) {

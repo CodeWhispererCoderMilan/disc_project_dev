@@ -547,7 +547,7 @@ async function setupKingBotEvents(client, lastMessageId) {
 					await sendInteractionReply(interaction, "Siege is on cooldown");
 					return;
 				}
-				await startSiege(client, lastMessageId);
+				await startSiege(interaction.member, selectedKings[userId], client, lastMessageId);
 
 				await sendInteractionReply(
 					interaction,
@@ -621,18 +621,18 @@ async function setupKingBotEvents(client, lastMessageId) {
 
 			if (success) {
 				await changeRole(
-					selectedKings[siegeInitiatorId],
+					selectedKings[siegeInitiator.id],
 					"Poop",
 					false
 				);
 				message =
-					siegeInitiator + "'s siege upon " + siegeTarget +
+					siegeInitiator.user.username + "'s siege upon " + siegeTarget.user.username +
 					"'s domain ended in victory. Heaven's favor shimmers above as " +
-					siegeTarget +
+					siegeTarget.user.username +
 					" falls to the sewers.";
 			} else {
 				message =
-					siegeInitiator + "'s siege upon " + siegeTarget +
+					siegeInitiator.user.username + "'s siege upon " + siegeTarget.user.username +
 					"'s has failed. Such folly does not go unnoticed as it ripples through the stream.";
 			}
 			await NotifyKingChannel(client, message);
@@ -831,7 +831,7 @@ async function updateMessage(client, lastMessageId) {
 				actionRow_2.components[0].toJSON()
 			)
 				.setDisabled(true)
-				.setPlaceholder(gameState.getSiegeTarget());
+				.setPlaceholder(gameState.getSiegeTargetUsername());
 			actionRow_2.components[0] = kingSelectMenu;
 			const btnRow = new ActionRowBuilder().addComponents(
 				new ButtonBuilder()
@@ -864,11 +864,11 @@ async function updateMessage(client, lastMessageId) {
 			if (gameState.getKnightsSize() > 0) {
 				content =
 					initContent +
-					`\n@${siegeInitiator} initiated a siege to downgrade ${siegeTarget}. (Joined ${siegeParticipantsSize} / ${knightsSize})`;
+					`\n${siegeInitiator.user.username} initiated a siege to downgrade ${siegeTarget.user.username}. (Joined ${siegeParticipantsSize} / ${knightsSize})`;
 			} else {
 				content =
 					initContent +
-					`\n@${siegeInitiator} initiated a siege to downgrade ${siegeTarget}.`;
+					`\n${siegeInitiator.user.username} initiated a siege to downgrade ${siegeTarget.user.username}.`;
 			}
 
 			await messageToEdit.edit({
@@ -958,7 +958,10 @@ async function messageKingCommands(client) {
 		showErrorMsg(err);
 	}
 }
-async function startSiege(client, lastMessageId) {
+async function startSiege(siegeInitiator, siegeTarget, client, lastMessageId) {
+	 
+	gameState.setSiegeTarget(siegeTarget);
+	gameState.setSiegeInitiator(siegeInitiator);
 	gameState.setSiegeActive(true);
 	await updateMessage(client, lastMessageId);
 	const siegeTimeout = setTimeout(async () => {
@@ -987,13 +990,13 @@ async function handleSiegeEnd(client, lastMessageId) {
 					false
 				);
 				message =
-					siegeInitiator + "'s siege upon " + siegeTarget +
+					siegeInitiator.user.username + "'s siege upon " + siegeTarget.user.username +
 					"'s domain ended in victory. Heaven's favor shimmers above as " +
-					siegeTarget +
+					siegeTarget.user.username +
 					" falls to the sewers.";
 			} else {
 				message =
-					siegeInitiator + "'s siege upon " + siegeTarget +
+					siegeInitiator.user.username + "'s siege upon " + siegeTarget.user.username +
 					"'s has failed. Such folly does not go unnoticed as it ripples through the stream.";
 			}
 			await NotifyKingChannel(client, message);
@@ -1017,7 +1020,7 @@ async function resetSiege(client, lastMessageId) {
 		selectedHumans = {};
 		selectedKnights = {};
 		selectedKings = {};
-		gameState.setsiegeInitiator(null);
+		gameState.setSiegeInitiator(null);
 		gameState.setSiegeTarget(null);
 		gameState.clearSiegeParticipants();
 		gameState.removeSiegeTimeout();

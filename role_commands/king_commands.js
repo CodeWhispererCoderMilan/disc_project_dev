@@ -71,13 +71,13 @@ async function setupKingBotEvents(client, lastMessageId) {
 		const hadRoleBeforeLord = member.roles.cache.has(process.env.ROLEID_LORD);
 	
 		if (gameState.isSiegeActive() && hadRoleBeforeKing) {
-			if (member.id === siegeInitiatorId) {
+			if (member.id === gameState.getSiegeInitiatorId()) {
 				const message = "The siege has ceased as the role of the initiator has been changed.";
 				gameState.clearSiegeTimeout();
 				await resetSiege(client, lastMessageId);	
 				eventEmitter.emit("siegeResult", message);
 				await NotifyKingChannel(client, message);
-			} else if (member.id === siegeTargetId) {
+			} else if (member.id === gameState.getSiegeTargetId()) {
 				const message = "The siege has ceased as the role of the target has been changed.";
 				gameState.clearSiegeTimeout();
 				await resetSiege(client, lastMessageId);
@@ -113,7 +113,7 @@ async function setupKingBotEvents(client, lastMessageId) {
 				const kingSize = gameState.getKingsSize();
 				const disableSiege = gameState.getDisableSiege();
 				const siegeRatio = numberOfKnights / kingSize;
-				if(siegeRatio > MinimumKnightToKingSiegeRatio && disableSiege === true){
+				if(siegeRatio >= MinimumKnightToKingSiegeRatio && disableSiege === true){
 					gameState.setDisableSiege(false);
 				}
 				if(siegeRatio < MinimumKnightToKingSiegeRatio && disableSiege === false){
@@ -197,13 +197,13 @@ async function setupKingBotEvents(client, lastMessageId) {
 		);
 
 		if (gameState.isSiegeActive() && hadRoleBeforeKing) {
-			if (newMember.id === siegeInitiatorId) {
+			if (newMember.id === gameState.getSiegeInitiatorId()) {
 				const message = "The siege has ceased as the role of the initiator has been changed.";
 				gameState.clearSiegeTimeout();
 				await resetSiege(client, lastMessageId);
 				await NotifyKingChannel(client, message);
 				eventEmitter.emit("siegeResult", message);
-			} else if (newMember.id === siegeTargetId) {
+			} else if (newMember.id === gameState.getSiegeTargetId()) {
 				const message = "The siege has ceased as the role of the target has been changed.";
 				gameState.clearSiegeTimeout();
 				await resetSiege(client, lastMessageId);
@@ -238,7 +238,7 @@ async function setupKingBotEvents(client, lastMessageId) {
 				}
 				const siegeRatio = gameState.getKnightsSize() / gameState.getKingsSize();
 				const disableSiege = gameState.getDisableSiege();
-				if(siegeRatio > MinimumKnightToKingSiegeRatio && disableSiege === true){
+				if(siegeRatio >= MinimumKnightToKingSiegeRatio && disableSiege === true){
 					gameState.setDisableSiege(false);
 				}
 				if(siegeRatio < MinimumKnightToKingSiegeRatio && disableSiege === false){
@@ -916,6 +916,8 @@ async function messageKingCommands(client) {
 				client, ["peasant", "scholar", "merchant","noble",
 					"knight","lord"], "SelectWritHuman",TextRoyalWritTargetSelectMenu
 			));
+		
+		
 		const btnRow = new ActionRowBuilder().addComponents(
 			new ButtonBuilder()
 			.setCustomId("DegradationKnight")

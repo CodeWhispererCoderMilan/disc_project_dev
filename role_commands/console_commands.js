@@ -62,7 +62,8 @@ const {
 	MinimumHigherRoleSizeForCoup,
 	MinimumHigherRoleRatioForRevolution,
 	MinimumHigherRoleRatioForCoup,
-	MinimumKnightSizeForCoup
+	MinimumKnightSizeForCoup,
+	MinimumKnightToKingSiegeRatio
 } = require("../game_config.json");
 
 const gameState = require("../game_state.js");
@@ -739,8 +740,16 @@ function handleHigherRoleSizeChange(){
 	const disableRevolution = gameState.getDisableRevolution();
 	const disableCoup = gameState.getDisableCoup();
 	const knightSize = gameState.getRoleSize("Knight");
+	const kingSize = gameState.getRoleSize("King");
 	const playerCount = gameState.getPlayerCount();
+	const knightToKingRatio = kingSize > 0 ? knightSize / kingSize : knightSize;
+	if(knightToKingRatio < MinimumKnightToKingSiegeRatio && !gameState.getDisableSiege()){
+		gameState.setDisableSiege(true);
 
+	}
+	if(knightToKingRatio >= MinimumKnightToKingSiegeRatio && gameState.getDisableSiege()){
+		gameState.setDisableSiege(false);
+	}
 	if (((higherRoleSize >= MinimumHigherRoleSizeForRevolution) &&
 		(higherRoleSize/playerCount >= MinimumHigherRoleRatioForRevolution)) &&
 		disableRevolution === true){

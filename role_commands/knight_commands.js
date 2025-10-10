@@ -1023,7 +1023,7 @@ async function updateMessage(client, lastMessageId, emperorReelectionSelectMenu)
 			const siegeInitiator = gameState.getSiegeInitiator();
 			const siegeTarget = gameState.getSiegeTarget();
 			const siegeParticipantsSize = gameState.getSiegeParticipantsSize();
-			const knightsSize = gameState.getKnightsSize();
+			const knightsSize = gameState.getRoleSize("Knight");
 			siegeStatusMsg = `\nKing ${siegeInitiator} initiated a siege. Join siege to downgrade ${siegeTarget}. (Joined ${siegeParticipantsSize} / ${knightsSize}.)`;
 		}
 

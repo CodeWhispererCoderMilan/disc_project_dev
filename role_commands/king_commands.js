@@ -95,7 +95,7 @@ async function setupKingBotEvents(client, lastMessageId) {
 						member.roles.cache.has(process.env.ROLEID_KINGS)
 					);
 					const kingSize = kings.size;
-					gameState.setKingsSize(kingSize);
+					gameState.setRoleSize("King",kingSize);
 					if(kingSize < MinimumKingSize && !isThresholdOpen(11)){
 						await openThreshold(11, client);
 					}
@@ -107,10 +107,10 @@ async function setupKingBotEvents(client, lastMessageId) {
 						member.roles.cache.has(process.env.ROLEID_KNIGHT)
 					);
 					const numberOfKnights = knights.size;
-					gameState.setKnightsSize(numberOfKnights);
+					gameState.setRoleSize("Knight",numberOfKnights);
 				}	
-				const numberOfKnights = gameState.getKnightsSize();	
-				const kingSize = gameState.getKingsSize();
+				const numberOfKnights = gameState.getRoleSize("Knight");
+				const kingSize = gameState.getRoleSize("King");
 				const disableSiege = gameState.getDisableSiege();
 				const siegeRatio = numberOfKnights / kingSize;
 				if(siegeRatio >= MinimumKnightToKingSiegeRatio && disableSiege === true){
@@ -165,7 +165,7 @@ async function setupKingBotEvents(client, lastMessageId) {
 		}
 		if (gameState.isSiegeActive() &&(hadRoleBeforeKnight || hadRoleBeforeKing)){
 			try {
-				const siegeRatio = gameState.getKnightsSize()/gameState.getKingsSize();
+				const siegeRatio = gameState.getRoleSize("Knight")/gameState.getRoleSize("King");
 				const siegeSuccess =
 					gameState.getSiegeParticipantsSize >= siegeRatio;
 				if (siegeSuccess) {
@@ -220,7 +220,7 @@ async function setupKingBotEvents(client, lastMessageId) {
 						member.roles.cache.has(process.env.ROLEID_KINGS)
 					);
 					const kingSize = kings.size;
-					gameState.setKingsSize(kingSize);
+					gameState.setRoleSize("King",kingSize);
 					if(kingSize < MinimumKingSize && !isThresholdOpen(11)){
 						await openThreshold(11, client);
 					}
@@ -234,9 +234,9 @@ async function setupKingBotEvents(client, lastMessageId) {
 						member.roles.cache.has(process.env.ROLEID_KNIGHT)
 					);
 					const numberOfKnights = knights.size;
-					gameState.setKnightsSize(numberOfKnights);
+					gameState.setRoleSize("Knight",numberOfKnights);
 				}
-				const siegeRatio = gameState.getKnightsSize() / gameState.getKingsSize();
+				const siegeRatio = gameState.getRoleSize("Knight") / gameState.getRoleSize("King");
 				const disableSiege = gameState.getDisableSiege();
 				if(siegeRatio >= MinimumKnightToKingSiegeRatio && disableSiege === true){
 					gameState.setDisableSiege(false);
@@ -295,7 +295,7 @@ async function setupKingBotEvents(client, lastMessageId) {
 
 					if (gameState.isSiegeActive()) {
 						const siegeParticipantsSize = gameState.getSiegeParticipantsSize();
-						const siegeRatio = gameState.getKnightsSize() / gameState.getKingsSize();
+						const siegeRatio = gameState.getRoleSize("Knight") / gameState.getRoleSize("King");
 						const siegeSuccess =
 							siegeParticipantsSize >= siegeRatio;
 						if (siegeSuccess) {
@@ -612,8 +612,9 @@ async function setupKingBotEvents(client, lastMessageId) {
 			if (!gameState.isSiegeActive()) {
 				return;
 			}
-			const siegeRatio = gameState.getKnightsSize() / gameState.getKingsSize();
+			const siegeRatio = gameState.getRoleSize("Knight") / gameState.getRoleSizeSize("King");
 			const siegeParticipantsSize = gameState.getSiegeParticipantsSize();
+			console.log(`Siege participants: ${siegeParticipantsSize} Needed for success: ${siegeRatio}`);	
 			const success = siegeParticipantsSize >= siegeRatio;
 			let message = "";
 			siegeInitiator = gameState.getSiegeInitiator();
@@ -649,8 +650,8 @@ async function setupKingBotEvents(client, lastMessageId) {
 			try {	
 				gameState.addSiegeParticipant(userId);
 				const siegeParticipantSize = gameState.getSiegeParticipantsSize();
-				const knightsSize = gameState.getKnightsSize();
-				const kingsSize = gameState.getKingsSize();
+				const knightsSize = gameState.getRoleSize("Knight");
+				const kingsSize = gameState.getRoleSize("King");
 				const siegeSuccess = siegeParticipantSize >= knightsSize / kingsSize;
 				if (siegeSuccess) {
 					await ceaseSiege(client, lastMessageId);
@@ -860,8 +861,8 @@ async function updateMessage(client, lastMessageId) {
 			const siegeInitiator = gameState.getSiegeInitiator();
 			const siegeTarget = gameState.getSiegeTarget();
 			const siegeParticipantsSize = gameState.getSiegeParticipantsSize();
-			const knightsSize = gameState.getKnightsSize();
-			if (gameState.getKnightsSize() > 0) {
+			const knightsSize = gameState.getRoleSize("Knight");
+			if (knightsSize > 0) {
 				content =
 					initContent +
 					`\n${siegeInitiator.user.username} initiated a siege to downgrade ${siegeTarget.user.username}. (Joined ${siegeParticipantsSize} / ${knightsSize})`;
@@ -978,36 +979,41 @@ async function handleSiegeEnd(client, lastMessageId) {
 			if (!gameState.isSiegeActive()) {
 				return;
 			}
-			const siegeRatio = gameState.getKnightsSize() / gameState.getKingsSize();
+			const siegeRatio = gameState.getRoleSize("Knight") / gameState.getRoleSize("King");
 			const siegeParticipantsSize = gameState.getSiegeParticipantsSize();
+			console.log(`Siege participants: ${siegeParticipantsSize} Needed for success: ${siegeRatio}`);
 			const success = siegeParticipantsSize >= siegeRatio;
 			let message = "";
 			siegeInitiator = gameState.getSiegeInitiator();
+			console.log(`Siege initiator: ${siegeInitiator.user.username}`);
+			siegeInitiatorId = siegeInitiator.id;
+			siegeInitiatorUsername = siegeInitiator.user.username;
+			const targetMember = selectedKings[siegeInitiatorId];
 			siegeTarget = gameState.getSiegeTarget();
-
+			await resetSiege(client, lastMessageId);
 			if (success) {
+				
 				await changeRole(
-					selectedKings[siegeInitiatorId],
+					targetMember,
 					"Poop",
 					false
 				);
 				message =
-					siegeInitiator.user.username + "'s siege upon " + siegeTarget.user.username +
+					siegeInitiatorUsername + "'s siege upon " + siegeTarget.user.username +
 					"'s domain ended in victory. Heaven's favor shimmers above as " +
 					siegeTarget.user.username +
 					" falls to the sewers.";
 			} else {
 				message =
-					siegeInitiator.user.username + "'s siege upon " + siegeTarget.user.username +
+					siegeInitiatorUsername + "'s siege upon " + siegeTarget.user.username +
 					"'s has failed. Such folly does not go unnoticed as it ripples through the stream.";
 			}
-			await NotifyKingChannel(client, message);
-			
-			await resetSiege(client, lastMessageId);
-			eventEmitter.emit("siegeResult", message);
-		} catch (err) {
-			showErrorMsg(err);
-		}
+		await NotifyKingChannel(client, message);
+
+		eventEmitter.emit("siegeResult", message);
+	} catch (err) {
+		showErrorMsg(err);
+	}
 }
 
 async function ceaseSiege(client, lastMessageId) {

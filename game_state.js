@@ -198,12 +198,5 @@ module.exports = {
 	},
 	getAllRoleSizes: () => ({ ...roleSizes }),
 
-	// Knight & King Sizes
-	setKnights: (arr) => { knights = arr; },
-	getKnights: () => knights,
-	setKnightsSize: (val) => { knightsSize = val; },
-	getKnightsSize: () => knightsSize,
-	setKingsSize: (val) => { kingsSize = val; },
-	getKingsSize: () => kingsSize,
 };
 

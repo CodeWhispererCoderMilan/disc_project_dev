@@ -112,7 +112,7 @@
 	"MobFlayingCooldown": 10000,
 	"SiegeCost": 0,
 	"SiegeCooldown": 10000,
-	"SiegeTime": 60000,
+	"SiegeTime": 120000,
 	"AdviseCooldown": 10000,
 	"AssassinationTime": 40000,
 	"AssassinationThreshold": 3,

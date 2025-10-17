@@ -1,4 +1,4 @@
-# Welcome to the Official "[ ] Griefstadt" Dev Repo
+# Welcome to the Official "[ ] Griefhem" Dev Repo
  
 This GitHub repository has been put together as a base for the humble begginings of a discord game. To all developers contributing their time and sharing their input, thank you!
 I have put together this file to shed some light on the methods, functions, stack, requirements and repository guidelines. Besides the technical, I'll provide an overview of the game.
@@ -9,7 +9,7 @@ I have put together this file to shed some light on the methods, functions, stac
 
     1. [General](#General)
 
-	2. [XP system](#XPsystem)
+	2. [Drops system](#XPsystem)
 
 	3. [Roles&Bots](#RolesAndBots)
 
@@ -51,26 +51,26 @@ I have put together this file to shed some light on the methods, functions, stac
 
 ## _**General**_
 
-"[] Griefstadt" (working title) is an ambitous text based massive-multiplayer game centered around social deduction (the style of Town of Salem & Among Us), all within a Discord Server. It makes use of Discord's API, the main mechanic revolves around roles and channel permissions and the UI makes use of Discord ActionRows and Modals. Each player has a single role, namely their place on the social ladder (peasant, merchant, knight etc.) - this role also grants access to specific text channels which serve as our locations (farms, decrepit tunnels etc.).Each role has access to a read-only role_commands channel, where each role can use their abilities through an ActionRow (buttons + selectMenus). A player's goal is to climb up the ladder to emperor and avoid death using role-specific abilities, combined abilities(involving multiple players) and schemeing and deceiving within the text channels.
+"[] Griefhem" is a text based massive-multiplayer game centered around social deduction (the style of Town of Salem & Among Us), all within a Discord Server. It makes use of Discord's API, the main mechanic revolves around roles and channel permissions and the UI makes use of Discord ActionRows and Modals. Each player has a single role, namely their place on the social ladder (peasant, merchant, knight etc.) - this role also grants access to specific text channels which serve as our locations (farms, decrepit tunnels etc.). Each role has access to its respective ead-only role_commands channel, where each role can use their abilities through ActionRows (buttons + selectMenus). A player's goal is to climb up the ladder to emperor and avoid death using role-specific abilities, combined abilities(involving multiple players) along with schemeing and deceiving within the text channels.
 
-<a name="XPsystem"></a>
+<a name="Drops System"></a>
 
 
-## **XP system**
+## **Drops system**
 
-XP is the economy of the game. All abilities cost XP, some  abilities grant XP.In lower roles, users are promoted to the next role when their XP passes a certain threshold. In the higher roles XP is used to maintain your grip over those beneath as well to sway those above in your favour. XP is updated incrementally, on each update all users get XP (currently all get the same amount, XP granted should vary based on role). XP is implemented using Firebase's real-time DB along with a local redis cache for improved response time and lower DB request rate.
+Drops are the economy of the game. All abilities cost drops, some  abilities grant drops. In lower roles, users are promoted to the next role when their acumulated drops pass a certain threshold. In the higher roles drops are used to maintain your grip over those beneath as well to sway those above in your favour.Drops are updated incrementally, on each update all users get drops (currently all get the same amount, drops granted should vary based on role). Drops are implemented using Firebase's real-time DB along with a local redis cache for improved response time and lower DB request rate.
 
 <a name="RolesAndBots"></a>
 
 
 ## **Roles&Bots**
 
-Discord roles are the "levels" players go through. Each has their own read-only role_commands channel. Each channel has a role-specific bot assigned to it, the bot sends a single message which users can interact with to use their abilities and check their status(checking XP not yet implemented).
+Discord roles are the "levels" players go through. Each has its own read-only role_commands channel. Each channel has a role-specific bot assigned to it, the bot sends a single message which users can interact with to use their abilities and check their status(checking XP not yet implemented).
 
 * Roles are:
 	* Poop
 	* Maggot
-	* Fly
+	* Cockroach
 	* Rat
 	* Sub-human
 	* Peasant

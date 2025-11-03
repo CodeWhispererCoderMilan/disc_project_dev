@@ -25,19 +25,19 @@ I have put together this file to shed some light on the methods, functions, stac
 
 	2. [botSetup.js](#botSetup)
 
-	3. [cockroach_commands.js](#cockroach)
+	3. [role_commands](#maggot)
 
-	4. [maggot_commands.js](#maggot)
+    4. [fireBaseDb.js](#firebaseDb)
 
-    5. [fireBaseDb.js](#firebaseDb)
+    5. [querys.js](#querys)
 
-    6. [querys.js](#querys)
+    6. [redisCache.js](#redisCache)
 
-    7. [redisCache.js](#redisCache)
+    7. [botActions.js](#botActions)
 
-    8. [botActions.js](#botActions)
+    8. [game_config.json](#gameConfig)
 
-    9. [game_config.json](#gameConfig)
+    9. [game_state.js](#gameState)
 
 
 <a name="Overview"></a>
@@ -98,11 +98,6 @@ The libraries used in the project:
 * firebase + firebase-admin
 * dotenv
 * config
-
-And for testing/development:
-	
-* jest
-* eslint
 
 All development branches must only use these libraries.
 
@@ -253,7 +248,7 @@ Within the GitHub repository, each developer must create their own branch, once 
 
 
 
-##  Folders, Files & Functions
+##  5. Folders, Files & Functions
 
 The directory structure is intuitive, in the root directory there are `game_config.json` (globals that we use for game mechanics lie cooldowns, XP thresholds and ability XP costs) and `.env` along with `botSetup.js`, the method which exports the function we use to intialize bots in `index.js`.
 
@@ -278,33 +273,28 @@ index.js is the start-up file, it intializes the redis server connection then ca
 
 ## __2. botSetup.js__
 
-Handles bot authentication & intialization. Consolebot is handled own function since the bot does not message any server. other than that each bot is intialized with `createBot(token, channelId, setupEventsFunction,messageCommands)` which logs the bot and initializes it to message it's respective server with the user UI, this is done through the `setupRoleEvents(client)` and `messageRoleCommands(client)` functions which are in each bot's specific role_commands file. Also notable is the setupRoleUpdate function  which is called bhy each bot and handles possible role update events in case an ability handled by the bot must trigger a user's role change (if a target is killed by an ability for ex.),for consoleBot this is used for leveling up (whenever a user's XP reaches a role's threshold - as seen in game_config.json).
+Handles bot authentication & intialization. Consolebot is handled with its' own function, other than that each bot is intialized with `createBot(token, channelId, setupEventsFunction,messageCommands)` which logs the bot and initializes it to message it's respective server with the user UI, this is done through the `setupRoleEvents(client)` and `messageRoleCommands(client)` functions which are in each bot's specific role_commands file. Also notable is the setupRoleUpdate function  which is called bhy each bot and handles possible role update events in case an ability handled by the bot must trigger a user's role change (if a target is killed by an ability for ex.),for consoleBot this is used for leveling up (whenever a user's XP reaches a role's threshold - as seen in game_config.json).
 
-<a name = "cockroach"></a>
-
-
-## __3. cockroach_commands.js__
-
-Cockroaches have 2 abilities for now, infanticide and swarm. 
-
-__Infanticide__ just demotes a selected maggot target at the cost of XP (InfanticideCost), it also has a user-specific cooldown meaning you can only use it so often. To commit infanticide users must interact with the "UI" in the bot's message, which is a select menu and a button trigger. The select menu for maggots updates whenever a player becomes a maggot or was a maggot (see the guild member update event handler - which trigers a re-rendering of the select menu). The trigger button triggers an interaction that is handled to change the role of the selected maggot to "Poop", deduce the XP cost fron the player, start the cooldown timer for their infanticide ability, and reset the selectMenu to it's previous state(no selection/placeholder). So, for infanticide we have the `'guildmemberUpdate'` event handler codeblock that keeps our select menu live, the `'selectMaggot'` interaction handler which selects a target and the `'commitInfanticide'` interaction handler which handles the trigger button clicks.
-
-__Swarm__ swarm is more complex , it involves multiple states that also change the UI. Similar to infanticide, we have a subhuman select ,enu that is updated live using guild member update, second we have our swarm button. Players pick a target and intiate the swarm, this starts a timer and changes the swarm button to join swarm for all players, along with a change in the content of the bot message, notifying cockroaches  @swarmstarter's swarm is brewing. Players can join the swarm if 3 more cockroaches join before the timer ends it continues to the next phase, otherwise it fails and goes back to the intial message with the swarm button , a reset select subhuman menu and no swarm notification in message content. in the second phase, if 4 cockroaches joined and are still "alive" a new timer starts, in this time no cockroaches can join (the button is disabled) and if any of the conckroaches die, the swarm fails, else the swarm succeeds, the target's role is successfully changed, the swarm cooldown(which is universal for all cockroaches not specific to a single user) is intiated in the cache and a success notification is sent.
-In the `'guildMemberUpdate handler'`, if any cockroaches change roles within a swarms first phase the swarm count is lowered,in the second phase , the swarm ends and if the intiator changes roles in either phase the swarm ends as well - this sheds some light on all interaction events:
-
-	* 'subhumanSelect' selects the swarm target in the select menu
-	* 'swarmInitiated' triggers the first phase
-	* 'joinSwarm' handles the join button and triggers the second phase when there are 4 cockroaches in the swarm
-	* 'swarmInitiatorRoleChanged' handles the rolechange of the initiator(swarm fail).
-	* 'swarmParticipantDied' handles the rolechange if a cockroach within the second phase of the swarm (swarm fail).
-	* 'swarmComplete' handles a successful swarm.
-
-`resetSwarm()` is called to reset the message components related to the swarm (subhuman select menu, swarm/joinSwarm button and swarm message content) to their pre-swarm state (enabled subhuman selectMenu, enabled swarm button and intial message content)
-
-<a name = "maggot"></a>
+<a name = "role_commands"></a>
 
 
-## __3. maggot_commands.js__
+## __3. role_commands folder__
+This folder contains a file for each bot role, each file contains all interaction handlers and functions needed for the bot to handle its' role abilities and their respective UI. Each bot combines Cache, DB and Discord API methods for handling abilities that are triggered through the Action Row messages sent to their channels. UI responsiveness - up-to-date select menus, buttons and text displayed within the interactive message - is guaranteed through custom and discord client event handlers. `guildMemberUpdate` & `guildMemberRemove` are event handlers used in each bot file to keep select menus up to date with current role holders, disable appropriate buttons & edit text base on game state. Below are overviews of the currently implemented bot files:
+
+## poop_commands.js
+
+Poop players have **no active abilities** — they are the bottom caste of Griefhem. 
+
+This file listens for global demotion events and displays short-lived system messages when Poops are targeted. The poop bot **does not trigger abilities** — it reacts to external ones.
+
+* Passively receives notifications when being:
+  * Festered by a maggot (XP siphon)
+  * Devoured by cockroaches, rats, subhumans, etc.
+  * Reduced to Poop by higher-tier abilities
+* Re-renders the UI when server status changes
+
+
+## maggot_commands.js
 
 Maggots have a single ability, "Fester", this enables them to siphon XP from a selected poop for a set amount of time (FesteringDuration) and at the cost of XP (FesterCost), it also has it's own user-specific cooldown. The festering effect is tracked in both DB and Cache, and changes the behaviour of the `DBUpdateXP()` function in "querys.js". It's Ui consists of an unfestered poops select menu and a "fester"  trigger button.
 
@@ -319,6 +309,307 @@ The interaction events:
     * 'selectPoop' locks in a target for festering and enables the fester button
 	* 'fester' handles the fester button clicks, checks if all fester requirements are met and calls fester(client, maggotId, poopId), otherwise the user is notified (not enough XP or fester is on cooldown)
 	* 'festeringStatusChanged' handles every situation where the message must be updated with unfestered poops select menu component.
+
+
+## cockroach_commands.js
+__Infanticide__ just demotes a selected maggot target at the cost of XP (InfanticideCost), it also has a user-specific cooldown meaning you can only use it so often. To commit infanticide users must interact with the "UI" in the bot's message, which is a select menu and a button trigger. The select menu for maggots updates whenever a player becomes a maggot or was a maggot (see the guild member update event handler - which trigers a re-rendering of the select menu). The trigger button triggers an interaction that is handled to change the role of the selected maggot to "Poop", deduce the XP cost fron the player, start the cooldown timer for their infanticide ability, and reset the selectMenu to it's previous state(no selection/placeholder). So, for infanticide we have the `'guildmemberUpdate'` event handler codeblock that keeps our select menu live, the `'selectMaggot'` interaction handler which selects a target and the `'commitInfanticide'` interaction handler which handles the trigger button clicks.
+
+__Swarm__ swarm is more complex , it involves multiple states that also change the UI. Similar to infanticide, we have a subhuman select ,enu that is updated live using guild member update, second we have our swarm button. Players pick a target and intiate the swarm, this starts a timer and changes the swarm button to join swarm for all players, along with a change in the content of the bot message, notifying cockroaches  @swarmstarter's swarm is brewing. Players can join the swarm if 3 more cockroaches join before the timer ends it continues to the next phase, otherwise it fails and goes back to the intial message with the swarm button , a reset select subhuman menu and no swarm notification in message content. in the second phase, if 4 cockroaches joined and are still "alive" a new timer starts, in this time no cockroaches can join (the button is disabled) and if any of the conckroaches die, the swarm fails, else the swarm succeeds, the target's role is successfully changed, the swarm cooldown(which is universal for all cockroaches not specific to a single user) is intiated in the cache and a success notification is sent.
+In the `'guildMemberUpdate handler'`, if any cockroaches change roles within a swarms first phase the swarm count is lowered,in the second phase , the swarm ends and if the intiator changes roles in either phase the swarm ends as well - this sheds some light on all interaction events:
+
+	* 'subhumanSelect' selects the swarm target in the select menu
+	* 'swarmInitiated' triggers the first phase
+	* 'joinSwarm' handles the join button and triggers the second phase when there are 4 cockroaches in the swarm
+	* 'swarmInitiatorRoleChanged' handles the rolechange of the initiator(swarm fail).
+	* 'swarmParticipantDied' handles the rolechange if a cockroach within the second phase of the swarm (swarm fail).
+	* 'swarmComplete' handles a successful swarm.
+
+`resetSwarm()` is called to reset the message components related to the swarm (subhuman select menu, swarm/joinSwarm button and swarm message content) to their pre-swarm state (enabled subhuman selectMenu, enabled swarm button and intial message content)
+
+## rat_commands.js
+
+Rats have two abilities:
+
+__Nibble__ Demote a selected **maggot or cockroach** to Poop.
+* Costs drops  
+* Has a personal cooldown  
+* Requires selecting a target from a live role menu  
+* Sends humiliation message to victim channel  
+* Resets selection after use  
+
+Solo aggression — efficient predation of the lower vermin.
+
+__Plague__ A cooperative, timed, two-phase extermination mechanic against mid-tier roles:
+
+1. **Phase 1 (Rally Rats)**  
+   * A Rat selects a higher-tier target (Subhuman → Knight)  
+   * Other Rats must join before the phase timer ends  
+   * If too few participate → plague fails  
+
+2. **Phase 2 (Target Resolution)**  
+   * All joining Rats lock their target votes  
+   * If votes on a target meet the threshold for that target's role tier  
+   * Target(s) are **forcibly demoted to Poop**  
+
+System behavior:
+ 
+* Plague cancels if rats die / leave mid-plague  
+* UI resets after success/failure  
+* Broadcasts plague announcements to Rat channel 
+
+## subhuman_commands.js
+__Depravity__ demote a subhuman to poop. 
+
+__Manhunt__ demote a peasant to poop.
+
+__Pickings__ Demote a maggot,cockroach or rat to poop.
+
+## peasant_commands.js
+Peasants have two coordinated abilities affecting nearby and upper tiers:
+
+__MobFlaying__ Collective demotion of a selected **peasant or subhuman** to Poop.
+
+* Select target (Peasant/Subhuman)
+* Initiator starts timed vote
+* Other Peasants join via button
+* If participation ≥ threshold → target becomes Poop
+* Personal cooldown for initiator
+* Cancels if initiator/target loses Peasant role or leaves
+* UI updates dynamically during voting
+
+__Revolution__ Triggers or joins the server-wide revolution
+
+## scholar_commands.js
+Scholars support uprisings and can send strategic messages upward.
+
+__Advise__ Send a message to upper authority (Royal Castle) through a modal.
+
+* Modal text input → message delivered to castle handler
+* Per-user cooldown
+* Event-driven acknowledgement + ephemeral reply
+
+__Revolution__ Triggers or joins the server-wide revolution
+
+## merchant_commands.js
+
+Merchants manipulate XP economy and influence political flow.
+
+__Bribe__ Grant XP to a selected target.
+
+* Modal input for XP + optional message  
+* Validates XP balance  
+* Deducts from merchant, adds to target  
+* Per-user cooldown  
+
+#__Endow__ Apply XP gain multiplier link to a chosen **Peasant/Scholar/Merchant/Knight/Noble**.
+
+* Target receives 1.5x XP  
+* Merchant earns 0.5x of target XP gains  
+* Costs XP to apply  
+* Duration + cooldown enforced  
+* Prevents duplicate endow on same target
+
+__Revolution__ Triggers or joins the server-wide revolution
+
+## knight_commands.js
+Knights execute targeted demotions and manage writ permissions.
+
+__CutDown__ Demote a selected **Peasant → King** to Poop.
+
+* Select target (Peasant–King)
+* If target is **Knight/Noble/Lord/King** → must have valid writ level (Imperial/Royal/Eminent/etc.)
+* If no writ required → costs XP
+* Executes writs and awards XP when successful
+* Per-user cooldown
+* Cancels if roles change or user leaves
+
+__ShowWrits__ View active writs and rewards.
+
+* Lists writ type, target, status, reward
+* Used for tracking CutDown eligibility and gains
+
+__Revolution__ Triggers or joins the server-wide revolution
+
+__Coup__ Knight-only coordinated overthrow against upper tiers.
+
+* Select **Noble → King** target
+* Start/join coup
+* Follows same vote/phase logic as revolution
+
+__JoinSiege__ Join King-initiated siege.
+* Only enabled during siege
+* Counts toward knight participation threshold
+## noble_commands.js
+Nobles issue writs and initiate assassination events.
+
+__HighWrit__ Issue a writ ordering a Knight to cut down a lower-tier user.
+
+* Select **human target (Peasant/Scholar/Merchant)** and **Knight**
+* Modal collects message + reward amount
+* Deducts drops from Noble
+* Creates writ in cache (Knight executes later via CutDown)
+* Per-user cooldown
+
+__Assassination__ Coordinated demotion of **Knight/Noble/Lord** to Poop.
+* Select target (Knight/Noble/Lord)
+* Start vote timer
+* Nobles join via button
+* If participants ≥ threshold before timeout → target demoted
+* Per-user global cooldown
+* Cancels if initiator or target changes role/leaves
+* Disabled if too few nobles online
+
+__ShowWrits__ Display writs issued by this Noble.
+
+* Shows Knight, target, status, reward
+* Returns drops on annulled/failed writs
+
+System notes:
+* Disables menus during active assassination
+* Resets session state after success/failure
+## lord_commands.js
+
+Lords execute writs and run promotion elections.
+
+__Exile__ Demote **Peasant/Scholar/Merchant** to Sub-human.
+
+* Select low-tier user
+* Costs XP + cooldown
+* Cancels if target changes role
+* Triggers event + confirmation message
+
+__EminentWrit__ Issue a writ ordering a Knight to cut down a **human target**.
+
+* Select **human** + **Knight**
+* Modal → message + drop amount
+* Deducts drops & writes to cache
+* Knight later executes writ via __CutDown__
+* Cooldown applied
+
+__Election__ Promote via vote:
+
+* Select **Noble → promote to Lord**  
+  OR **Lord → promote to King**
+* Start timed vote
+* Lords join until threshold met or timeout
+* Cancels on role change / leave
+* Cooldown after initiating
+
+__Vote__ Join an active Lord election.
+
+* Adds voter to set
+* Vote threshold → immediate promotion
+
+## king_commands.js
+
+Kings manage nobility and run sieges against rival Kings.
+
+__Degradation__ Demote a **Knight → Merchant**.
+
+* Select Knight
+* Costs XP + cooldown
+* Emits event + XP update
+
+__Knight__ Promote **Peasant/Scholar/Merchant** to Knight.
+
+* Select low/mid-tier user
+* Costs XP + cooldown
+* Emits role change + event
+
+__RoyalWrit__ Issue writ ordering a Knight to cut down a selected target.
+
+* Select **Knight + target (Peasant → Lord)**
+* Modal → message + drops
+* Deducts XP and stores writ
+* Cooldown applied
+
+__Siege__ Start a siege on rival King.
+
+* Select target King
+* Costs XP
+* Knight participation ratio determines success
+* Knights can join via __JoinSiege__ UI
+* Ends early on threshold or failure
+
+__ShowWrits__ Display writs issued by this King.
+
+## emperor_commands.js
+
+Emperor controls succession and highest-tier writs.
+
+__Coronation__ Promote **Lord → King**.
+
+* Select Lord
+* Costs XP + cooldown
+* Role change + broadcast event
+
+__Dethrone__ Demote **King → Lord**.
+
+* Select King
+* Costs XP + cooldown
+* Broadcast success event
+
+__HeirSuccession__ Transfer throne to selected King.
+
+* Select King as heir
+* Costs XP + cooldown
+* Current Emperor becomes King
+* Heir becomes Emperor
+* Triggers succession events
+
+__ImperialWrit__ Issue writ ordering Knight to cut down a selected target.
+
+* Select **target (Peasant → King)** + Knight
+* Modal → message + drop reward
+* Deducts XP and persists writ
+* Cooldown applied
+
+__ShowWrits__ Display writs issued by the Emperor.
+
+## console_commands.js
+
+The Console is a system/admin panel for global state, role forcing, XP checks, and astral entry.
+
+### __/changerole__
+Force-change a user’s role.
+
+* `/changerole user:@target role:"RoleName" keep_xp:true|false`
+* Admin-only
+* Direct role assignment, bypasses game logic
+
+__CheckDrops__ Button: shows current drops.
+
+* Fetches cached Drops
+* Cooldown enforced
+* Ephemeral feedback
+
+__Divination__ Enter Astral Realm (Scholar/Emperor only).
+
+* Scholar = listen only
+* Emperor = can speak
+* Role-gated + cooldown
+
+__Revolution & Coup System Hooks__ Console reacts to and maintains global upheaval mechanics.
+
+* Tracks counts for **Peasant → Emperor** tiers
+* Enables/disables revolution/coup based on population thresholds
+* Handles:
+  * First phase start
+  * Second phase checks
+  * Elections
+  * Fail conditions
+  * Event routing to channels
+
+__Auto Role Init__ On member join → assign Poop + register in DB.
+
+__Global XP Boost Scheduling__ Handles missed XP ticks on restart and reschedules boosts.
+
+__Writ & Event Routing__ Dispatches writ updates + revolution/coup UI refresh via eventEmitter.
+
+System notes:
+* Uses Firebase + Redis for XP, roles, writs
+* Updates role population counts to enforce thresholds
+* Maintains console UI button state (server up/down)
 
 <a name="firebaseDb"></a>
 
@@ -400,7 +691,12 @@ This method contains functions called by most of the bots.
 <a name="gameConfig"></a>
 
 
-## __7. game_config.json__
+## __8. game_config.json__
 
 `game_config.json` is the balancing console of the game, it contains abiltiy costs, cooldowns, timer values and `"roleXpThresholds"` - the role hierarchy along with the XP threshold a user needs to pass to get to the next role.
 
+<a name="gameState"></a>
+
+
+## __9. game_state.json__
+`game_state.js` contains global variables that represent the current state of the game, containing data relevant to the status of cross-role abilities - Revolution, Coup & Siege, role sizes and server status.

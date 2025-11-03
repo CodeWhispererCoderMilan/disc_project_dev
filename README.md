@@ -401,7 +401,7 @@ __Bribe__ Grant XP to a selected target.
 * Deducts from merchant, adds to target  
 * Per-user cooldown  
 
-#__Endow__ Apply XP gain multiplier link to a chosen **Peasant/Scholar/Merchant/Knight/Noble**.
+__Endow__ Apply XP gain multiplier link to a chosen **Peasant/Scholar/Merchant/Knight/Noble**.
 
 * Target receives 1.5x XP  
 * Merchant earns 0.5x of target XP gains  
@@ -570,8 +570,7 @@ __ShowWrits__ Display writs issued by the Emperor.
 
 The Console is a system/admin panel for global state, role forcing, XP checks, and astral entry.
 
-### __/changerole__
-Force-change a user’s role.
+__/changerole__ Force-change a user’s role.
 
 * `/changerole user:@target role:"RoleName" keep_xp:true|false`
 * Admin-only
@@ -693,7 +692,7 @@ This method contains functions called by most of the bots.
 
 ## __8. game_config.json__
 
-`game_config.json` is the balancing console of the game, it contains abiltiy costs, cooldowns, timer values and `"roleXpThresholds"` - the role hierarchy along with the XP threshold a user needs to pass to get to the next role.
+`game_config.json` contains all in-game text along with global values used in game mecahnics which can be tweaked for balancing - it contains abiltiy costs, cooldowns, timer values and `"roleXpThresholds"` - the role hierarchy along with the XP threshold a user needs to pass to get to the next role.
 
 <a name="gameState"></a>
 

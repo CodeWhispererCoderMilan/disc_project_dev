@@ -6,7 +6,9 @@ const {
 	startupOpenEmperorThreshold,
 	evaluateThresholds
 } = require("../apis/firebase/querys.js");
-
+const{
+	CacheGetUsersByRoles
+} = require("../apis/redis/redisCache.js");
 function wait(ms) {
 	return new Promise((resolve) => {
 		setTimeout(resolve, ms);
@@ -76,23 +78,14 @@ async function checkAndApplyMissedXPBoost(client) {
 
 async function buildSelectMenu(client, roleNames, customId, chooseText) {
 	const guild = await client.guilds.fetch(process.env.GUILDID);
-	await guild.members.fetch();
-	let roleIds = roleNames.map(
-		(roleName) => process.env[`ROLEID_${roleName.toUpperCase()}`]
-	);
+	const usersWithRoles = await CacheGetUsersByRoles(roleNames);
 	let textChooseMember = `Choose a ${roleNames.join(" | ")}`;
 	if (chooseText) textChooseMember = chooseText.toString();
 	let textNoMembers = `No ${roleNames.join(" | ")}`;
 	let disabledValue = "no_data";
 
-	let members = [];
-	for (let roleId of roleIds) {
-		let roleMembers = guild.members.cache
-			.filter((member) => member.roles.cache.has(roleId))
-			.map((member) => ({ label: member.user.username, value: member.id }));
-		members = members.concat(roleMembers);
-	}
-	//console.log(`-----Fetched ${roleNames.join("|")}`, members);
+	const members = usersWithRoles
+			.map((member) => ({ label: String(member.username), value: member.id }));
 	return new StringSelectMenuBuilder()
 		.setCustomId(customId)
 		.setPlaceholder(textChooseMember)

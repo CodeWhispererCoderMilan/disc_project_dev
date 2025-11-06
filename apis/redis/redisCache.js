@@ -28,12 +28,6 @@ async function initializeRedis() {
 	client.on("connect", async () => {
 		if (!isInitialConnection) {
 			console.log("Redis reconnected, synchronizing cache...");
-			try {
-				await CacheAllUserXP();
-				console.log("Redis cache re-synchronized successfully.");
-			} catch (error) {
-				console.error("Failed to synchronize Redis cache on reconnect:", error);
-			}
 		}
 		isInitialConnection = false;
 	});
@@ -52,9 +46,9 @@ async function initializeRedis() {
 	}
 }
 
-async function CacheAddUser(userId) {
+async function CacheAddUser(userId, username) {
 	try {
-		await CacheSetUserXP(userId, 0);
+		await client.hSet(`user:${userId}`, { xp: "0", role: "Poop", username: `${username}` });
 		console.log(`Cache: succesfully cached new user ID: ${userId}`);
 	} catch (err) {
 		console.error(
@@ -63,10 +57,20 @@ async function CacheAddUser(userId) {
 		throw err;
 	}
 }
-
+async function CacheAddUserFromDB(userId, xp, role, username) {
+	try {
+		await client.hSet(`user:${userId}`, { xp: String(xp), role: String(role), username: String(username) });
+	} catch (err) {
+		console.error(
+			`Cache: error caching user from DB ID: ${userId} with error : ${err}`
+		);
+		throw err;
+	}
+}
 async function CacheRemoveUser(userId) {
 	try {
-		await client.del(`user:${userId}:xp`);
+		// remove new hash and old legacy key if present
+		await client.del(`user:${userId}`);
 		console.log(`Cache: succesfully remved user from cache ID: ${userId}`);
 	} catch (err) {
 		console.error(
@@ -75,25 +79,95 @@ async function CacheRemoveUser(userId) {
 		throw err;
 	}
 }
+async function CacheGetUserRole(userId) {
+	try {
+		const role = await client.hGet(`user:${userId}`, "role");
+		return role;
+	}catch (err) {
+		console.log(`Cache: error getting user role for user ID: ${userId} with error : ${err}`);
+	}
+}
 
-// Setting a user's XP
+async function CacheSetUserRole(userId, role) {
+	try{
+		await client.hSet(`user:${userId}`, { role: String(role) });
+	}catch (err) {
+		console.log(`Cache: error setting user role for user ID: ${userId} with error : ${err}`);
+	}
+}
+async function CacheGetUserUsername(userId) {
+	try {
+		const username = await client.hGet(`user:${userId}`, "username");
+		return username;
+	}catch (err) {
+		console.log(`Cache: error getting username for user ID: ${userId} with error : ${err}`);
+	}
+}
+
+async function CacheSetUserUsername(userId, username) {
+	try{
+		await client.hSet(`user:${userId}`, { username: String(username) });
+	}catch (err) {
+		console.log(`Cache: error setting username for user ID: ${userId} with error : ${err}`);
+	}
+}
+// Setting a user's XP  (now using a hash: user:{userId} -> { xp, role })
 async function CacheSetUserXP(userId, xp) {
 	try {
-		await client.set(`user:${userId}:xp`, xp.toString());
+		await client.hSet(`user:${userId}`, { xp: String(xp) });
 	} catch (err) {
 		throw err;
 	}
 	console.log(`Cache: succesfully cached XP: ${xp} for user ID : ${userId}`);
 }
 
-// Getting a user's XP
+// Getting a user's XP (hash-first; migrate legacy string key if encountered)
 async function CacheGetUserXP(userId) {
-	const xp = await client.get(`user:${userId}:xp`);
-	if (!xp) {
-		throw new Error(`no user with id: ${userId} in cache`);
+	try{
+		let xp = await client.hGet(`user:${userId}`, "xp");
+		if (xp !== null && xp !== undefined) {
+			return parseInt(xp);
+		}
+	}catch(err){
+		console.error(`Cache: error getting user XP for user ID: ${userId} with error : ${err}`);
 	}
-	return xp;
 }
+
+// Fetch ALL users who have a role in the provided list (case-insensitive)
+// Returns: Array<{ userId, username }>
+async function CacheGetUsersByRoles(roles) {
+  try {
+    if (!Array.isArray(roles) || roles.length === 0){
+		console.log("ERROR: CacheGetUsersByRoles called with empty roles array");    
+    		return [];
+	}
+    const wanted = new Set(roles.map(r => String(r).toLowerCase()));
+    const results = [];
+    for await (const key of client.scanIterator({ MATCH: "user:*", COUNT: 1000 })) {
+      const parts = key.split(":");
+      if (parts.length !== 2) continue; // skip if not user:{id}
+      const userId = parts[1];
+
+      // Read needed fields
+      const [role, username] = await client.hmGet(key, ["role", "username"]);
+      if (role && wanted.has(role.toLowerCase())) {
+        results.push({
+		username: username,
+          	id: userId
+        });
+      }
+    }
+
+    // Optional: sort alphabetically by username for stable UI ordering
+    results.sort((a, b) => (a.username || "").localeCompare(b.username || ""));
+    return results;
+  } catch (err) {
+    console.error("Cache: error in CacheGetUsersByRoles:", err);
+    throw err;
+  }
+}
+
+
 
 async function CacheSetFestering(maggotId, poopId, endTime) {
 	try {
@@ -464,7 +538,7 @@ async function CacheCheckAndUpdateUserWrits(userId) {
 					(writData.writerId === userId ||
 						writData.knightId === userId ||
 						writData.targetId === userId) &&
-						writData.writStatus === 0
+					writData.writStatus === 0
 				) {
 					writData.writStatus = 3;
 					updatedMulti.set(allKeys[index], JSON.stringify(writData));
@@ -630,6 +704,12 @@ async function CacheGetMerchantEndows(merchantId) {
 	}
 }
 module.exports = {
+	CacheAddUserFromDB,
+	CacheGetUserRole,
+	CacheSetUserRole,
+	CacheGetUserUsername,
+	CacheSetUserUsername,
+	CacheGetUsersByRoles,
 	CacheSetEndow,
 	CacheClearEndow,
 	CacheGetEndows,

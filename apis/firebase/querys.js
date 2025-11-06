@@ -18,12 +18,12 @@ const { MinimumLordSize, MinimumNobleSize, MinimumKnightSize,
 	XpBoostEmperor,
 	EndowPenalty
 } = require('../../game_config.json');
-const { CacheRemoveUser, CacheAddUser, CacheSetUserXP, CacheSetFestering, CacheClearFestering, CacheIsPoopBeingFestered, CacheGetEndows, CacheGetUserXP, CacheClearEndow} = require('../redis/redisCache.js');
+const { CacheAddUserFromDB, CacheRemoveUser, CacheAddUser, CacheSetUserXP, CacheSetFestering, CacheClearFestering, CacheIsPoopBeingFestered, CacheGetEndows, CacheGetUserXP, CacheClearEndow, CacheGetUserRole, CacheSetUserRole} = require('../redis/redisCache.js');
 const { eventEmitter } = require('../../functions/eventEmitter.js');
 
 const roleUpgradeAvailable = Array(13).fill(true); //array that opens or blocks leveling up between roles.
 
-	function closeThreshold(thresholdnr) {
+function closeThreshold(thresholdnr) {
 		roleUpgradeAvailable[thresholdnr] = false;
 
 	}
@@ -36,23 +36,25 @@ function isThresholdOpen(thresholdnr) {
 }
 async function CacheDataFromDB() {
 	try {
-		await CacheAllUserXP();
+		await CacheAllUserXPandRole();
 		await CacheFesteringUsers();
 	} catch (err) {
 		console.log(`Cache: error caching DB data on startup error message: ${err}`);
 	}
 }
 
-async function CacheAllUserXP() {
+async function CacheAllUserXPandRole() {
 	try {
 		const users = await DBGetUsers();
 		for (const userId in users) {
-			const xp = users[userId].XP || 0;
-			await CacheSetUserXP(userId, xp);
+			const xp = users[userId].XP;
+			const role = users[userId].role;
+			const username = users[userId].username;
+			await CacheAddUserFromDB(userId,xp,role,username);
 		}
-		console.log('Cache: succesfully cached all users XP');
+		console.log('Cache: succesfully cached all users Drops and Roles from DB');
 	} catch (err) {
-		console.error(`Cache: ${err}`);
+		console.log(`Cache: ${err}`);
 		throw err;
 	}
 }
@@ -105,7 +107,7 @@ async function DBAddUser(member) {
 			role: "Poop",
 		});
 		console.log(`DB: User ${member.displayName} added to DB. updating cache..`);
-		await CacheAddUser(member.id);
+		await CacheAddUser(member.id, member.displayName);
 	} catch (err) {
 		console.error(err);
 		throw err;
@@ -227,12 +229,14 @@ async function DBResetXP(userId) {
 	}
 }
 
-function DBSetRole(member, newRole) {
-	const userRoleRef = db.ref(`users/${member.id}/role`);
-
-	userRoleRef.set(newRole)
-		.then(() => console.log(`DB: Role ${newRole} set for user ${member.displayName}.`))
-		.catch(err => console.error(err));
+async function DBSetRole(member, newRole) {
+	try{
+		const userRoleRef = db.ref(`users/${member.id}/role`);
+		userRoleRef.set(newRole);
+		await CacheSetUserRole(member.id, newRole);
+	} catch(err){
+		console.log(`Error setting role for user ${member.displayName}: ${err.message}`);
+	}
 }
 
 // Example function to get the last XP boost time from the database
@@ -424,15 +428,17 @@ async function changeRole(member, roleName, keepXP) {
 	);
 
 	if (!(memberRoleArr.size === 1)) {
-		console.error(`user "${member.displayName}" has multiple roles`);
+		console.log(`ERROR: user "${member.displayName}" has multiple roles`);
+		return;
 	}
 	const role = member.guild.roles.cache.find((r) => r.name === roleName);
 	if (!role) {
-		console.error(`Role "${roleName}" not found`);
+		console.log(`Role "${roleName}" not found`);
+		return;
 	}
 	const memberRole = memberRoleArr.first();
 	try {
-		DBSetRole(member, roleName);
+		await DBSetRole(member, roleName);
 	} catch (err) {
 		throw {
 			name: "unable to write role to DB",
@@ -471,10 +477,7 @@ async function changeRole(member, roleName, keepXP) {
 	try {
 		await member.roles.add(role);
 	} catch (err) {
-		throw {
-			name: "RoleChangeError",
-			message: `Error adding ${roleName} role for user ${member.displayName}: ${err.message}`,
-		};
+		console.error(`Error adding ${roleName} role for user ${member.displayName}: ${err.message}`);
 	}
 	if(roleName === "Emperor" || roleName === "King" || roleName === "Lord" || roleName === "Noble" || roleName === "Knight") {
 		try{
@@ -564,4 +567,4 @@ async function evaluateThresholds(client) {
 	}	
 
 }
-module.exports = { CacheDataFromDB, CacheAllUserXP, CacheFesteringUsers , DBGetUsers, DBGetUserById, DBAddUser, DBRemoveUser, DBUpdateXP, DBSetRole, DBGetLastXPBoostTime, DBSetLastXPBoostTime, DBBoostXPForAllUsers, DBResetXP, DBSetFestering, DBGetActiveFestering, DBClearFestering, DBGetFestering, isThresholdOpen,changeRole, startupOpenEmperorThreshold, evaluateThresholds, openThreshold, closeThreshold }
+module.exports = { CacheDataFromDB, CacheFesteringUsers , DBGetUsers, DBGetUserById, DBAddUser, DBRemoveUser, DBUpdateXP, DBSetRole, DBGetLastXPBoostTime, DBSetLastXPBoostTime, DBBoostXPForAllUsers, DBResetXP, DBSetFestering, DBGetActiveFestering, DBClearFestering, DBGetFestering, isThresholdOpen,changeRole, startupOpenEmperorThreshold, evaluateThresholds, openThreshold, closeThreshold }

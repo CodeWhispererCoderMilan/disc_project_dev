@@ -3,7 +3,8 @@ const {
 	CacheIsPoopBeingFestered,
 	CacheGetFesterCooldown,
 	CacheGetFesteringTarget,
-	CacheGetUserXP
+	CacheGetUserXP,
+    	CacheGetUsersByRoles
 } = require('../apis/redis/redisCache');
 const {DBSetFestering, DBClearFestering, DBUpdateXP, DBGetUserById} = require('../apis/firebase/querys');
 const {
@@ -82,7 +83,7 @@ async function setupMaggotBotEvents(client, lastMessageId) {
 			const userId = interaction.user.id;
 			let selectedPoopId = interaction.values[0];
 			try {
-				selectedPoops[userId] = await interaction.guild.members.cache.get(selectedPoopId)
+				selectedPoops[userId] = await interaction.guild.members.fetch(selectedPoopId);
 				await interaction.deferUpdate();
 			} catch (err) {
 				showErrorMsg(err);
@@ -168,25 +169,15 @@ async function messageMaggotCommands(client) {
 }
 
 async function getUnfesteredPoops(client) {
-	let guild = null;
 	let availablePoops = [];
-	try {
-		guild = await client.guilds.fetch(process.env.GUILDID);
-		await guild.members.fetch();
 
-	} catch (err) {
-		console.error(err);
-	}
-
-	const poops = guild.members.cache
-		.filter(member => member.roles.cache.has(process.env.ROLEID_POOP))
-		.map(member => [member.user.username, member.id]);
-
+	const allPoopUsers = await CacheGetUsersByRoles(["poop"]);
+	const poops = allPoopUsers.map(member => [member.username, member.id]);
 	try {
 		for (let poop of poops) {
 			console.log(`checking if ${poop[0]} is being festered...`);
 			const beingFestered = await CacheIsPoopBeingFestered(poop[1]);
-			console.log(`${poop[0]} being festered: ${beingFestered}`);
+			console.log(`${poop[0]} is being festered: ${beingFestered}`);
 			if (!beingFestered) {
 				availablePoops.push({
 					id: poop[1],

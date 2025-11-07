@@ -12,6 +12,7 @@ const {
 const {
 	CacheGetCooldown,
 	CacheSetCooldown,
+    	CacheGetUsersByRoles,
 } = require("../apis/redis/redisCache");
 const {
 	changeRole
@@ -89,10 +90,7 @@ async function setupPeasantBotEvents(client, lastMessageId) {
 			if (hadRoleBeforePeasant) {
 				if (mobFlayingActive){
 					try{
-						const guild = await client.guilds.fetch(process.env.GUILDID);
-						peasants = guild.members.cache.filter((member) =>
-							member.roles.cache.has(process.env.ROLEID_PEASANT)
-						);
+						peasants = await CacheGetUsersByRoles(["peasant"]);
 						peasantsSize = peasants.size;
 						if(mobFlayingParticipants.has(member.id)) {
 							mobFlayingParticipants.delete(member.id);
@@ -195,10 +193,7 @@ async function setupPeasantBotEvents(client, lastMessageId) {
 			(mobFlayingActive || gameState.isRevolutionActive()) &&
 			(hadRoleBeforePeasant || hasRoleNowPeasant)
 		) {
-			const guild = await client.guilds.fetch(process.env.GUILDID);
-			peasants = guild.members.cache.filter((member) =>
-				member.roles.cache.has(process.env.ROLEID_PEASANT)
-			);
+			peasants = await CacheGetUsersByRoles(["peasant"]);
 			peasantsSize = peasants.size;
 			if (mobFlayingActive) {
 				if (mobFlayingParticipants.has(newMember.id)) {
@@ -299,7 +294,7 @@ async function setupPeasantBotEvents(client, lastMessageId) {
 			let targetId = interaction.values[0];
 			try {
 				selectedMobFlayingTargets[userId] =
-					await interaction.guild.members.cache.get(targetId);
+					await interaction.guild.members.fetch(targetId);
 				await interaction.deferUpdate();
 			} catch (err) {
 				showErrorMsg(err);
@@ -311,7 +306,7 @@ async function setupPeasantBotEvents(client, lastMessageId) {
 			let targetId = interaction.values[0];
 			try {
 				selectedRevolutionTargets[userId] =
-					await interaction.guild.members.cache.get(targetId);
+					await interaction.guild.members.fetch(targetId);
 				await interaction.deferUpdate();
 			} catch (err) {
 				showErrorMsg(err);
@@ -323,7 +318,7 @@ async function setupPeasantBotEvents(client, lastMessageId) {
 			let selectedCandidateId = interaction.values[0];
 			try {
 				selectedEmperorCandidates[userId] =
-					await interaction.guild.members.cache.get(selectedCandidateId);
+					await interaction.guild.members.fetch(selectedCandidateId);
 				await interaction.deferUpdate();
 			} catch (err) {
 				showErrorMsg(err);
@@ -332,9 +327,7 @@ async function setupPeasantBotEvents(client, lastMessageId) {
 
 		if (interaction.customId === "MobFlaying") {
 			const userId = interaction.user.id;
-			peasants = interaction.guild.members.cache.filter((member) =>
-				member.roles.cache.has(process.env.ROLEID_PEASANT)
-			);
+			peasants = await CacheGetUsersByRoles(["peasant"]);
 			peasantsSize = peasants.size;
 
 			if (!selectedMobFlayingTargets[userId]) {

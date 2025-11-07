@@ -12,6 +12,7 @@ const {
 	sendInteractionReply,
 } = require("../functions/botActions");
 const {
+	CacheGetUsersByRoles,
 	CacheGetUserXP,
 	CacheGetCooldown,
 	CacheSetCooldown,
@@ -226,7 +227,7 @@ async function setupMerchantBotEvents(client, lastMessageId) {
 			bribeTargetId = interaction.values[0];
 			try {
 				selectedBribeTargets[userId] =
-					await interaction.guild.members.cache.get(bribeTargetId);
+					await interaction.guild.members.fetch(bribeTargetId);
 				await interaction.deferUpdate();
 			} catch (err) {
 				showErrorMsg(err);
@@ -237,7 +238,7 @@ async function setupMerchantBotEvents(client, lastMessageId) {
 			const userId = interaction.user.id;
 			let targetId = interaction.values[0];
 			try {
-				selectedEndowTargets[userId] = await interaction.guild.members.cache.get(targetId);
+				selectedEndowTargets[userId] = await interaction.guild.members.fetch(targetId);
 				await interaction.deferUpdate();
 			} catch (err) {
 				showErrorMsg(err);
@@ -252,7 +253,7 @@ async function setupMerchantBotEvents(client, lastMessageId) {
 			let targetId = interaction.values[0];
 			try {
 				selectedRevolutionTargets[userId] =
-					await interaction.guild.members.cache.get(targetId);
+					await interaction.guild.members.fetch(targetId);
 				await interaction.deferUpdate();
 			} catch (err) {
 				showErrorMsg(err);
@@ -267,7 +268,7 @@ async function setupMerchantBotEvents(client, lastMessageId) {
 			let selectedCandidateId = interaction.values[0];
 			try {
 				selectedEmperorCandidates[userId] =
-					await interaction.guild.members.cache.get(selectedCandidateId);
+					await interaction.guild.members.fetch(selectedCandidateId);
 				await interaction.deferUpdate();
 			} catch (err) {
 				showErrorMsg(err);

@@ -16,7 +16,8 @@ const {
 	CacheGetCooldown,
 	CacheSetCooldown,
 	CacheGetWriterWrits,
-	CacheSetWrit
+	CacheSetWrit,
+    	CacheGetUsersByRoles
 } = require("../apis/redis/redisCache");
 const {
 	DegradationCost,
@@ -90,10 +91,7 @@ async function setupKingBotEvents(client, lastMessageId) {
 			try{
 				
 				if(hadRoleBeforeKing ){
-					const guild = await client.guilds.fetch(process.env.GUILDID);
-					const kings = guild.members.cache.filter((member) =>
-						member.roles.cache.has(process.env.ROLEID_KINGS)
-					);
+					const kings = await CacheGetUsersByRoles(["king"]);
 					const kingSize = kings.size;
 					gameState.setRoleSize("King",kingSize);
 					if(kingSize < MinimumKingSize && !isThresholdOpen(11)){
@@ -102,10 +100,7 @@ async function setupKingBotEvents(client, lastMessageId) {
 
 				}
 				if(hadRoleBeforeKnight ){
-					const guild = await client.guilds.fetch(process.env.GUILDID);
-					const knights = guild.members.cache.filter((member) =>
-						member.roles.cache.has(process.env.ROLEID_KNIGHT)
-					);
+					const knights = await CacheGetUsersByRoles(["knight"]);
 					const numberOfKnights = knights.size;
 					gameState.setRoleSize("Knight",numberOfKnights);
 				}	
@@ -215,10 +210,7 @@ async function setupKingBotEvents(client, lastMessageId) {
 		if( hadRoleBeforeKing || hasRoleNowKing || hadRoleBeforeKnight || hasRoleNowKnight){
 			try{
 				if(hadRoleBeforeKing || hasRoleNowKing){
-					const guild = await client.guilds.fetch(process.env.GUILDID);
-					const kings = guild.members.cache.filter((member) =>
-						member.roles.cache.has(process.env.ROLEID_KINGS)
-					);
+					const kings = await CacheGetUsersByRoles(["king"]);
 					const kingSize = kings.size;
 					gameState.setRoleSize("King",kingSize);
 					if(kingSize < MinimumKingSize && !isThresholdOpen(11)){
@@ -229,10 +221,7 @@ async function setupKingBotEvents(client, lastMessageId) {
 					}
 				}
 				if(hadRoleBeforeKnight || hasRoleNowKnight){
-					const guild = await client.guilds.fetch(process.env.GUILDID);
-					const knights = guild.members.cache.filter((member) =>
-						member.roles.cache.has(process.env.ROLEID_KNIGHT)
-					);
+					const knights = await CacheGetUsersByRoles(["knight"]);
 					const numberOfKnights = knights.size;
 					gameState.setRoleSize("Knight",numberOfKnights);
 				}
@@ -333,7 +322,7 @@ async function setupKingBotEvents(client, lastMessageId) {
 			let selectedUserId = interaction.values[0];
 			try {
 				await interaction.deferUpdate();
-				selectedWritHumans[userId] = await interaction.guild.members.cache.get(selectedUserId);
+				selectedWritHumans[userId] = await interaction.guild.members.fetch(selectedUserId);
 			} catch (err) {
 				showErrorMsg(err);
 			}
@@ -390,14 +379,14 @@ async function setupKingBotEvents(client, lastMessageId) {
 
 		if (interaction.customId === "SelectDegradation") {
 			let selectedKnightId = interaction.values[0];
-			selectedKnights[userId] = await interaction.guild.members.cache.get(
+			selectedKnights[userId] = await interaction.guild.members.fetch(
 				selectedKnightId
 			);
 			await interaction.deferUpdate();
 		}
 		if (interaction.customId === "SelectKnight") {
 			let selectedKnightId = interaction.values[0];
-			selectedHumans[userId] = await interaction.guild.members.cache.get(
+			selectedHumans[userId] = await interaction.guild.members.fetch(
 				selectedKnightId
 			);
 			await interaction.deferUpdate();
@@ -405,7 +394,7 @@ async function setupKingBotEvents(client, lastMessageId) {
 		if (interaction.customId === "SelectKing") {
 			try {
 				let selectedKingId = interaction.values[0];
-				selectedKings[userId] = await interaction.guild.members.cache.get(
+				selectedKings[userId] = await interaction.guild.members.fetch(
 					selectedKingId
 				);
 				await interaction.deferUpdate();

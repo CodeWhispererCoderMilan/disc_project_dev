@@ -25,6 +25,7 @@ const {
 	openThreshold
 } = require("../apis/firebase/querys.js");
 const {
+	CacheGetUsersByRoles,
 	CacheIsPoopBeingFestered,
 	CacheGetFesteringTarget,
 	CacheGetCooldown,
@@ -83,48 +84,30 @@ const content = TextConsoleMessageContent;
 function showErrorMsg(err) {
 	console.error("ERROR: console_commands.js", err);
 }
-
 async function setupConsoleBotEvents(client, lastMessageId) {
 	
 	handleHigherRoleSizeChange();
 
 	eventEmitter.on("startXpBoost&RevolutonStates", async () => {
+		const peasants = await CacheGetUsersByRoles(["peasant"]);
+		gameState.setRoleSize("Peasant", peasants.length);
+		const scholars = await CacheGetUsersByRoles(["scholar"]);
+		gameState.setRoleSize("Scholar", scholars.length);
+		const merchants = await CacheGetUsersByRoles(["merchant"]);
+		gameState.setRoleSize("Merchant", merchants.length);
+		const knights = await CacheGetUsersByRoles(["knight"]);
+		gameState.setRoleSize("Knight", knights.length);
+		const lords = await CacheGetUsersByRoles(["lord"]);
+		gameState.setRoleSize("Lord", lords.length);
+		const kings = await CacheGetUsersByRoles(["king"]);
+		gameState.setRoleSize("King", kings.length);
+		const nobles = await CacheGetUsersByRoles(["noble"]);
+		gameState.setRoleSize("Noble", nobles.length);
+		const emperors = await CacheGetUsersByRoles(["emperor"]);
+		gameState.setRoleSize("Emperor", emperors.length);
 		const guild = await client.guilds.fetch(process.env.GUILDID);
-		await guild.members.fetch();
-		const peasants = guild.members.cache.filter((member) =>
-					member.roles.cache.has(process.env.ROLEID_PEASANT)
-		);
-		gameState.setRoleSize("Peasant", peasants.size);
-		const scholars = guild.members.cache.filter((member) =>
-					member.roles.cache.has(process.env.ROLEID_SCHOLAR)
-		);
-		gameState.setRoleSize("Scholar", scholars.size);
-		const merchants = guild.members.cache.filter((member) =>
-					member.roles.cache.has(process.env.ROLEID_MERCHANT)
-		);
-		gameState.setRoleSize("Merchant", merchants.size);
-		const knights = guild.members.cache.filter((member) =>
-					member.roles.cache.has(process.env.ROLEID_KNIGHT)
-		);
-		gameState.setRoleSize("Knight", knights.size);
-		const lords = guild.members.cache.filter((member) =>
-					member.roles.cache.has(process.env.ROLEID_LORD)
-		);
-		gameState.setRoleSize("Lord", lords.size);
-		const kings = guild.members.cache.filter((member) =>
-					member.roles.cache.has(process.env.ROLEID_KING)
-		);
-		gameState.setRoleSize("King", kings.size);
-		const nobles = guild.members.cache.filter((member) =>
-					member.roles.cache.has(process.env.ROLEID_NOBLE)
-		);
-		gameState.setRoleSize("Noble", nobles.size);
-		const emperors = guild.members.cache.filter((member) =>
-					member.roles.cache.has(process.env.ROLEID_EMPEROR)
-		);
-		gameState.setRoleSize("Emperor", emperors.size);
 		const peopleCount = guild.memberCount - 16;
-		console.log(`Merchant count: ${merchants.size}`);
+		console.log(`Merchant count: ${merchants.length}`);
 		console.log(`People count: ${peopleCount}\n HigherRoleRatio: ${gameState.getHigherRoleSize() / peopleCount}`);
 		gameState.setPlayerCount(peopleCount);
 		handleHigherRoleSizeChange();
@@ -227,7 +210,6 @@ async function setupConsoleBotEvents(client, lastMessageId) {
 			process.env.ROLEID_SUBHUMAN
 		);
 		const guild = await client.guilds.fetch(process.env.GUILDID);
-		await guild.members.fetch();
 		const oldPeopleCount = gameState.getPlayerCount();
 		const peopleCount = guild.memberCount - 16;
 		console.log(`People count: ${peopleCount}`);
@@ -240,10 +222,8 @@ async function setupConsoleBotEvents(client, lastMessageId) {
 			hadRoleBeforeNoble || hasRoleNowNoble || hadRoleBeforeEmperor || hasRoleNowEmperor;
 		switch (hadOrHasRevolutionRole) {
 			case hadRoleBeforePeasant || hasRoleNowPeasant:
-				const peasants = guild.members.cache.filter((member) =>
-					member.roles.cache.has(process.env.ROLEID_PEASANT)
-				);
-				gameState.setRoleSize("Peasant", peasants.size);
+				const peasants = await CacheGetUsersByRoles(["peasant"]);
+				gameState.setRoleSize("Peasant", peasants.length);
 				await handleHigherRoleSizeChange();
 				if (hadRoleBeforePeasant && gameState.isRevolutionActive() 
 					&& !gameState.isCoupActive()){
@@ -255,10 +235,8 @@ async function setupConsoleBotEvents(client, lastMessageId) {
 				}
 				break;
 			case hadRoleBeforeScholar || hasRoleNowScholar: 
-				const scholars = guild.members.cache.filter((member) =>
-					member.roles.cache.has(process.env.ROLEID_SCHOLAR)
-				);
-				gameState.setRoleSize("Scholar", scholars.size);
+				const scholars = await CacheGetUsersByRoles(["scholar"]);
+				gameState.setRoleSize("Scholar", scholars.length);
 				handleHigherRoleSizeChange();
 				if (hadRoleBeforeScholar && gameState.isRevolutionActive() &&
 					!gameState.isCoupActive()){
@@ -269,10 +247,8 @@ async function setupConsoleBotEvents(client, lastMessageId) {
 					}				}
 				break;
 			case hadRoleBeforeMerchant || hasRoleNowMerchant:
-				const merchants = guild.members.cache.filter((member) =>
-					member.roles.cache.has(process.env.ROLEID_MERCHANT)
-				);
-				gameState.setRoleSize("Merchant", merchants.size);
+				const merchants = await CacheGetUsersByRoles(["merchant"]);
+				gameState.setRoleSize("Merchant", merchants.length);
 				handleHigherRoleSizeChange();
 				if (hadRoleBeforeMerchant && gameState.isRevolutionActive() &&
 					!gameState.isCoupActive()){
@@ -283,10 +259,8 @@ async function setupConsoleBotEvents(client, lastMessageId) {
 					}							}
 				break;
 			case hadRoleBeforeKnight || hasRoleNowKnight:
-				const knights = guild.members.cache.filter((member) =>
-					member.roles.cache.has(process.env.ROLEID_KNIGHT)
-				);
-				gameState.setRoleSize("Knight", knights.size);
+				const knights = await CacheGetUsersByRoles(["knight"]);
+				gameState.setRoleSize("Knight", knights.length);
 				handleHigherRoleSizeChange();
 				if (hadRoleBeforeKnight && gameState.isRevolutionActive()){
 					const wasParticipant = gameState.removeRevolutionParticipant(newMember.id);
@@ -297,38 +271,30 @@ async function setupConsoleBotEvents(client, lastMessageId) {
 				}
 				break;
 			case hadRoleBeforeLord || hasRoleNowLord:
-				const lords = guild.members.cache.filter((member) =>
-					member.roles.cache.has(process.env.ROLEID_LORD)
-				);
-				gameState.setRoleSize("Lord", lords.size);
+				const lords = await CacheGetUsersByRoles(["lord"]);
+				gameState.setRoleSize("Lord", lords.length);
 				handleHigherRoleSizeChange();
 				if (hadRoleBeforeLord && gameState.isRevolutionActive()){
 					gameState.removeRevolutionParticipant(newMember.id);
 				}
 				break;
 			case hadRoleBeforeKing || hasRoleNowKing:
-				const kings = guild.members.cache.filter((member) =>
-					member.roles.cache.has(process.env.ROLEID_KING)
-				);
-				gameState.setRoleSize("King", kings.size);
+				const kings = await CacheGetUsersByRoles(["king"]);
+				gameState.setRoleSize("King", kings.length);
 				handleHigherRoleSizeChange();
 				if (hadRoleBeforeKing && gameState.isRevolutionActive())
 					gameState.removeRevolutionParticipant(newMember.id);
 				break;
 			case hadRoleBeforeNoble || hasRoleNowNoble:
-				const nobles = guild.members.cache.filter((member) =>
-					member.roles.cache.has(process.env.ROLEID_NOBLE)
-				);
-				gameState.setRoleSize("Noble", nobles.size);
+				const nobles = await CacheGetUsersByRoles(["noble"]);
+				gameState.setRoleSize("Noble", nobles.length);
 				handleHigherRoleSizeChange();
 				if (hadRoleBeforeNoble && gameState.isRevolutionActive())
 					gameState.removeRevolutionParticipant(newMember.id);
 				break;
 			case hadRoleBeforeEmperor || hasRoleNowEmperor:
-				const emperors = guild.members.cache.filter((member) =>
-				member.roles.cache.has(process.env.ROLEID_EMPEROR)
-				);
-				gameState.setRoleSize("Emperor", emperors.size);
+				const emperors = await CacheGetUsersByRoles(["emperor"]);
+				gameState.setRoleSize("Emperor", emperors.length);
 				handleHigherRoleSizeChange();
 				if (hadRoleBeforeEmperor && gameState.isRevolutionActive())
 					gameState.removeRevolutionParticipant(newMember.id);
@@ -344,9 +310,7 @@ async function setupConsoleBotEvents(client, lastMessageId) {
 		}
 	});
 	client.on("guildMemberRemove", async (member) => {
-		const guild = await client.guilds.fetch(process.env.GUILDID);
-		await guild.members.fetch();
-
+		
 		const hadRoleBeforePeasant = member.roles.cache.has(
 			process.env.ROLEID_PEASANT
 		);	
@@ -393,6 +357,7 @@ async function setupConsoleBotEvents(client, lastMessageId) {
 			);
 		}
 		const oldPeopleCount = gameState.getPlayerCount();
+		const guild = await client.guilds.fetch(process.env.GUILDID);
 		const peopleCount = guild.memberCount - 16;
 		let updatedRevolutionAndCoupMessages = false;
 		gameState.setPlayerCount(peopleCount);
@@ -402,10 +367,8 @@ async function setupConsoleBotEvents(client, lastMessageId) {
 			hadRoleBeforeNoble || hadRoleBeforeEmperor;
 		switch (hadRevolutionRole) {
 			case hadRoleBeforePeasant :
-				const peasants = guild.members.cache.filter((member) =>
-					member.roles.cache.has(process.env.ROLEID_PEASANT)
-				);
-				gameState.setRoleSize("Peasant", peasants.size);
+				const peasants = await CacheGetUsersByRoles(["peasant"]);
+				gameState.setRoleSize("Peasant", peasants.length);
 				await handleHigherRoleSizeChange();
 				if (gameState.isRevolutionActive() && !gameState.isCoupActive()){
 					const wasParticipant = gameState.removeRevolutionParticipant(member.id);
@@ -416,10 +379,8 @@ async function setupConsoleBotEvents(client, lastMessageId) {
 				}
 				break;
 			case hadRoleBeforeScholar: 
-				const scholars = guild.members.cache.filter((member) =>
-					member.roles.cache.has(process.env.ROLEID_SCHOLAR)
-				);
-				gameState.setRoleSize("Scholar", scholars.size);
+				const scholars = await CacheGetUsersByRoles(["scholar"]);
+				gameState.setRoleSize("Scholar", scholars.length);
 				handleHigherRoleSizeChange();
 				if (gameState.isRevolutionActive() && !gameState.isCoupActive()){
 					const wasParticipant = gameState.removeRevolutionParticipant(member.id);
@@ -430,10 +391,8 @@ async function setupConsoleBotEvents(client, lastMessageId) {
 				}
 				break;
 			case hadRoleBeforeMerchant:
-				const merchants = guild.members.cache.filter((member) =>
-					member.roles.cache.has(process.env.ROLEID_MERCHANT)
-				);
-				gameState.setRoleSize("Merchant", merchants.size);
+				const merchants = await CacheGetUsersByRoles(["merchant"]);
+				gameState.setRoleSize("Merchant", merchants.length);
 				handleHigherRoleSizeChange();
 				if (gameState.isRevolutionActive() && !gameState.isCoupActive()){
 					const wasParticipant = gameState.removeRevolutionParticipant(member.id);
@@ -444,10 +403,8 @@ async function setupConsoleBotEvents(client, lastMessageId) {
 				}
 				break;
 			case hadRoleBeforeKnight :
-				const knights = guild.members.cache.filter((member) =>
-					member.roles.cache.has(process.env.ROLEID_KNIGHT)
-				);
-				gameState.setRoleSize("Knight", knights.size);
+				const knights = await CacheGetUsersByRoles(["knight"]);
+				gameState.setRoleSize("Knight", knights.length);
 				handleHigherRoleSizeChange();
 				if (gameState.isRevolutionActive()){
 					const wasParticipant = gameState.removeRevolutionParticipant(member.id);
@@ -458,37 +415,29 @@ async function setupConsoleBotEvents(client, lastMessageId) {
 				}
 				break;
 			case hadRoleBeforeLord:
-				const lords = guild.members.cache.filter((member) =>
-					member.roles.cache.has(process.env.ROLEID_LORD)
-				);
-				gameState.setRoleSize("Lord", lords.size);
+				const lords = await CacheGetUsersByRoles(["lord"]);
+				gameState.setRoleSize("Lord", lords.length);
 				handleHigherRoleSizeChange();
 				if (gameState.isRevolutionActive())
 					gameState.removeRevolutionParticipant(member.id);
 				break;
 			case hadRoleBeforeKing:
-				const kings = guild.members.cache.filter((member) =>
-					member.roles.cache.has(process.env.ROLEID_KING)
-				);
-				gameState.setRoleSize("King", kings.size);
+				const kings = await CacheGetUsersByRoles(["king"]);
+				gameState.setRoleSize("King", kings.length);
 				handleHigherRoleSizeChange();
 				if (gameState.isRevolutionActive())
 					gameState.removeRevolutionParticipant(member.id);
 				break;
 			case hadRoleBeforeNoble:
-				const nobles = guild.members.cache.filter((member) =>
-					member.roles.cache.has(process.env.ROLEID_NOBLE)
-				);
-				gameState.setRoleSize("Noble", nobles.size);
+				const nobles = await CacheGetUsersByRoles(["noble"]);
+				gameState.setRoleSize("Noble", nobles.length);
 				handleHigherRoleSizeChange();
 				if (gameState.isRevolutionActive())
 					gameState.removeRevolutionParticipant(member.id);
 				break;
 			case hadRoleBeforeEmperor:
-				const emperors = guild.members.cache.filter((member) =>
-					member.roles.cache.has(process.env.ROLEID_EMPEROR)
-				);
-				gameState.setRoleSize("Emperor", emperors.size);
+				const emperors = await CacheGetUsersByRoles(["emperor"]);
+				gameState.setRoleSize("Emperor", emperors.length);
 				handleHigherRoleSizeChange();
 				if (gameState.isRevolutionActive())
 					gameState.removeRevolutionParticipant(member.id);
@@ -836,7 +785,6 @@ async function handleSecondPhaseRevolutionEnd(client) {
 		if(!target.targetId) continue;
 		console.log(`Revolution targetId: ${target.targetId}  targetCount: ${target.targetCount}`);
 		const guild = await client.guilds.fetch(process.env.GUILDID);
-		await guild.members.fetch();
 		const member = await guild.members.fetch(target.targetId);
 		if (coupActive) {
 			if (
@@ -972,7 +920,6 @@ async function handleEmperorElectionEnd(client) {
 	if (finalCandidatesCount === 1) {
 		const target = [...candidates][0];
 		const guild = await client.guilds.fetch(process.env.GUILDID);
-		await guild.members.fetch();
 		const targetMember = await guild.members.fetch(target.targetId);
 		await changeRole( targetMember, "Emperor", true);
 		gameState.resetRevolution();
@@ -1051,7 +998,6 @@ async function updateRevolutionAndCoupMessages(){
 async function buildEmperorReelectionTargetSelectMenu(client, candidates) {
 	try{
 		const guild = await client.guilds.fetch(process.env.GUILDID);
-		await guild.members.fetch();
 		const targets = candidates;
 		const options = [];
 		for (const target of targets) {

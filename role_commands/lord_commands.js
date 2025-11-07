@@ -16,7 +16,8 @@ const {
 	CacheSetCooldown,
 	CacheGetUserXP,
 	CacheGetWriterWrits,
-	CacheSetWrit
+	CacheSetWrit,
+    	CacheGetUsersByRoles
 } = require("../apis/redis/redisCache");
 const {
 	NobleLordElectionTime,
@@ -98,10 +99,7 @@ async function setupLordBotEvents(client, lastMessageId) {
 		}
 		if( hadRoleBeforeLord){
 			try{
-				const guild = await client.guilds.fetch(process.env.GUILDID);
-				lords = guild.members.cache.filter((member) =>
-					member.roles.cache.has(process.env.ROLEID_LORD)
-				);
+				lords = await CacheGetUsersByRoles(["lord"]);
 				lordsSize = lords.size;
 				if(lordsSize < MinimumLordSize && !isThresholdOpen(10)){
 					await openThreshold(10, client);
@@ -222,10 +220,7 @@ async function setupLordBotEvents(client, lastMessageId) {
 		}
 		if( hadRoleBeforeLord || hasRoleNowLord){
 			try{
-				const guild = await client.guilds.fetch(process.env.GUILDID);
-				lords = guild.members.cache.filter((member) =>
-					member.roles.cache.has(process.env.ROLEID_LORD)
-				);
+				lords = await CacheGetUsersByRoles(["lord"]);
 				lordsSize = lords.size;
 				if(lordsSize < MinimumLordSize && !isThresholdOpen(10)){
 					await openThreshold(10,client);
@@ -327,7 +322,7 @@ async function setupLordBotEvents(client, lastMessageId) {
 			let selectedUserId = interaction.values[0];
 			try {
 				await interaction.deferUpdate();
-				selectedExileUsers[userId] = await interaction.guild.members.cache.get(selectedUserId);
+				selectedExileUsers[userId] = await interaction.guild.members.fetch(selectedUserId);
 				
 			} catch (err) {
 				showErrorMsg(err);
@@ -368,7 +363,7 @@ async function setupLordBotEvents(client, lastMessageId) {
 			let selectedUserId = interaction.values[0];
 			try {
 				await interaction.deferUpdate();
-				selectedHumans[userId] = await interaction.guild.members.cache.get(selectedUserId);
+				selectedHumans[userId] = await interaction.guild.members.fetch(selectedUserId);
 			} catch (err) {
 				showErrorMsg(err);
 			}
@@ -378,7 +373,7 @@ async function setupLordBotEvents(client, lastMessageId) {
 			let selectedUserId = interaction.values[0];
 			try {
 				await interaction.deferUpdate();
-				selectedKnights[userId] = await interaction.guild.members.cache.get(selectedUserId);
+				selectedKnights[userId] = await interaction.guild.members.fetch(selectedUserId);
 			}catch (err) {
 				showErrorMsg(err);
 			}
@@ -431,7 +426,7 @@ async function setupLordBotEvents(client, lastMessageId) {
 			let candidateId = interaction.values[0];
 			try {
 				selectedElectionCandidates[userId] =
-					await interaction.guild.members.cache.get(candidateId);
+					await interaction.guild.members.fetch(candidateId);
 				await interaction.deferUpdate();
 			} catch (err) {
 				showErrorMsg(err);
@@ -439,9 +434,7 @@ async function setupLordBotEvents(client, lastMessageId) {
 		}
 
 		if (interaction.customId === "Election") {
-			lords = interaction.guild.members.cache.filter((member) =>
-				member.roles.cache.has(process.env.ROLEID_LORD)
-			);
+			lords = await CacheGetUsersByRoles(["lord"]);
 			lordsSize = lords.size;
 
 			if (!selectedElectionCandidates[userId]) {

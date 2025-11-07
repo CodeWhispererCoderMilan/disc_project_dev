@@ -5,6 +5,7 @@ const {
 	StringSelectMenuBuilder,
 } = require("discord.js");
 const {
+	CacheGetUsersByRoles,
 	CacheGetCooldown,
 	CacheSetCooldown,
 	CacheGetUserXP,
@@ -200,7 +201,7 @@ async function setupCockroachBotEvents(client, lastMessageId) {
 			const userId = interaction.user.id;
 			let selectedMaggotId = interaction.values[0];
 			try {
-				selectedMaggots[userId] = await interaction.guild.members.cache.get(
+				selectedMaggots[userId] = await interaction.guild.members.fetch(
 					selectedMaggotId
 				);
 				await interaction.deferUpdate();
@@ -212,7 +213,7 @@ async function setupCockroachBotEvents(client, lastMessageId) {
 			const userId = interaction.user.id;
 			let selectedSubhumanId = interaction.values[0];
 			try {
-				selectedSubhumans[userId] = await interaction.guild.members.cache.get(
+				selectedSubhumans[userId] = await interaction.guild.members.fetch(
 					selectedSubhumanId
 				);
 				await interaction.deferUpdate();

@@ -13,6 +13,7 @@ const {
 	sendInteractionReply,
 } = require("../functions/botActions");
 const {
+	CacheGetUsersByRoles,
 	CacheGetCooldown,
 	CacheSetCooldown,
 } = require("../apis/redis/redisCache");
@@ -162,7 +163,7 @@ async function setupScholarBotEvents(client, lastMessageId) {
 			let targetId = interaction.values[0];
 			try {
 				selectedRevolutionTargets[userId] =
-					await interaction.guild.members.cache.get(targetId);
+					await interaction.guild.members.fetch(targetId);
 				await interaction.deferUpdate();
 			} catch (err) {
 				showErrorMsg(err);
@@ -177,7 +178,7 @@ async function setupScholarBotEvents(client, lastMessageId) {
 			let selectedCandidateId = interaction.values[0];
 			try {
 				selectedEmperorCandidates[userId] =
-					await interaction.guild.members.cache.get(selectedCandidateId);
+					await interaction.guild.members.fetch(selectedCandidateId);
 				await interaction.deferUpdate();
 			} catch (err) {
 				showErrorMsg(err);

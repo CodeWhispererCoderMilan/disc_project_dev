@@ -18,7 +18,7 @@ const { MinimumLordSize, MinimumNobleSize, MinimumKnightSize,
 	XpBoostEmperor,
 	EndowPenalty
 } = require('../../game_config.json');
-const { CacheAddUserFromDB, CacheRemoveUser, CacheAddUser, CacheSetUserXP, CacheSetFestering, CacheClearFestering, CacheIsPoopBeingFestered, CacheGetEndows, CacheGetUserXP, CacheClearEndow, CacheGetUserRole, CacheSetUserRole} = require('../redis/redisCache.js');
+const { CacheAddUserFromDB, CacheRemoveUser, CacheAddUser, CacheSetUserXP, CacheSetFestering, CacheClearFestering, CacheIsPoopBeingFestered, CacheGetEndows, CacheGetUserXP, CacheClearEndow, CacheGetUserRole, CacheSetUserRole, CacheGetUsersByRoles} = require('../redis/redisCache.js');
 const { eventEmitter } = require('../../functions/eventEmitter.js');
 
 const roleUpgradeAvailable = Array(13).fill(true); //array that opens or blocks leveling up between roles.
@@ -458,7 +458,7 @@ async function changeRole(member, roleName, keepXP) {
 					const currentXP = await CacheGetUserXP(merchantId);
 					await DBUpdateXP(merchantId, - EndowPenalty*currentXP, member.guild.client);
 					await CacheClearEndow(merchantId, member.id);
-					const merchantMember = await member.guild.members.cache.get(merchantId);
+					const merchantMember = await member.guild.members.fetch(merchantId);
 					eventEmitter.emit("NotifyMerchantChannel", `The endow by to ${member.displayName} has vaporized, they failed. The stream has given ${merchantMember.displayName} a penalty of ${EndowPenalty*currentXP} drops.`);
 				}
 			}
@@ -489,63 +489,48 @@ async function changeRole(member, roleName, keepXP) {
 
 	console.log(`Assigned "${roleName}" role to ${member.displayName}`);
 }
-async function startupOpenEmperorThreshold(client) {
-	const guild = await client.guilds.fetch(process.env.GUILDID);
-	await guild.members.fetch();
-
-	const emperorCount = guild.members.cache.filter((m) =>
-		m.roles.cache.has(process.env.ROLEID_EMPEROR)
-	).size;
-
-
-	if (emperorCount === 0 && !isThresholdOpen(12)) {
+async function startupEmperorThreshold(client) {
+	const emperors = await CacheGetUsersByRoles(["emperor"]);
+	const emperorCount = emperors.length;
+	if(emperorCount === 1 && isThresholdOpen(12)) {
+		closeThreshold(12);
+	}if (emperorCount === 0 && !isThresholdOpen(12)) {
 		await openThreshold(12, client);
 
 	}
 }
 async function evaluateThresholds(client) {
-	const guild = await client.guilds.fetch(process.env.GUILDID);
-	await guild.members.fetch();
 
-	const emperorMembers = await guild.members.cache.filter((m) =>
-		m.roles.cache.has(process.env.ROLEID_EMPEROR)
-	);
+	const emperorMembers = await CacheGetUsersByRoles(["emperor"]);
 
-	const shouldOpen = emperorMembers.size === 0;
+	const shouldOpen = emperorMembers.length === 0;
 
 
 	if(!shouldOpen && isThresholdOpen(12)) {
 		closeThreshold(12);
 
-		eventEmitter.emit("FirstEnthronement", emperorMembers.first().displayName);
+		eventEmitter.emit("FirstEnthronement", emperorMembers[0].username);
 
 	}	
-	const kingCount = guild.members.cache.filter((m) =>
-		m.roles.cache.has(process.env.ROLEID_KING)
-	).size;
-
-
+	const kings = await CacheGetUsersByRoles(["king"]);
+	const kingCount = kings.length;
 	if (kingCount < MinimumKingSize && !isThresholdOpen(11)) {
 		await openThreshold(11, client);
 
 	} else if (kingCount >= MinimumKingSize && isThresholdOpen(11)) {
 		closeThreshold(11);
-	}	
-	const lordCount = guild.members.cache.filter((m) =>
-		m.roles.cache.has(process.env.ROLEID_LORD)
-	).size;
+	}
 
-
+	const lords = await CacheGetUsersByRoles(["lord"]);
+	const lordCount = lords.length;
 	if (lordCount < MinimumLordSize && !isThresholdOpen(10)) {
 		await openThreshold(10, client);
 
 	} else if (lordCount >= MinimumLordSize && isThresholdOpen(10)) {
 		closeThreshold(10);
 	}	
-	const nobleCount = guild.members.cache.filter((m) =>
-		m.roles.cache.has(process.env.ROLEID_NOBLE)
-	).size;
-
+	const nobles = await CacheGetUsersByRoles(["noble"]);
+	const nobleCount = nobles.length;
 
 	if (nobleCount < MinimumNobleSize && !isThresholdOpen(9)) {
 		await openThreshold(9, client);
@@ -553,12 +538,9 @@ async function evaluateThresholds(client) {
 	} else if (nobleCount >= MinimumNobleSize && isThresholdOpen(9)) {
 		closeThreshold(9);
 	}	
-
-	const knightCount = guild.members.cache.filter((m) =>
-		m.roles.cache.has(process.env.ROLEID_KNIGHT)
-	).size;
-
-
+	
+	const knights = await CacheGetUsersByRoles(["knight"]);
+	const knightCount = knights.length;
 	if (knightCount < MinimumKnightSize && !isThresholdOpen(8)) {
 		await openThreshold(8, client);
 
@@ -567,4 +549,4 @@ async function evaluateThresholds(client) {
 	}	
 
 }
-module.exports = { CacheDataFromDB, CacheFesteringUsers , DBGetUsers, DBGetUserById, DBAddUser, DBRemoveUser, DBUpdateXP, DBSetRole, DBGetLastXPBoostTime, DBSetLastXPBoostTime, DBBoostXPForAllUsers, DBResetXP, DBSetFestering, DBGetActiveFestering, DBClearFestering, DBGetFestering, isThresholdOpen,changeRole, startupOpenEmperorThreshold, evaluateThresholds, openThreshold, closeThreshold }
+module.exports = { CacheDataFromDB, CacheFesteringUsers , DBGetUsers, DBGetUserById, DBAddUser, DBRemoveUser, DBUpdateXP, DBSetRole, DBGetLastXPBoostTime, DBSetLastXPBoostTime, DBBoostXPForAllUsers, DBResetXP, DBSetFestering, DBGetActiveFestering, DBClearFestering, DBGetFestering, isThresholdOpen,changeRole, startupEmperorThreshold, evaluateThresholds, openThreshold, closeThreshold }

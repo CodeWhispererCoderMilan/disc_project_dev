@@ -8,6 +8,7 @@ const {
 	CacheGetUserXP,
 	CacheGetCooldown,
 	CacheSetCooldown,
+    CacheGetUsersByRoles,
 } = require("../apis/redis/redisCache");
 const { ActionRowBuilder, ButtonBuilder, ButtonStyle } = require("discord.js");
 const {
@@ -79,12 +80,8 @@ async function setupRatBotEvents(client, lastMessageId) {
 			  );
 			  // If member was plague participant
 			  if (hadRoleBeforeRat && plagueActive) {
-				  const guild = await client.guilds.fetch(process.env.GUILDID);
-				  await guild.members.fetch();
-				  rats = guild.members.cache.filter((member) =>
-					  member.roles.cache.has(process.env.ROLEID_RAT)
-				  );
-				  ratsSize = rats.size;
+				  rats = await CacheGetUsersByRoles(["rat"]);
+				  ratsSize = rats.length;
 
 				  if (
 					  Object.keys(plagueParticipants).findIndex(
@@ -179,12 +176,8 @@ async function setupRatBotEvents(client, lastMessageId) {
 
 		if (plagueActive && hadRoleBeforeRat) {
 
-			const guild = await client.guilds.fetch(process.env.GUILDID);
-			await guild.members.fetch();
-			rats = guild.members.cache.filter((member) =>
-				member.roles.cache.has(process.env.ROLEID_RAT)
-			);
-			ratsSize = rats.size;		
+			rats = await CacheGetUsersByRoles(["rat"]);
+			ratsSize = rats.length;		
 
 			if (
 				Object.keys(plagueParticipants).findIndex(
@@ -218,12 +211,8 @@ async function setupRatBotEvents(client, lastMessageId) {
 			await updateMessage(client, lastMessageId);
 		}
 		if (plagueActive && hasRoleNowRat) {
-			const guild = await client.guilds.fetch(process.env.GUILDID);
-			await guild.members.fetch();
-			rats = guild.members.cache.filter((member) =>
-				member.roles.cache.has(process.env.ROLEID_RAT)
-			);
-			ratsSize = rats.size;
+			rats = await CacheGetUsersByRoles(["rat"]);
+			ratsSize = rats.length;
 
 			await updateMessage(client, lastMessageId);
 		}
@@ -262,7 +251,7 @@ async function setupRatBotEvents(client, lastMessageId) {
 			const userId = interaction.user.id;
 			let selectedTargetId = interaction.values[0];
 			try {
-				selectedTargets[userId] = await interaction.guild.members.cache.get(
+				selectedTargets[userId] = await interaction.guild.members.fetch(
 					selectedTargetId
 				);
 				await interaction.deferUpdate();
@@ -276,7 +265,7 @@ async function setupRatBotEvents(client, lastMessageId) {
 			let selectedTargetId = interaction.values[0];
 			try {
 				selectedPlagueTargets[userId] =
-					await interaction.guild.members.cache.get(selectedTargetId);
+					await interaction.guild.members.fetch(selectedTargetId);
 				await interaction.deferUpdate();
 			} catch (err) {
 				showErrorMsg(err);
@@ -358,12 +347,8 @@ async function setupRatBotEvents(client, lastMessageId) {
 					// Set cooldown
 					await CacheSetCooldown("Plague", "Global", PlagueCooldown);
 
-					const guild = await client.guilds.fetch(process.env.GUILDID);
-					await guild.members.fetch();
-					rats = guild.members.cache.filter((member) =>
-						member.roles.cache.has(process.env.ROLEID_RAT)
-					);
-					ratsSize = rats.size;
+					rats = 	await CacheGetUsersByRoles(["rat"]);
+					ratsSize = rats.length;
 					plagueInitiator = interaction.user.username;
 
 					await startFirstPhasePlague(

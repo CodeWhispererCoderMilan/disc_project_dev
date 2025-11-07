@@ -1,7 +1,7 @@
 const {eventEmitter} = require('../functions/eventEmitter.js');
 const gameState = require("../game_state.js");
 const {sendInteractionReply, buildSelectMenu} = require("../functions/botActions");
-const { CacheGetUserXP, CacheGetCooldown, CacheSetCooldown} = require("../apis/redis/redisCache");
+const { CacheGetUsersByRoles,CacheGetUserXP, CacheGetCooldown, CacheSetCooldown} = require("../apis/redis/redisCache");
 const {ActionRowBuilder, ButtonBuilder, ButtonStyle} = require("discord.js");
 const {DBUpdateXP, changeRole} = require("../apis/firebase/querys");
 const {
@@ -122,7 +122,7 @@ async function setupSubhumanBotEvents(client, lastMessageId) {
 		if (interaction.customId === "SelectSubHuman") {
 			let selectedTargetId = interaction.values[0];
 			try {
-				selectedSubHumans[userId] = await interaction.guild.members.cache.get(selectedTargetId);
+				selectedSubHumans[userId] = await interaction.guild.members.fetch(selectedTargetId);
 				await interaction.deferUpdate();
 			} catch (err) {
 				showErrorMsg(err);
@@ -131,7 +131,7 @@ async function setupSubhumanBotEvents(client, lastMessageId) {
 		if(interaction.customId === "SelectPeasant") {
 			let selectedTargetId = interaction.values[0];
 			try {
-				selectedPeasants[userId] = await interaction.guild.members.cache.get(selectedTargetId);
+				selectedPeasants[userId] = await interaction.guild.members.fetch(selectedTargetId);
 				await interaction.deferUpdate();
 			} catch (err) {
 				showErrorMsg(err);
@@ -140,7 +140,7 @@ async function setupSubhumanBotEvents(client, lastMessageId) {
 		if (interaction.customId === "SelectPicking") {
 			let selectedTargetId = interaction.values[0];
 			try {
-				selectedPickings[userId] = await interaction.guild.members.cache.get(selectedTargetId);
+				selectedPickings[userId] = await interaction.guild.members.fetch(selectedTargetId);
 				await interaction.deferUpdate();
 			} catch (err) {
 				showErrorMsg(err);

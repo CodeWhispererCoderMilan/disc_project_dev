@@ -8,7 +8,8 @@ const {
 	CacheGetCooldown,
 	CacheSetCooldown,
 	CacheGetWriterWrits,
-	CacheSetWrit
+	CacheSetWrit,
+	CacheGetUsersByRoles
 } = require("../apis/redis/redisCache");
 
 const { 
@@ -115,7 +116,7 @@ async function setupEmperorBotEvents(client, lastMessageId) {
 			let selectedUserId = interaction.values[0];
 			try {
 				await interaction.deferUpdate();
-				selectedHuman = await interaction.guild.members.cache.get(selectedUserId);
+				selectedHuman = await interaction.guild.members.fetch(selectedUserId);
 			} catch (err) {
 				showErrorMsg(err);
 			}
@@ -125,7 +126,7 @@ async function setupEmperorBotEvents(client, lastMessageId) {
 			let selectedUserId = interaction.values[0];
 			try {
 				await interaction.deferUpdate();
-				selectedKnight = await interaction.guild.members.cache.get(selectedUserId);
+				selectedKnight = await interaction.guild.members.fetch(selectedUserId);
 			}catch (err) {
 				showErrorMsg(err);
 			}
@@ -182,7 +183,7 @@ async function setupEmperorBotEvents(client, lastMessageId) {
 		if (interaction.customId === "SelectLord") {
 			try {
 				let selectedLordId = interaction.values[0];
-				selectedLord = await interaction.guild.members.cache.get(
+				selectedLord = await interaction.guild.members.fetch(
 					selectedLordId
 				);
 				await interaction.deferUpdate();
@@ -193,7 +194,7 @@ async function setupEmperorBotEvents(client, lastMessageId) {
 		if (interaction.customId === "SelectKing") {
 			try {
 				let selectedLordId = interaction.values[0];
-				selectedKing = await interaction.guild.members.cache.get(
+				selectedKing = await interaction.guild.members.fetch(
 					selectedLordId
 				);
 				await interaction.deferUpdate();

@@ -3,7 +3,7 @@ const { XpBoostInterval, ScholarAstralRealmAccessDuration, EmperorAstralRealmAcc
 const {
 	DBGetLastXPBoostTime,
 	DBBoostXPForAllUsers,
-	startupOpenEmperorThreshold,
+	startupEmperorThreshold,
 	evaluateThresholds
 } = require("../apis/firebase/querys.js");
 const{
@@ -49,7 +49,7 @@ async function checkAndApplyMissedXPBoost(client) {
 			console.log("Missed XP boost window detected, applying boost...");
 			let boostsMissed = Math.trunc(missedTime / XpBoostInterval);
 			try {
-				await startupOpenEmperorThreshold(client);
+				await startupEmperorThreshold(client);
 			}catch (err) {
 				console.error("Error during startupOpenEmperorThreshold:", err.message);
 			}

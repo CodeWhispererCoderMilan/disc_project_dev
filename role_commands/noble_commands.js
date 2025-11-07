@@ -12,6 +12,7 @@ const {
 	sendInteractionReply,
 } = require("../functions/botActions");
 const {
+	CacheGetUsersByRoles,
 	CacheGetCooldown,
 	CacheSetCooldown,
 	CacheGetUserXP,
@@ -126,10 +127,7 @@ async function setupNobleBotEvents(client, lastMessageId) {
 			}	
 
 			if( hadRoleBeforeNoble ){
-				const guild = await client.guilds.fetch(process.env.GUILDID);
-				nobles = guild.members.cache.filter((member) =>
-					member.roles.cache.has(process.env.ROLEID_NOBLE)
-				);
+				nobles = await CacheGetUsersByRoles(["noble"]);
 				noblesSize = nobles.size;
 				if(noblesSize < MinimumNobleSize && !isThresholdOpen(9)){
 					await openThreshold(9, client);
@@ -227,10 +225,7 @@ async function setupNobleBotEvents(client, lastMessageId) {
 
 		if( hadRoleBeforeNoble || hasRoleNowNoble){
 			try{
-				const guild = await client.guilds.fetch(process.env.GUILDID);
-				nobles = guild.members.cache.filter((member) =>
-					member.roles.cache.has(process.env.ROLEID_NOBLE)
-				);
+				nobles = await CacheGetUsersByRoles(["noble"]);
 				noblesSize = nobles.size;
 				if(noblesSize < MinimumNobleSize && !isThresholdOpen(9)){
 					await openThreshold(9, client);
@@ -258,7 +253,7 @@ async function setupNobleBotEvents(client, lastMessageId) {
 			let selectedUserId = interaction.values[0];
 			try {
 				await interaction.deferUpdate();
-				selectedHumans[userId] = await interaction.guild.members.cache.get(selectedUserId);
+				selectedHumans[userId] = await interaction.guild.members.fetch(selectedUserId);
 			} catch (err) {
 				showErrorMsg(err);
 			}
@@ -268,7 +263,7 @@ async function setupNobleBotEvents(client, lastMessageId) {
 			let selectedUserId = interaction.values[0];
 			try {
 				await interaction.deferUpdate();
-				selectedKnights[userId] = await interaction.guild.members.cache.get(selectedUserId);
+				selectedKnights[userId] = await interaction.guild.members.fetch(selectedUserId);
 			}catch (err) {
 				showErrorMsg(err);
 			}
@@ -320,7 +315,7 @@ async function setupNobleBotEvents(client, lastMessageId) {
 		if (interaction.customId === "AssassinationTargetSelectMenu") {
 			let targetId = interaction.values[0];
 			try {
-				selectedTargets[userId] = await interaction.guild.members.cache.get(
+				selectedTargets[userId] = await interaction.guild.members.fetch(
 					targetId
 				);
 				await interaction.deferUpdate();
@@ -330,9 +325,7 @@ async function setupNobleBotEvents(client, lastMessageId) {
 		}
 
 		if (interaction.customId === "Assassination") {
-			nobles = interaction.guild.members.cache.filter((member) =>
-				member.roles.cache.has(process.env.ROLEID_NOBLE)
-			);
+			nobles = await CacheGetUsersByRoles(["noble"]);
 			noblesSize = nobles.size;
 
 			if (!selectedTargets[userId]) {

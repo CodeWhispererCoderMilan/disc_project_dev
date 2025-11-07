@@ -16,6 +16,7 @@ const {
 	CacheCheckActiveWrit,
 	CacheUpdateWritStatus,
 	CacheCheckAndUpdateUserWrits,
+    	CacheGetUsersByRoles
 } = require("../apis/redis/redisCache");
 const {
 	CutDownCost,
@@ -102,11 +103,8 @@ async function setupKnightBotEvents(client, lastMessageId) {
 		);
 
 		if( hadRoleBeforeKnight){
-			const guild = await client.guilds.fetch(process.env.GUILDID);
-			knights = guild.members.cache.filter((member) =>
-				member.roles.cache.has(process.env.ROLEID_KNIGHT)
-			);
-			knightsSize = knights.size;
+			knights = await CacheGetUsersByRoles(["knight"]);
+			knightsSize = knights.length;
 			if(knightsSize < MinimumKnightSize && !isThresholdOpen(8)){
 				await openThreshold(8, client);
 			}
@@ -211,10 +209,7 @@ async function setupKnightBotEvents(client, lastMessageId) {
 		);
 
 		if( hadRoleBeforeKnight || hasRoleNowKnight){
-			const guild = await client.guilds.fetch(process.env.GUILDID);
-			knights = guild.members.cache.filter((member) =>
-				member.roles.cache.has(process.env.ROLEID_KNIGHT)
-			);
+			knights = await CacheGetUsersByRoles(["knight"]);
 			const knightsSize = knights.size;
 			if(knightsSize < MinimumKnightSize && !isThresholdOpen(8)){
 				await openThreshold(8, client);
@@ -291,7 +286,7 @@ async function setupKnightBotEvents(client, lastMessageId) {
 			const userId = interaction.user.id;
 			let selectedTargetId = interaction.values[0];
 			try {
-				selectedTargets[userId] = await interaction.guild.members.cache.get(
+				selectedTargets[userId] = await interaction.guild.members.fetch(
 					selectedTargetId
 				);
 				await interaction.deferUpdate();
@@ -305,7 +300,7 @@ async function setupKnightBotEvents(client, lastMessageId) {
 			let targetId = interaction.values[0];
 			try {
 				selectedRevolutionTargets[userId] =
-					await interaction.guild.members.cache.get(targetId);
+					await interaction.guild.members.fetch(targetId);
 				await interaction.deferUpdate();
 			} catch (err) {
 				showErrorMsg(err);
@@ -316,7 +311,7 @@ async function setupKnightBotEvents(client, lastMessageId) {
 			const userId = interaction.user.id;
 			let targetId = interaction.values[0];
 			try {
-				selectedCoupTargets[userId] = await interaction.guild.members.cache.get(
+				selectedCoupTargets[userId] = await interaction.guild.members.fetch(
 					targetId
 				);
 				await interaction.deferUpdate();
@@ -330,7 +325,7 @@ async function setupKnightBotEvents(client, lastMessageId) {
 			let selectedCandidateId = interaction.values[0];
 			try {
 				selectedEmperorCandidates[userId] =
-					await interaction.guild.members.cache.get(selectedCandidateId);
+					await interaction.guild.members.fetch(selectedCandidateId);
 				await interaction.deferUpdate();
 			} catch (err) {
 				showErrorMsg(err);

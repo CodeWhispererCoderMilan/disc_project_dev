@@ -100,7 +100,7 @@ async function setupLordBotEvents(client, lastMessageId) {
 		if( hadRoleBeforeLord){
 			try{
 				lords = await CacheGetUsersByRoles(["lord"]);
-				lordsSize = lords.size;
+				lordsSize = lords.length;
 				if(lordsSize < MinimumLordSize && !isThresholdOpen(10)){
 					await openThreshold(10, client);
 				}
@@ -221,7 +221,7 @@ async function setupLordBotEvents(client, lastMessageId) {
 		if( hadRoleBeforeLord || hasRoleNowLord){
 			try{
 				lords = await CacheGetUsersByRoles(["lord"]);
-				lordsSize = lords.size;
+				lordsSize = lords.length;
 				if(lordsSize < MinimumLordSize && !isThresholdOpen(10)){
 					await openThreshold(10,client);
 				}
@@ -435,7 +435,7 @@ async function setupLordBotEvents(client, lastMessageId) {
 
 		if (interaction.customId === "Election") {
 			lords = await CacheGetUsersByRoles(["lord"]);
-			lordsSize = lords.size;
+			lordsSize = lords.length;
 
 			if (!selectedElectionCandidates[userId]) {
 				await sendInteractionReply(interaction, "No member selected");

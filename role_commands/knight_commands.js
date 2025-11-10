@@ -210,7 +210,7 @@ async function setupKnightBotEvents(client, lastMessageId) {
 
 		if( hadRoleBeforeKnight || hasRoleNowKnight){
 			knights = await CacheGetUsersByRoles(["knight"]);
-			const knightsSize = knights.size;
+			const knightsSize = knights.length;
 			if(knightsSize < MinimumKnightSize && !isThresholdOpen(8)){
 				await openThreshold(8, client);
 			}

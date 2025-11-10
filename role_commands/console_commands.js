@@ -86,9 +86,8 @@ function showErrorMsg(err) {
 }
 async function setupConsoleBotEvents(client, lastMessageId) {
 	
-	handleHigherRoleSizeChange();
 
-	eventEmitter.on("startXpBoost&RevolutonStates", async () => {
+	eventEmitter.on("startXpBoost&RevolutionStates", async () => {
 		const peasants = await CacheGetUsersByRoles(["peasant"]);
 		gameState.setRoleSize("Peasant", peasants.length);
 		const scholars = await CacheGetUsersByRoles(["scholar"]);
@@ -369,7 +368,7 @@ async function setupConsoleBotEvents(client, lastMessageId) {
 			case hadRoleBeforePeasant :
 				const peasants = await CacheGetUsersByRoles(["peasant"]);
 				gameState.setRoleSize("Peasant", peasants.length);
-				await handleHigherRoleSizeChange();
+				handleHigherRoleSizeChange();
 				if (gameState.isRevolutionActive() && !gameState.isCoupActive()){
 					const wasParticipant = gameState.removeRevolutionParticipant(member.id);
 					if(wasParticipant){

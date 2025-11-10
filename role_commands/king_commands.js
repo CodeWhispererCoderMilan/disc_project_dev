@@ -92,7 +92,7 @@ async function setupKingBotEvents(client, lastMessageId) {
 				
 				if(hadRoleBeforeKing ){
 					const kings = await CacheGetUsersByRoles(["king"]);
-					const kingSize = kings.size;
+					const kingSize = kings.length;
 					gameState.setRoleSize("King",kingSize);
 					if(kingSize < MinimumKingSize && !isThresholdOpen(11)){
 						await openThreshold(11, client);
@@ -101,7 +101,7 @@ async function setupKingBotEvents(client, lastMessageId) {
 				}
 				if(hadRoleBeforeKnight ){
 					const knights = await CacheGetUsersByRoles(["knight"]);
-					const numberOfKnights = knights.size;
+					const numberOfKnights = knights.length;
 					gameState.setRoleSize("Knight",numberOfKnights);
 				}	
 				const numberOfKnights = gameState.getRoleSize("Knight");
@@ -211,7 +211,7 @@ async function setupKingBotEvents(client, lastMessageId) {
 			try{
 				if(hadRoleBeforeKing || hasRoleNowKing){
 					const kings = await CacheGetUsersByRoles(["king"]);
-					const kingSize = kings.size;
+					const kingSize = kings.length;
 					gameState.setRoleSize("King",kingSize);
 					if(kingSize < MinimumKingSize && !isThresholdOpen(11)){
 						await openThreshold(11, client);
@@ -222,7 +222,7 @@ async function setupKingBotEvents(client, lastMessageId) {
 				}
 				if(hadRoleBeforeKnight || hasRoleNowKnight){
 					const knights = await CacheGetUsersByRoles(["knight"]);
-					const numberOfKnights = knights.size;
+					const numberOfKnights = knights.length;
 					gameState.setRoleSize("Knight",numberOfKnights);
 				}
 				const siegeRatio = gameState.getRoleSize("Knight") / gameState.getRoleSize("King");

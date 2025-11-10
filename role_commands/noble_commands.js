@@ -128,7 +128,7 @@ async function setupNobleBotEvents(client, lastMessageId) {
 
 			if( hadRoleBeforeNoble ){
 				nobles = await CacheGetUsersByRoles(["noble"]);
-				noblesSize = nobles.size;
+				noblesSize = nobles.length;
 				if(noblesSize < MinimumNobleSize && !isThresholdOpen(9)){
 					await openThreshold(9, client);
 				}
@@ -226,7 +226,7 @@ async function setupNobleBotEvents(client, lastMessageId) {
 		if( hadRoleBeforeNoble || hasRoleNowNoble){
 			try{
 				nobles = await CacheGetUsersByRoles(["noble"]);
-				noblesSize = nobles.size;
+				noblesSize = nobles.length;
 				if(noblesSize < MinimumNobleSize && !isThresholdOpen(9)){
 					await openThreshold(9, client);
 				}
@@ -326,7 +326,7 @@ async function setupNobleBotEvents(client, lastMessageId) {
 
 		if (interaction.customId === "Assassination") {
 			nobles = await CacheGetUsersByRoles(["noble"]);
-			noblesSize = nobles.size;
+			noblesSize = nobles.length;
 
 			if (!selectedTargets[userId]) {
 				sendInteractionReply(interaction, "No member selected");

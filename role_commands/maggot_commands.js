@@ -1,5 +1,4 @@
-const {ActionRowBuilder, ButtonBuilder, ButtonStyle, StringSelectMenuBuilder} = require('discord.js');
-const {
+const {ActionRowBuilder, ButtonBuilder, ButtonStyle, StringSelectMenuBuilder} = require('discord.js'); const {
 	CacheIsPoopBeingFestered,
 	CacheGetFesterCooldown,
 	CacheGetFesteringTarget,
@@ -26,8 +25,8 @@ function showErrorMsg(err) {
 }
 
 async function setupMaggotBotEvents(client, lastMessageId) {
-	client.on("guildMemberAdd", () => {
-		client.emit('festeringStatusChanged');
+	client.on("guildMemberAdd",async () => {
+		await updateFesterSelectMenu(client, lastMessageId);
 	});
 
 	client.on("guildMemberRemove", async (member) => {
@@ -35,7 +34,7 @@ async function setupMaggotBotEvents(client, lastMessageId) {
 		if (isFesteredByMaggot) {
 			await DBClearFestering(isFesteredByMaggot.maggotId);
 		}
-		client.emit('festeringStatusChanged');
+		await updateFesterSelectMenu(client, lastMessageId);
 	});
 	client.on('guildMemberUpdate', async (oldMember, newMember) => {
 		if (oldMember.roles.cache.has(process.env.ROLEID_MAGGOT)) {
@@ -44,14 +43,21 @@ async function setupMaggotBotEvents(client, lastMessageId) {
 				if (festering) {
 					await DBClearFestering(oldMember.id);
 				}
-				client.emit('festeringStatusChanged');
+				await updateFesterSelectMenu(client, lastMessageId);
 			} catch (err) {
 				return showErrorMsg(err);
 			}
 		}
 		if (newMember.roles.cache.has(process.env.ROLEID_POOP)) {
 			try {
-				client.emit('festeringStatusChanged');
+				await updateFesterSelectMenu(client, lastMessageId);
+			} catch (err) {
+				return showErrorMsg(err);
+			}
+		}
+		if (newMember.roles.cache.has(process.env.ROLEID_MAGGOT)) {
+			try {
+				await updateFesterSelectMenu(client, lastMessageId);
 			} catch (err) {
 				return showErrorMsg(err);
 			}
@@ -69,7 +75,7 @@ async function setupMaggotBotEvents(client, lastMessageId) {
 				if (festeringMaggotId) {
 					await DBClearFestering(festeringMaggotId);
 				}
-				client.emit('festeringStatusChanged');
+				await updateFesterSelectMenu(client, lastMessageId);
 			} catch (err) {
 				showErrorMsg(err);
 			}
@@ -121,9 +127,11 @@ async function setupMaggotBotEvents(client, lastMessageId) {
 					await fester(client, userId, selectedPoops[userId].id);
 					const targetUsername = selectedPoops[userId].user.username;
 					selectedPoops[userId] = null;
+					const maggotUsername = interaction.user.username;
 					await sendInteractionReply(interaction, `Successfully latched on to poop ${targetUsername}, half their xp being funneled to you.`);
-					eventEmitter.emit('notifyFesterTarget', interaction.user.username, targetUsername);
-					client.emit('festeringStatusChanged');
+					await updateFesterSelectMenu(client, lastMessageId);
+					eventEmitter.emit('notifyFesterTarget', maggotUsername, targetUsername);
+					eventEmitter.emit('FesterNotification', maggotUsername, targetUsername);
 				} catch (err) {
 					return showErrorMsg(err);
 				}
@@ -131,12 +139,19 @@ async function setupMaggotBotEvents(client, lastMessageId) {
 		}
 	});
 
-	client.on('festeringStatusChanged', async () => {
-		await updateFesterSelectMenu(client, lastMessageId);
-	});
 	eventEmitter.on('ServerStatusChange', async () => {
 		try{
 			await updateFesterSelectMenu(client, lastMessageId);
+		} catch (err) {
+			showErrorMsg(err);
+		}
+	});
+	eventEmitter.on('FesterNotification', async (maggotUsername, poopUsername) => {
+		try {
+			const cesspitChannel = await client.channels.fetch(process.env.CHANNELID_CESSPIT);
+			const putridWasteChannel = await client.channels.fetch(process.env.CHANNELID_PUTRID_WASTE);
+			await cesspitChannel.send(`@**${maggotUsername}** is festering @**${poopUsername}**, drainage of its drops....`);
+			await putridWasteChannel.send(`@**${maggotUsername}** festering....`);
 		} catch (err) {
 			showErrorMsg(err);
 		}
@@ -172,16 +187,15 @@ async function getUnfesteredPoops(client) {
 	let availablePoops = [];
 
 	const allPoopUsers = await CacheGetUsersByRoles(["poop"]);
-	const poops = allPoopUsers.map(member => [member.username, member.id]);
 	try {
-		for (let poop of poops) {
-			console.log(`checking if ${poop[0]} is being festered...`);
-			const beingFestered = await CacheIsPoopBeingFestered(poop[1]);
-			console.log(`${poop[0]} is being festered: ${beingFestered}`);
+		for (let poop of allPoopUsers) {
+			console.log(`checking if ${poop.username} is being festered...`);
+			const beingFestered = await CacheIsPoopBeingFestered(poop.id);
+			console.log(`${poop.username} is being festered: ${beingFestered}`);
 			if (!beingFestered) {
 				availablePoops.push({
-					id: poop[1],
-					username: poop[0]
+					id: poop.id,
+					username: poop.username
 				});
 			}
 		}

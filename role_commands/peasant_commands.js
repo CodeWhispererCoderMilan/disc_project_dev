@@ -91,7 +91,7 @@ async function setupPeasantBotEvents(client, lastMessageId) {
 				if (mobFlayingActive){
 					try{
 						peasants = await CacheGetUsersByRoles(["peasant"]);
-						peasantsSize = peasants.size;
+						peasantsSize = peasants.length;
 						if(mobFlayingParticipants.has(member.id)) {
 							mobFlayingParticipants.delete(member.id);
 
@@ -194,7 +194,7 @@ async function setupPeasantBotEvents(client, lastMessageId) {
 			(hadRoleBeforePeasant || hasRoleNowPeasant)
 		) {
 			peasants = await CacheGetUsersByRoles(["peasant"]);
-			peasantsSize = peasants.size;
+			peasantsSize = peasants.length;
 			if (mobFlayingActive) {
 				if (mobFlayingParticipants.has(newMember.id)) {
 					try {
@@ -328,7 +328,7 @@ async function setupPeasantBotEvents(client, lastMessageId) {
 		if (interaction.customId === "MobFlaying") {
 			const userId = interaction.user.id;
 			peasants = await CacheGetUsersByRoles(["peasant"]);
-			peasantsSize = peasants.size;
+			peasantsSize = peasants.length;
 
 			if (!selectedMobFlayingTargets[userId]) {
 				await sendInteractionReply(interaction, "No member selected");

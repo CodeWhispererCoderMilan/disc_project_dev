@@ -106,7 +106,7 @@ async function createBot(token, channelId, setupEventsFunction, messageCommands,
 				let lastMessageId = sentMessage.id;
 				await setupEventsFunction(client, lastMessageId);
 				if(isConsole){
-					eventEmitter.emit("startXpBoost&RevolutonStates");
+					eventEmitter.emit("startXpBoost&RevolutionStates");
 				}
 				resolve();
 			} catch (err) {

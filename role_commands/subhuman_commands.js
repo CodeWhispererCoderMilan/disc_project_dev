@@ -270,7 +270,7 @@ async function updateSelectMenu(client, lastMessageId) {
 		const serverText = gameState.isServerDown() ? "!!!!!!!!!!!!!!!!! SERVER IS DOWN !!!!!!!!!!!!!!!!!" : "";
 		const messageToEdit = await channel.messages.fetch(lastMessageId);
 		const actionRow_0 = new ActionRowBuilder()
-			.addComponents(await buildSelectMenu(client, ["subhuman"], "SelectSubHuman", TextDepravitySelectMenu)); 
+			.addComponents(await buildSelectMenu(client, ["sub-human"], "SelectSubHuman", TextDepravitySelectMenu)); 
 		const actionRow_1 = new ActionRowBuilder()
 			.addComponents(await buildSelectMenu(client, ["peasant"], "SelectPeasant",TextManhuntSelectMenu));
 		const actionRow_2 = new ActionRowBuilder()
@@ -317,7 +317,7 @@ async function messageSubhumanCommands(client) {
 		channel = await client.channels.fetch(process.env.CHANNELIDSUBHUMAN);
 		const serverText = gameState.isServerDown() ? "!!!!!!!!!!!!!!!!! SERVER IS DOWN !!!!!!!!!!!!!!!!!" : "";
 		const subHumanSelectMenu = new ActionRowBuilder()
-			.addComponents(await buildSelectMenu(client, ["subhuman"], "SelectSubHuman", TextDepravitySelectMenu));
+			.addComponents(await buildSelectMenu(client, ["sub-human"], "SelectSubHuman", TextDepravitySelectMenu));
 		const peasantSelectMenu = new ActionRowBuilder()
 			.addComponents(await buildSelectMenu(client, ["peasant"], "SelectPeasant",TextManhuntSelectMenu));
 		const pickingSelectMenu = new ActionRowBuilder()

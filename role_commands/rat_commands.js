@@ -535,7 +535,7 @@ async function updateMessage(client, lastMessageId) {
 			const actionRow_1 = new ActionRowBuilder().addComponents(
 				await buildSelectMenu(
 					client,
-					["subhuman", "peasant", "scholar", "merchant", "knight"],
+					["sub-human", "peasant", "scholar", "merchant", "knight"],
 					"SelectPlagueTarget", TextPlagueTargetSelectMenu
 				)
 			);
@@ -579,7 +579,7 @@ async function updateMessage(client, lastMessageId) {
 			const actionRow_1 = new ActionRowBuilder().addComponents(
 				await buildSelectMenu(
 					client,
-					["subhuman", "peasant", "scholar", "merchant", "knight"],
+					["sub-human", "peasant", "scholar", "merchant", "knight"],
 					"SelectPlagueTarget", TextPlagueTargetSelectMenu
 				)
 			);
@@ -618,7 +618,7 @@ async function messageRatCommands(client) {
 		const plagueSelectMenu = new ActionRowBuilder().addComponents(
 			await buildSelectMenu(
 				client,
-				["subhuman", "peasant", "scholar", "merchant", "knight"],
+				["sub-human", "peasant", "scholar", "merchant", "knight"],
 				"SelectPlagueTarget", TextPlagueTargetSelectMenu
 			)
 		);

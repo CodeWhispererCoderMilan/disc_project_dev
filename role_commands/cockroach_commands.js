@@ -22,7 +22,8 @@ const {
 	TextInfanticideSelectMenu,
 	TextCockroachMessageContent,
 	ButtonLabelSwarm,
-	ButtonLabelInfanticide
+	ButtonLabelInfanticide,
+	ButtonLabelJoinSwarm
 } = require(`../game_config.json`);
 const { buildSelectMenu } = require(`../functions/botActions.js`);
 const { DBUpdateXP, changeRole } = require("../apis/firebase/querys.js");
@@ -38,7 +39,9 @@ let swarmTargetUsername = null;
 let swarmActive = false;
 let swarmInLastPhase = false;
 let swarmParticipants = new Set();
-
+function showErrorMsg(err) {
+	console.error("ERROR: cockroach_commands.js", err);
+}
 async function setupCockroachBotEvents(client, lastMessageId) {
 	client.on("guildMemberRemove", async (member) => {
 		try {
@@ -75,11 +78,14 @@ async function setupCockroachBotEvents(client, lastMessageId) {
 						if (member.id === swarmInitiatorId) {
 							const initiatorUsername = swarmInitiatorUsername;
 							await resetSwarm(client, lastMessageId);
+							await swarmFailureNotification(client, initiatorUsername);
 							client.emit("SwarmInitiatorRoleChanged", initiatorUsername);
 						} else {
 							// Update the swarm count
 							if (swarmInLastPhase) {
+								const initiatorUsername = swarmInitiatorUsername;
 								await resetSwarm(client, lastMessageId);
+								await swarmFailureNotification(client, initiatorUsername);
 								client.emit(
 									"SwarmParticipantDied",
 									member.user.username
@@ -99,7 +105,9 @@ async function setupCockroachBotEvents(client, lastMessageId) {
 				}
 				if(swarmActive && swarmTargetId === member.id && lastMessageId){
 					client.emit("SwarmTargetChangedRoles", member.user.username);	
-					resetSwarm(client, lastMessageId);
+					const initiatorUsername = swarmInitiatorUsername;
+					await resetSwarm(client, lastMessageId);
+					await swarmFailureNotification(client, initiatorUsername);
 				}else if(!swarmActive){
 					await updateMessage(client, lastMessageId);
 				}
@@ -133,11 +141,14 @@ async function setupCockroachBotEvents(client, lastMessageId) {
 							// If the initiator lost the role, reset the swarm
 							const initiatorUsername = swarmInitiatorUsername;
 							await resetSwarm(client, lastMessageId);
+							await swarmFailureNotification(client, initiatorUsername);
 							client.emit("SwarmInitiatorRoleChanged", initiatorUsername);
 						} else {
 							// Update the swarm count
 							if (swarmInLastPhase) {
+								const initiatorUsername = swarmInitiatorUsername;
 								await resetSwarm(client, lastMessageId);
+								await swarmFailureNotification(client, initiatorUsername);
 								client.emit(
 									"SwarmParticipantDied",
 									newMember.user.username
@@ -171,7 +182,9 @@ async function setupCockroachBotEvents(client, lastMessageId) {
 			}
 			if(swarmTargetId === oldMember.id && lastMessageId){
 				client.emit("SwarmTargetChangedRoles", oldMember.user.username);	
+				const initiatorUsername = swarmInitiatorUsername;
 				resetSwarm(client, lastMessageId);
+				await swarmFailureNotification(client, initiatorUsername);
 			}
 		}
 		if (hadRoleBeforeMaggot || hasRoleNowMaggot ) {
@@ -213,12 +226,12 @@ async function setupCockroachBotEvents(client, lastMessageId) {
 			const userId = interaction.user.id;
 			let selectedSubhumanId = interaction.values[0];
 			try {
+				await interaction.deferUpdate().catch((err) => {console.log(err);});
 				selectedSubhumans[userId] = await interaction.guild.members.fetch(
 					selectedSubhumanId
 				);
-				await interaction.deferUpdate();
 			} catch (err) {
-				console.error(err);
+				console.log(err);
 				throw err;
 			}
 		}
@@ -255,14 +268,18 @@ async function setupCockroachBotEvents(client, lastMessageId) {
 				await updateMessage(client, lastMessageId);
 				setTimeout(async () => {
 					if (!swarmInLastPhase && swarmParticipants.size < SwarmThreshold && swarmActive) {
-						await resetSwarm(client, messageToEdit, content);
+						const swarmInitUsername = swarmInitiatorUsername;
+						await resetSwarm(client, lastMessageId, content);
+						await swarmFailureNotificationInFlyCommands(client, swarmInitUsername);
+						await swarmFailureNotification(client, swarmInitUsername);
 					}
 				}, SwarmVoteTime);
 
 				await interaction.reply({
-					content: `Swarm initiated, ${SwarmThreshold - 1} other cockroaches must join for it to spawn...`,
+					content: `Swarm initiated, ${SwarmThreshold - 1} other flies must join for it to spawn...`,
 					ephemeral: true,
 				});
+				await swarmStartNotification(client);
 			} catch (err) {
 				console.error(err);
 			}
@@ -308,7 +325,7 @@ async function setupCockroachBotEvents(client, lastMessageId) {
 					await updateMessage(client, lastMessageId);
 					setTimeout(async () => {
 						if (swarmParticipants.size === SwarmThreshold && swarmActive) {
-							const subhumanId = selectedSubhumans[swarmInitiatorId].id;
+								const subhumanId = selectedSubhumans[swarmInitiatorId].id;
 							const subhumanMember = await interaction.guild.members.fetch(
 								subhumanId
 							);
@@ -318,11 +335,22 @@ async function setupCockroachBotEvents(client, lastMessageId) {
 								selectedSubhumans[swarmInitiatorId].user.username,
 								swarmInitiatorUsername
 							);
+							const swarmSize = swarmParticipants.size;
 							await CacheSetSwarmCooldown(Date.now());
 							await resetSwarm(client, lastMessageId);
+							await swarmSuccessNotification(
+								client,
+								selectedSubhumans[swarmInitiatorId].user.username,
+								swarmSize
+							);
+						}else{
+							await CacheSetSwarmCooldown(Date.now());
+							const initiatorUsername = swarmInitiatorUsername;
+							await resetSwarm(client, lastMessageId);
+							await swarmFailureNotificationInFlyCommands(client, initiatorUsername);
+							await swarmFailureNotification(client, initiatorUsername);
 						}
 					}, SwarmSpawnTime);
-
 					await interaction.reply({
 						content: "Swarm vote successful! The swarm is spawning...",
 						ephemeral: true,
@@ -376,6 +404,7 @@ async function setupCockroachBotEvents(client, lastMessageId) {
 						await changeRole( selectedMaggots[userId],"Poop",false);
 						await DBUpdateXP(userId, -InfanticideCost, client);
 						await CacheSetCooldown("infanticide", userId, InfanticideCooldown);
+						await infanticideNotification(client, interaction.user.username, selectedMaggots[userId].user.username);
 					} catch (err) {
 						console.error(err);
 						throw err;
@@ -409,7 +438,7 @@ async function setupCockroachBotEvents(client, lastMessageId) {
 				process.env.CHANNELIDCOCKROACH
 			);
 			const tempMessage = await channel.send(
-				`Swarm failed! The initiator ${username} is no longer a cockroach.`
+				`Swarm failed,the first fly, ${username} is no longer a cockroach.`
 			);
 			// Delete the message after 30 seconds
 			setTimeout(() => {
@@ -425,7 +454,7 @@ async function setupCockroachBotEvents(client, lastMessageId) {
 				process.env.CHANNELIDCOCKROACH
 			);
 			const tempMessage = await channel.send(
-				`Swarm failed! ${username} is no longer a cockroach.`
+				`Swarm failed, ${username} is no longer a fly.`
 			);
 			// Delete the message after 30 seconds
 			setTimeout(() => {
@@ -497,7 +526,7 @@ async function updateMessage(client, lastMessageId){
 			);
 			const selectMenuSubhumans = await buildSelectMenu(
 				client,
-				["subhuman"],
+				["sub-human"],
 				"selectSubhuman",
 				TextSwarmSelectMenu
 			);
@@ -552,7 +581,7 @@ async function updateMessage(client, lastMessageId){
 				.setDisabled(gameState.isServerDown()),
 				new ButtonBuilder()
 				.setCustomId("joinSwarm")
-				.setLabel(ButtonLabelSwarm)
+				.setLabel(ButtonLabelJoinSwarm)
 				.setStyle(ButtonStyle.Primary)
 				.setDisabled(gameState.isServerDown())
 			);
@@ -598,7 +627,7 @@ async function updateMessage(client, lastMessageId){
 				.setDisabled(gameState.isServerDown()),
 				new ButtonBuilder()
 				.setCustomId("joinSwarm")
-				.setLabel(ButtonLabelSwarm)
+				.setLabel(ButtonLabelJoinSwarm)
 				.setStyle(ButtonStyle.Primary)
 				.setDisabled(true)
 			);
@@ -619,7 +648,53 @@ async function updateMessage(client, lastMessageId){
 	}
 
 }
+async function infanticideNotification (client, flyUsername, maggotUsername){
+		try {
+		const putridWasteChannel = await client.channels.fetch(process.env.CHANNELID_PUTRID_WASTE);
+		await putridWasteChannel.send(`@**${flyUsername}** ate @**${maggotUsername}** in bitter infanticide.`);
+	} catch (err) {
+		showErrorMsg(err);
+	}
+}
+async function swarmStartNotification (client){
+	try {
+		const putridWasteChannel = await client.channels.fetch(process.env.CHANNELID_PUTRID_WASTE);
+		await putridWasteChannel.send(`swaths of flies are gathering...`);
+	} catch (err) {
+		showErrorMsg(err);
+	}
+}
+async  function swarmSuccessNotification (client, subhumanUsername, swarmCount){
+	try {
+		const putridWasteChannel = await client.channels.fetch(process.env.CHANNELID_PUTRID_WASTE);
+		await putridWasteChannel.send(`@**${subhumanUsername}** was picked apart by ${swarmCount} swarming flies.`);
+	} catch (err) {
+		showErrorMsg(err);
+	}
+}
+async function swarmFailureNotification (client, swarmInitiatorUsername){
+	try {
+		const putridWasteChannel = await client.channels.fetch(process.env.CHANNELID_PUTRID_WASTE);
+		await putridWasteChannel.send(`${swarmInitiatorUsername}'s swarm has failed, dim-witted fly...`);
+	} catch (err) {
+		showErrorMsg(err);
+	}
+}
+async function swarmFailureNotificationInFlyCommands (client, swarmInitiatorUsername){
+			try {
+				const channel = await client.channels.fetch(
+					process.env.CHANNELIDCOCKROACH
+				);
+				const tempMessage = await channel.send(`${swarmInitiatorUsername}'s swarm failed, the little flies he gathered glide away...`);
 
+				// Delete the message after 30 seconds
+				setTimeout(() => {
+					tempMessage.delete().catch(console.error);
+				}, 30000);
+			} catch (err) {
+				throw err;
+			}
+}
 async function messageCockroachCommands(client) {
 	let channel = null;
 	try {
@@ -638,7 +713,7 @@ async function messageCockroachCommands(client) {
 		);
 		const selectMenuSubhumans = await buildSelectMenu(
 			client,
-			["subhuman"],
+			["sub-human"],
 			"selectSubhuman",
 			TextSwarmSelectMenu
 		);

@@ -711,7 +711,7 @@ async function updateMessage(client, lastMessageId,emperorReelectionSelectMenu) 
 		let actionRow_0 = new ActionRowBuilder().addComponents(
 			await buildSelectMenu(
 				client,
-				["peasant", "subhuman"],
+				["peasant", "sub-human"],
 				"MobFlayingSelectMenu", TextMobFlayingSelectMenu
 			)
 		);
@@ -817,7 +817,7 @@ async function messagePeasantCommands(client) {
 		const actionRow_0 = new ActionRowBuilder().addComponents(
 			await buildSelectMenu(
 				client,
-				["peasant", "subhuman"],
+				["peasant", "sub-human"],
 				"MobFlayingSelectMenu", TextMobFlayingSelectMenu
 			)
 		);

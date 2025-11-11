@@ -492,9 +492,9 @@ async function changeRole(member, roleName, keepXP) {
 async function startupEmperorThreshold(client) {
 	const emperors = await CacheGetUsersByRoles(["emperor"]);
 	const emperorCount = emperors.length;
-	if(emperorCount === 1 && isThresholdOpen(12)) {
+	if(emperorCount > 0 && isThresholdOpen(12)) {
 		closeThreshold(12);
-	}if (emperorCount === 0 && !isThresholdOpen(12)) {
+	}if (emperorCount < 0 && !isThresholdOpen(12)) {
 		await openThreshold(12, client);
 
 	}

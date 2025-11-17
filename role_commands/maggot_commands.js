@@ -105,7 +105,7 @@ async function setupMaggotBotEvents(client, lastMessageId) {
 			const userXP = await CacheGetUserXP(userId);
 			if (userXP < FesterCost) {
 				try {
-					await sendInteractionReply(interaction, `Not enough XP (current XP: ${userXP})`)
+					await sendInteractionReply(interaction, `Not enough drops (current drops: ${userXP})`)
 					return;
 				} catch (err) {
 					return showErrorMsg(err);
@@ -130,7 +130,7 @@ async function setupMaggotBotEvents(client, lastMessageId) {
 					const maggotUsername = interaction.user.username;
 					await sendInteractionReply(interaction, `Successfully latched on to poop ${targetUsername}, half their xp being funneled to you.`);
 					await updateFesterSelectMenu(client, lastMessageId);
-					eventEmitter.emit('notifyFesterTarget', maggotUsername, targetUsername);
+					eventEmitter.emit('notifyFesterTarget', targetUsername);
 					await festerNotification(client, maggotUsername, targetUsername);
 				} catch (err) {
 					return showErrorMsg(err);

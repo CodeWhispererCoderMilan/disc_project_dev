@@ -76,20 +76,18 @@ async function setupCockroachBotEvents(client, lastMessageId) {
 					swarmParticipants.delete(member.id);
 			
 						if (member.id === swarmInitiatorId && swarmActive) {
-							const initiatorUsername = swarmInitiatorUsername.toString();
 							await resetSwarm(client, lastMessageId);
-							await swarmFailureNotification(client, initiatorUsername);
-							client.emit("SwarmInitiatorRoleChanged", initiatorUsername);
+							await swarmFailureNotification(client, member.id);
+							client.emit("SwarmInitiatorRoleChanged", member.id);
 						} else {
 							// Update the swarm count
 							if (swarmInLastPhase && swarmActive) {
-								const initiatorUsername = swarmInitiatorUsername
-									.toString();
+								const swarmInitId = swarmInitiatorId;
 								await resetSwarm(client, lastMessageId);
-								await swarmFailureNotification(client, initiatorUsername);
+								await swarmFailureNotification(client, swarmInitId);
 								client.emit(
 									"SwarmParticipantDied",
-									member.user.username
+									member.id
 								);
 							} else {
 								await updateMessage(client, lastMessageId);
@@ -105,10 +103,10 @@ async function setupCockroachBotEvents(client, lastMessageId) {
 					}
 				}
 				if(swarmActive && swarmTargetId === member.id && lastMessageId){
-					client.emit("SwarmTargetChangedRoles", member.user.username);	
-					const initiatorUsername = swarmInitiatorUsername.toString();
+					client.emit("SwarmTargetChangedRoles", member.id);
+					const initId = swarmInitiatorId;
 					await resetSwarm(client, lastMessageId);
-					await swarmFailureNotification(client, initiatorUsername);
+					await swarmFailureNotification(client, initId);
 				}else if(!swarmActive){
 					await updateMessage(client, lastMessageId);
 				}
@@ -139,20 +137,18 @@ async function setupCockroachBotEvents(client, lastMessageId) {
 					try {
 						swarmParticipants.delete(newMember.id);
 						if (newMember.id === swarmInitiatorId && swarmActive) {
-							// If the initiator lost the role, reset the swarm
-							const initiatorUsername = swarmInitiatorUsername.toString();
 							await resetSwarm(client, lastMessageId);
-							await swarmFailureNotification(client, initiatorUsername);
-							client.emit("SwarmInitiatorRoleChanged", initiatorUsername);
+							await swarmFailureNotification(client, newMember.id);
+							client.emit("SwarmInitiatorRoleChanged", newMember.id);
 						} else {
 							// Update the swarm count
 							if (swarmInLastPhase && swarmActive) {
-								const initiatorUsername = swarmInitiatorUsername.toString();
+								const initiatorId = swarmInitiatorId;
 								await resetSwarm(client, lastMessageId);
-								await swarmFailureNotification(client, initiatorUsername);
+								await swarmFailureNotification(client, initiatorId);
 								client.emit(
 									"SwarmParticipantDied",
-									newMember.user.username
+									newMember.id
 								);
 							} else {
 								await updateMessage(client, lastMessageId);
@@ -182,10 +178,10 @@ async function setupCockroachBotEvents(client, lastMessageId) {
 				}
 			}
 			if(swarmTargetId === oldMember.id && lastMessageId && swarmActive){
-				client.emit("SwarmTargetChangedRoles", oldMember.user.username);	
-				const initiatorUsername = swarmInitiatorUsername.toString();
+				client.emit("SwarmTargetChangedRoles", oldMember.id);	
+				const initiatorId = swarmInitiatorId;
 				await resetSwarm(client, lastMessageId);
-				await swarmFailureNotification(client, initiatorUsername);
+				await swarmFailureNotification(client, initiatorId);
 			}
 		}
 		if (hadRoleBeforeMaggot || hasRoleNowMaggot ) {
@@ -269,10 +265,10 @@ async function setupCockroachBotEvents(client, lastMessageId) {
 				await updateMessage(client, lastMessageId);
 				setTimeout(async () => {
 					if (!swarmInLastPhase && swarmParticipants.size < SwarmThreshold && swarmActive) {
-						const swarmInitUsername = swarmInitiatorUsername.toString();
+						const swarmInitId = swarmInitiatorId;
 						await resetSwarm(client, lastMessageId, content);
-						await swarmFailureNotificationInFlyCommands(client, swarmInitUsername);
-						await swarmFailureNotification(client, swarmInitUsername);
+						await swarmFailureNotificationInFlyCommands(client, swarmInitId);
+						await swarmFailureNotification(client, swarmInitId);
 					}
 				}, SwarmVoteTime);
 
@@ -327,35 +323,30 @@ async function setupCockroachBotEvents(client, lastMessageId) {
 					setTimeout(async () => {
 						if(!swarmActive) return;
 						if (swarmParticipants.size === SwarmThreshold) {
-								const subhumanId = selectedSubhumans[swarmInitiatorId].id;
-							const subhumanMember = await interaction.guild.members.fetch(
-								subhumanId
-							);
-							const subhumanUsername = selectedSubhumans[swarmInitiatorId]
-								.user.username;
-							const initiatorUsername = swarmInitiatorUsername;
+							const subhumanMember = selectedSubhumans[swarmInitiatorId];
+							const initiatorId = swarmInitiatorId;
 							const swarmSize = swarmParticipants.size.toString();
 							await CacheSetSwarmCooldown(Date.now());
 							await resetSwarm(client, lastMessageId);
 							await changeRole( subhumanMember, "Poop", false);
 							eventEmitter.emit(
 								"SwarmComplete",
-								subhumanUsername,
-								initiatorUsername
+								subhumanMember.id,
+								initiatorId
 							);
 
 							await swarmSuccessNotification(
 								client,
-								subhumanUsername,
+								subhumanMember.id,
 								swarmSize
 							);
-							eventEmitter.emit("Death", `${subhumanUsername} was picked apart by a swarm of flies.`);
+							eventEmitter.emit("Death", `<@${subhumanMember.id}> was picked apart by a swarm of flies.`);
 						}else{
 							await CacheSetSwarmCooldown(Date.now());
-							const initiatorUsername = swarmInitiatorUsername.toString();
+							const initiatorId = swarmInitiatorId;
 							await resetSwarm(client, lastMessageId);
-							await swarmFailureNotificationInFlyCommands(client, initiatorUsername);
-							await swarmFailureNotification(client, initiatorUsername);
+							await swarmFailureNotificationInFlyCommands(client, initiatorId);
+							await swarmFailureNotification(client, initiatorId);
 						}
 					}, SwarmSpawnTime);
 					await interaction.reply({
@@ -408,22 +399,22 @@ async function setupCockroachBotEvents(client, lastMessageId) {
 				}
 			}
 			try {
-				const interactionUsername = interaction.user.username;
-				const maggotUsername = selectedMaggots[userId].user.username;
+				const interactionUserId = interaction.user.id;
+				const maggotId = selectedMaggots[userId].id;
 				await changeRole( selectedMaggots[userId],"Poop",false);
 				await DBUpdateXP(userId, -InfanticideCost, client);
 				await CacheSetCooldown("infanticide", userId, InfanticideCooldown);
-				await infanticideNotification(client, interactionUsername, maggotUsername);
+				await infanticideNotification(client, interactionUserId, maggotId);
 
 				eventEmitter.emit(
 					"InfanticideComplete",
-					maggotUsername,
-					interactionUsername
+					maggotId,
+					interactionUserId
 				);
 				const XPleft = parseInt(userXP) - parseInt(InfanticideCost);
 				await interaction.reply({
 					content: `(${XPleft} drops left) You've eaten your spawn. 
-					${maggotUsername} plummets to the cesspit...`,
+					<@${maggotId}> plummets to the cesspit...`,
 					ephemeral: true,
 				});
 			} catch (err) {
@@ -436,13 +427,13 @@ async function setupCockroachBotEvents(client, lastMessageId) {
 
 	});
 
-	client.on("SwarmInitiatorRoleChanged", async (username) => {
+	client.on("SwarmInitiatorRoleChanged", async (id) => {
 		try {
 			const channel = await client.channels.fetch(
 				process.env.CHANNELIDCOCKROACH
 			);
 			const tempMessage = await channel.send(
-				`Swarm failed,the first fly, ${username} is no longer a fly.`
+				`Swarm failed,the first fly, <@${id}> is no longer a fly.`
 			);
 			// Delete the message after 30 seconds
 			setTimeout(() => {
@@ -452,13 +443,13 @@ async function setupCockroachBotEvents(client, lastMessageId) {
 			throw err;
 		}
 	});
-	client.on("SwarmParticipantDied", async (username) => {
+	client.on("SwarmParticipantDied", async (id) => {
 		try {
 			const channel = await client.channels.fetch(
 				process.env.CHANNELIDCOCKROACH
 			);
 			const tempMessage = await channel.send(
-				`Swarm failed, ${username} is no longer a fly.`
+				`Swarm failed, <@${id}> is no longer a fly.`
 			);
 			// Delete the message after 30 seconds
 			setTimeout(() => {
@@ -468,13 +459,13 @@ async function setupCockroachBotEvents(client, lastMessageId) {
 			throw err;
 		}
 	});
-	client.on("SwarmTargetChangedRoles", async (username) => {
+	client.on("SwarmTargetChangedRoles", async (id) => {
 		try {
 			const channel = await client.channels.fetch(
 				process.env.CHANNELIDCOCKROACH
 			);
 			const tempMessage = await channel.send(
-				`Swarm failed! ${username} is no longer Sub-human.`
+				`Swarm failed! <@${id}> is no longer Sub-human.`
 			);
 			// Delete the message after 30 seconds
 			setTimeout(() => {
@@ -486,13 +477,13 @@ async function setupCockroachBotEvents(client, lastMessageId) {
 	});
 	eventEmitter.on(
 		"SwarmComplete",
-		async (subHumanUsername, initiatorUsername) => {
+		async (subHumanId, initiatorId) => {
 			try {
 				const channel = await client.channels.fetch(
 					process.env.CHANNELIDCOCKROACH
 				);
 				const tempMessage = await channel.send(`
-					Swarm successful! ${subHumanUsername} was consumed by ${initiatorUsername}'s spawn.`);
+					Swarm successful! <@${subHumanId}> was consumed by <@${initiatorId}>'s spawn.`);
 
 				// Delete the message after 30 seconds
 				setTimeout(() => {
@@ -598,7 +589,7 @@ async function updateMessage(client, lastMessageId){
 
 			const swarmVote_content =
 				content +
-				`\n@${swarmInitiatorUsername} initiated a swarm (${swarmParticipants.size}/${SwarmThreshold})`;
+				`\n<@${swarmInitiatorId}> initiated a swarm (${swarmParticipants.size}/${SwarmThreshold})`;
 			await messageToEdit.edit({
 				content: serverText+ '\n'  + swarmVote_content,
 				components: [actionRow_0, actionRow_1, actionRow_2],
@@ -652,10 +643,10 @@ async function updateMessage(client, lastMessageId){
 	}
 
 }
-async function infanticideNotification (client, flyUsername, maggotUsername){
+async function infanticideNotification (client, flyId, maggotId){
 	try {
 		const putridWasteChannel = await client.channels.fetch(process.env.CHANNELID_PUTRID_WASTE);
-		await putridWasteChannel.send(`@**${flyUsername}** ate @**${maggotUsername}** in bitter infanticide.`);
+		await putridWasteChannel.send(`<@${flyId}> ate <@${maggotId}> in bitter infanticide.`);
 	} catch (err) {
 		showErrorMsg(err);
 	}
@@ -668,28 +659,28 @@ async function swarmStartNotification (client){
 		showErrorMsg(err);
 	}
 }
-async  function swarmSuccessNotification (client, subhumanUsername, swarmCount){
+async  function swarmSuccessNotification (client, subhumanId, swarmCount){
 	try {
 		const putridWasteChannel = await client.channels.fetch(process.env.CHANNELID_PUTRID_WASTE);
-		await putridWasteChannel.send(`@**${subhumanUsername}** was picked apart by ${swarmCount} swarming flies.`);
+		await putridWasteChannel.send(`<@${subhumanId}> was picked apart by ${swarmCount} swarming flies.`);
 	} catch (err) {
 		showErrorMsg(err);
 	}
 }
-async function swarmFailureNotification (client, swarmInitiatorUsername){
+async function swarmFailureNotification (client, swarmInitId){
 	try {
 		const putridWasteChannel = await client.channels.fetch(process.env.CHANNELID_PUTRID_WASTE);
-		await putridWasteChannel.send(`${swarmInitiatorUsername}'s swarm has failed, dim-witted fly...`);
+		await putridWasteChannel.send(`<@${swarmInitId}>'s swarm has failed, dim-witted fly...`);
 	} catch (err) {
 		showErrorMsg(err);
 	}
 }
-async function swarmFailureNotificationInFlyCommands (client, swarmInitiatorUsername){
+async function swarmFailureNotificationInFlyCommands (client, swarmInitId){
 	try {
 		const channel = await client.channels.fetch(
 			process.env.CHANNELIDCOCKROACH
 		);
-		const tempMessage = await channel.send(`${swarmInitiatorUsername}'s swarm failed, the little flies he gathered glide away...`);
+		const tempMessage = await channel.send(`<@${swarmInitId}> swarm failed, the little flies he gathered glide away...`);
 
 		// Delete the message after 30 seconds
 		setTimeout(() => {

@@ -22,7 +22,7 @@ async function setupPoopBotEvents(client, lastMessageId) {
 			content: `${deadMessage}\n Hit the gutter. \n`,
 		});
 	});
-	eventEmitter.on('InfanticideComplete', async (maggotToMessage, cockroachUsername) => {
+	eventEmitter.on('InfanticideComplete', async (maggotId, cockroachId) => {
 		let channel = null;
 		try {
 			channel = await client.channels.fetch(process.env.CHANNELID_CESSPIT);
@@ -30,12 +30,11 @@ async function setupPoopBotEvents(client, lastMessageId) {
 			return showErrorMsg(err);
 		}
 		const message = await channel.send({
-			content: `${maggotToMessage} was devoured as brood by ${cockroachUsername}...\n
-			Hit the gutter. \n`,
+			content: `<@${maggotId}> was devoured as brood by <@${cockroachId}>...\n Hit the gutter. \n`,
 		});
 	});
 
-	eventEmitter.on('notifyFesterTarget', async (poopUsername) => {
+	eventEmitter.on('notifyFesterTarget', async (poopId) => {
 		let channel = null;
 		try {
 			channel = await client.channels.fetch(process.env.CHANNELID_CESSPIT);
@@ -43,47 +42,47 @@ async function setupPoopBotEvents(client, lastMessageId) {
 			return showErrorMsg(err);
 		}
 		const message = await channel.send({
-			content: `half of  ${poopUsername}'s drops will be siphoned for a while...\n`,
+			content: `half of  <@${poopId}>'s drops will be siphoned for a while...\n`,
 		});
 	});
 
-	eventEmitter.on("NibbleComplete", async (poopUserName, ratUserName) => {
+	eventEmitter.on("NibbleComplete", async (poopId, ratId) => {
 		try {
 			let channel = await client.channels.fetch(process.env.CHANNELID_CESSPIT);
 			const message = await channel.send({
-				content: `${poopUserName} was devoured in their early years by ${ratUserName}...\n Hit the gutter. \n`,
+				content: `<@${poopId}> was devoured in their early years by <@${ratId}>...\n Hit the gutter. \n`,
 			});
 		} catch (err) {
 			showErrorMsg(err);
 		}
 	});
-	eventEmitter.on("DepravityComplete", async (targetUsername, subhumanUsername) =>{
+	eventEmitter.on("DepravityComplete", async (targetId, subhumanId) =>{
 		try{
 			let channel = await client.channels.fetch(process.env.CHANNELID_CESSPIT);
 			const message = await channel.send({
-				content: `${targetUsername} was eaten by his own kind,${subhumanUsername}...\n Hit the gutter. \n`,
+				content: `<@${targetId}> was eaten by his own kind,<@${subhumanId}>...\n Hit the gutter. \n`,
 			});
 
 		}catch(err){
 			showErrorMsg(err);
 		}
 	});
-	eventEmitter.on("ManhuntComplete", async(targetUsername, subhumanUsername)=>{
+	eventEmitter.on("ManhuntComplete", async(targetId, subhumanId)=>{
 		try{
 			let channel = await client.channels.fetch(process.env.CHANNELID_CESSPIT);
 			const message = await channel.send({
-				content: `${targetUsername}, a lowly peasant, was killed by ${subhumanUsername} in rabid rage...\n Hit the gutter. \n`,
+				content: `<@${targetId}>, a lowly peasant, was killed by <@${subhumanId}> in rabid rage...\n Hit the gutter. \n`,
 			});
 
 		}catch(err){
 			showErrorMsg(err);
 		}
 	});
-	eventEmitter.on("PickingComplete", async(targetUsername, subhumanUsername)=>{
+	eventEmitter.on("PickingComplete", async(targetId, subhumanId)=>{
 		try{
 			let channel = await client.channels.fetch(process.env.CHANNELID_CESSPIT);
 			const message = await channel.send({
-				content: `${targetUsername} was eaten by ${subhumanUsername}, disgusting...\n Hit the gutter. \n`,
+				content: `<@${targetId}> was eaten by <@${subhumanId}>, disgusting...\n Hit the gutter. \n`,
 			});
 	
 		}catch(err){

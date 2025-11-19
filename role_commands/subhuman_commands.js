@@ -159,7 +159,7 @@ async function setupSubhumanBotEvents(client, lastMessageId) {
 				}
 				const userXP = await CacheGetUserXP(userId);
 				if (userXP < DepravityCost) {
-					await sendInteractionReply(interaction,`Not enough XP (current XP: ${userXP})`)
+					await sendInteractionReply(interaction,`Not enough drops (current drops: ${userXP})`)
 				} else {
 					const cooldown = await CacheGetCooldown("depravity", userId);
 					if (cooldown){
@@ -167,14 +167,14 @@ async function setupSubhumanBotEvents(client, lastMessageId) {
 						return;
 					}else {
 
-						const targetUsername = selectedSubHumans[userId].user.username;
+						const targetId = selectedSubHumans[userId].id;
 						await changeRole(selectedSubHumans[userId],'Poop',false);
 						selectedSubHumans[userId] = null;
 						await DBUpdateXP(userId, -DepravityCost, client);
 						await CacheSetCooldown("depravity", userId, DepravityCooldown);
-						eventEmitter.emit("DepravityComplete", targetUsername, interaction.user.username);
+						eventEmitter.emit("DepravityComplete", targetId, interaction.user.id);
 						const XPLeft = parseInt(userXP) - parseInt(DepravityCost);
-						await sendInteractionReply(interaction,`(${XPLeft} XP left) Depravity committed successfully. \n${targetUsername} has been reduced to poop`);
+						await sendInteractionReply(interaction,`(${XPLeft} drops left) Depravity committed successfully. \n<@${targetId}> has been reduced to poop.`);
 					}
 				}
 			} catch (err) {
@@ -189,7 +189,7 @@ async function setupSubhumanBotEvents(client, lastMessageId) {
 				}
 				const userXP = await CacheGetUserXP(userId);
 				if (userXP < ManhuntCost) {
-					await sendInteractionReply(interaction, `Not enough XP (current XP: ${userXP})`)
+					await sendInteractionReply(interaction, `Not enough drops (current drops: ${userXP})`)
 					return;
 				} else {
 					const cooldown = await CacheGetCooldown("manhunt", userId);
@@ -198,14 +198,14 @@ async function setupSubhumanBotEvents(client, lastMessageId) {
 						return;	
 					}
 					else {
-						targetUsername = selectedPeasants[userId].user.username;
+						targetId = selectedPeasants[userId].id;
 						await changeRole(selectedPeasants[userId], 'Poop',false);
 						selectedSubHumans[userId] = null;
 						await DBUpdateXP(userId, -ManhuntCost, client);
 						await CacheSetCooldown("manhunt", userId, ManhuntCooldown);
-						eventEmitter.emit("ManhuntComplete",targetUsername , interaction.user.username);
+						eventEmitter.emit("ManhuntComplete",targetId , interaction.user.id);
 						const XPLeft = parseInt(userXP) - parseInt(ManhuntCost);
-						await sendInteractionReply(interaction, `(${XPLeft} XP left) Manhunt committed successfully. \n${targetUsername} has been reduced to poop`);
+						await sendInteractionReply(interaction, `(${XPLeft} drops left) Manhunt committed successfully. \n<@${targetId}> has been reduced to poop`);
 					}
 				}
 			} catch (err) {
@@ -220,7 +220,7 @@ async function setupSubhumanBotEvents(client, lastMessageId) {
 				}
 				const userXP = await CacheGetUserXP(userId);
 				if (userXP < PickingCost) {
-					await sendInteractionReply(interaction, `Not enough XP (current XP: ${userXP})`)
+					await sendInteractionReply(interaction, `Not enough drops (current drops: ${userXP})`)
 					return;
 				}else {
 					const cooldown = await CacheGetCooldown("picking", userId);
@@ -228,14 +228,14 @@ async function setupSubhumanBotEvents(client, lastMessageId) {
 						await sendInteractionReply(interaction, "Picking is on cooldown and cannot be used");
 						return;
 					}else {
-						const targetUsername = selectedPickings[userId].user.username
+						const targetId = selectedPickings[userId].id;
 						await changeRole (selectedPickings[userId],'Poop',false);
 						selectedPickings[userId] = null;
 						await DBUpdateXP(userId, -PickingCost, client);
 						await CacheSetCooldown("picking", userId, PickingCooldown);
-						eventEmitter.emit("PickingComplete", targetUsername, interaction.user.username);
+						eventEmitter.emit("PickingComplete", targetId, interaction.user.id);
 						const XPLeft = parseInt(userXP) - parseInt(PickingCost);
-						await sendInteractionReply(interaction, `(${XPLeft} XP left) Picking committed successfully. \n${targetUsername} has been reduced to poop`);
+						await sendInteractionReply(interaction, `(${XPLeft} XP left) Picking committed successfully. \n<@${targetId}> has been reduced to poop`);
 					}
 				}
 			} catch (err) {

@@ -1,6 +1,7 @@
 const { eventEmitter } = require("../functions/eventEmitter.js");
 const gameState = require("../game_state.js");
 const {
+	messageChannel,
 	sendInteractionReply,
 	buildSelectMenu,
 } = require("../functions/botActions");
@@ -45,6 +46,7 @@ let selectedTargets = {};
 let plagueParticipants = {};
 let selectedPlagueTargets = {};
 let plagueInitiator = null;
+let plagueIntiatorId = null;
 let plagueTimeout;
 let plagueActive = false;
 let secondPhase = false;
@@ -92,7 +94,6 @@ async function setupRatBotEvents(client, lastMessageId) {
 					  if (secondPhase) {
 						  if (Object.keys(plagueParticipants).length <= PLAGUETHREADSHOLD) {
 							  ceasePlague(client, lastMessageId);
-							  return;
 						  }else{ 
 							  await updateMessage(client, lastMessageId);
 						  }
@@ -274,6 +275,7 @@ async function setupRatBotEvents(client, lastMessageId) {
 
 		if (interaction.customId === "Nibble") {
 			try {
+				const userId = interaction.user.id;
 				if (!selectedTargets[userId]) {
 					await sendInteractionReply(
 						interaction,
@@ -281,41 +283,42 @@ async function setupRatBotEvents(client, lastMessageId) {
 					);
 					return;
 				}
+				const targetUsername = selectedTargets[userId].user.username;
+				const targetId = selectedTargets[userId].id;
 				const userXP = await CacheGetUserXP(userId);
 				if (userXP < NibbleCost) {
 					await sendInteractionReply(
 						interaction,
-						`Not enough XP (current XP: ${userXP})`
+						`Not enough drops (current drops: ${userXP})`
 					);
 					return;
-				} else {
-					const cooldown = await CacheGetCooldown("nibble", userId);
-					if (cooldown) {
-						await sendInteractionReply(
-							interaction,
-							"Nibble is on cooldown and cannot be used"
-						);
-						return;
-					} else {
-						await changeRole(selectedTargets[userId], "Poop", false);
-						await DBUpdateXP(userId, -NibbleCost, client);
-						await CacheSetCooldown("nibble", userId, NibbleCooldown);
-						eventEmitter.emit(
-							"NibbleComplete",
-							selectedTargets[userId].user.username,
-							interaction.user.username
-						);
-						const XPLeft = parseInt(userXP) - parseInt(NibbleCost);
-						await sendInteractionReply(
-							interaction,
-							`(${XPLeft} XP left) Nibble committed successfully.\n${selectedTargets[userId].user.username} has been reduced to poop`
-						);
-					}
 				}
+				const cooldown = await CacheGetCooldown("nibble", userId);
+				if (cooldown) {
+					await sendInteractionReply(
+						interaction,
+						"Nibble is on cooldown and cannot be used"
+					);
+					return;
+				}  
+				await changeRole(selectedTargets[userId], "Poop", false);
+				await DBUpdateXP(userId, -NibbleCost, client);
+				await CacheSetCooldown("nibble", userId, NibbleCooldown);
+				eventEmitter.emit(
+					"NibbleComplete",
+					targetId,
+					interaction.user.id
+				);
+				const XPLeft = parseInt(userXP) - parseInt(NibbleCost);
+				await sendInteractionReply(
+					interaction,
+					`(${XPLeft} drops left) You've succesfuly eaten  <@${targetId}>.`
+				);
+				await messagePutridWaste(client,`<@${targetId}> was nibbled to bits by <@${userId}>, poor writhing maggot...`);
+				selectedTargets[userId] = null;
 			} catch (err) {
 				showErrorMsg(err);
 			}
-			selectedTargets[userId] = null;
 		}
 
 		if (interaction.customId === "Plague") {
@@ -350,7 +353,7 @@ async function setupRatBotEvents(client, lastMessageId) {
 					rats = 	await CacheGetUsersByRoles(["rat"]);
 					ratsSize = rats.length;
 					plagueInitiator = interaction.user.username;
-
+					plagueIntiatorId = interaction.user.id;
 					await startFirstPhasePlague(
 						client,
 						lastMessageId,
@@ -359,9 +362,9 @@ async function setupRatBotEvents(client, lastMessageId) {
 
 					await sendInteractionReply(
 						interaction,
-						`You have successfully initiated plague with target @${target.user.username}. Wait for the rats to join.`
+						`You have successfully initiated plague with target <@${target.id}>. Wait for the rats to join.`
 					);
-
+					await messagePutridWaste(client,`The  tunnels are ominously quiet besides a distant unison squeak, tiny clarions of heaven...`);
 					await updateMessage(client, lastMessageId);
 				} catch (err) {
 					showErrorMsg(err);
@@ -372,7 +375,7 @@ async function setupRatBotEvents(client, lastMessageId) {
 		if (interaction.customId === "JoinPlague") {
 			const userId = interaction.user.id;
 			if (!selectedPlagueTargets[userId]) {
-				await sendInteractionReply(interaction, "No member selected");
+				await sendInteractionReply(interaction, "No target selected");
 				return;
 			}
 
@@ -381,7 +384,7 @@ async function setupRatBotEvents(client, lastMessageId) {
 			) {
 				await sendInteractionReply(
 					interaction,
-					"You've already joined plague."
+					"You've already joined the plague."
 				);
 				return;
 			}
@@ -394,7 +397,7 @@ async function setupRatBotEvents(client, lastMessageId) {
 
 			await sendInteractionReply(
 				interaction,
-				`You have joined the plague with target @${target.user.username}.`
+				`You have joined the plague with target <@${target.id}>.`
 			);
 
 			await updateMessage(client, lastMessageId);
@@ -423,6 +426,15 @@ async function setupRatBotEvents(client, lastMessageId) {
 	});
 }
 
+async function messagePutridWaste (client, message){
+	try {
+		const putridWasteChannel = await client.channels.fetch(process.env.CHANNELID_PUTRID_WASTE);
+		await putridWasteChannel.send(message);
+	} catch (err) {
+		showErrorMsg(err);
+	}
+}
+
 async function startFirstPhasePlague(client, lastMessageId, timeout) {
 	plagueActive = true;
 	setTimeout(async () => {
@@ -432,12 +444,14 @@ async function startFirstPhasePlague(client, lastMessageId, timeout) {
 
 async function handleFirstPhasePlagueEnd(client, lastMessageId) {
 	if (Object.keys(plagueParticipants).length > PLAGUETHREADSHOLD) {
-		const msg = `The initial phase of plague initiated by @${plagueInitiator} is succeeded, moving to the next phase`;
+		const msg = `Heaven's Favor shines upon <@${plagueInitiatorId}>'s plague, its second phase begins.`;
 		eventEmitter.emit("NotifyRatChannel", msg);
+		await messagePutridWaste(client, `The clarions grows louder filling the tunnels with thick anticipation, a plague is underway...`);
 		await startSecondPhasePlauge(client, lastMessageId, PlagueSecondPhaseTime);
 	} else {
-		const msg = `The plague initiated by @${plagueInitiator} is failed, resetting the poll.`;
+		const msg = `The plague initiated by <@${plagueInitiatorId}> is failed, resetting the poll.`;
 		eventEmitter.emit("NotifyRatChannel", msg);
+		await messagePutridWaste(client, `The squeaks disperse, <@${plagueInitiatorId}>'s plague has fallen short of Heaven's Favor. Proud rats shall be stripped of service...`);
 		await resetComponents(client, lastMessageId);
 	}
 }
@@ -452,6 +466,7 @@ async function startSecondPhasePlauge(client, lastMessageId, timeout) {
 
 async function handleSecondPhasePlagueEnd(client, lastMessageId) {
 	const refinedTargets = {};
+	await messagePutridWaste(client, `the plague pleases the gods, bathed in light, it sprouts far above the sewers. Many fall ill...`);
 	Object.keys(plagueParticipants).forEach((userId) => {
 		const targetId = plagueParticipants[userId].targetId;
 		let targetedNumber = 1;
@@ -465,45 +480,64 @@ async function handleSecondPhasePlagueEnd(client, lastMessageId) {
 			roles: plagueParticipants[userId].roles,
 		};
 	});
-	Object.keys(refinedTargets).forEach(async (targetId) => {
+	let killCount = 0;
+	Object.keys(refinedTargets).forEach(async (userId) => {
 		let killTarget = false;
+		let message;
+		let channelId;
+		const targetId = refinedTargets[userId].id;	
 		if (
-			refinedTargets[targetId].roles.has(process.env.ROLEID_SUBHUMAN) &&
-			refinedTargets[targetId].targetedNumber > PlagueKillSubhuman
+			refinedTargets[userId].roles.has(process.env.ROLEID_SUBHUMAN) &&
+			refinedTargets[userId].targetedNumber > PlagueKillSubhuman
 		)
 			killTarget = true;
+			message = `Sub-human <@${targetId}> is dead.`;
+			channelId = process.env.CHANNELID_DECREPIT_TUNNELS;
 		if (
-			refinedTargets[targetId].roles.has(process.env.ROLEID_PEASANT) &&
-			refinedTargets[targetId].targetedNumber > PlagueKillPeasant
+			refinedTargets[userId].roles.has(process.env.ROLEID_PEASANT) &&
+			refinedTargets[userId].targetedNumber > PlagueKillPeasant
 		)
 			killTarget = true;
+			message = `Peasant <@${targetId}> is dead.`;
+			channelId = process.env.CHANNELID_FARMS;
 		if (
-			refinedTargets[targetId].roles.has(process.env.ROLEID_SCHOLAR) &&
-			refinedTargets[targetId].targetedNumber > PlagueKillScholar
+			refinedTargets[userId].roles.has(process.env.ROLEID_SCHOLAR) &&
+			refinedTargets[userId].targetedNumber > PlagueKillScholar
 		)
 			killTarget = true;
+			message = `Scholar <@${targetId}> is dead.`;
+			channelId = process.env.CHANNELID_LIBRARY;
 		if (
-			refinedTargets[targetId].roles.has(process.env.ROLEID_MERCHANT) &&
-			refinedTargets[targetId].targetedNumber > PlagueKillMerchant
+			refinedTargets[userId].roles.has(process.env.ROLEID_MERCHANT) &&
+			refinedTargets[userId].targetedNumber > PlagueKillMerchant
 		)
 			killTarget = true;
+			message = `Merchant <@${targetId}> is dead.`;
+			channelId = process.env.CHANNELID_MARKET;
 		if (
-			refinedTargets[targetId].roles.has(process.env.ROLEID_KNIGHT) &&
-			refinedTargets[targetId].targetedNumber > PlagueKillKnight
+			refinedTargets[userId].roles.has(process.env.ROLEID_KNIGHT) &&
+			refinedTargets[userId].targetedNumber > PlagueKillKnight
 		)
 			killTarget = true;
+			message = `Knight <@${targetId}> is dead.`;
+			channelId = process.env.CHANNELID_CASTLE;
 
 		if (killTarget) {
+			killCount++;
 			const guild = await client.guilds.fetch(process.env.GUILDID);
-			const target = await guild.members.fetch(targetId);
-			await changeRole(target, "Poop", false);
+			await changeRole(refinedtargets[userId], "Poop", false);
+			await messageChannel(client, channelId,message);
+			await messagePutridWaste(client, `Plagueridden <@${targetId}> is dead.`);
 			eventEmitter.emit(
 				"NotifyRatChannel",
-				`@${target.user.username} has been killed of plague.`
+				`<@${targetId}> has succumbed to the plague.`
 			);
 		}
 	});
-	eventEmitter.emit("NotifyRatChannel", `Plague finished.`);
+	await messagePutridWaste(client,
+		`Plague washed over the land, rats have restored Heaven's Favor. Long live our glorious rodents!`
+	);
+	eventEmitter.emit("NotifyRatChannel", `Plague successfully cleansed the realm, ${killCount} are dead.`);
 	await resetComponents(client, lastMessageId);
 }
 
@@ -512,8 +546,9 @@ async function ceasePlague(client, lastMessageId) {
 		clearTimeout(plagueTimeout);
 		eventEmitter.emit(
 			"NotifyRatChannel",
-			"Plague failed because of insufficient number of rats."
+			"Plague failed, too few rats."
 		);
+		await messagePutridWaste(client, `The squeaks disperse, <@${plagueInitiatorId}>'s plague has fallen short of Heaven's Favor. Proud rats shall be stripped of service...`);
 		await resetComponents(client, lastMessageId);
 	}
 }
@@ -528,7 +563,7 @@ async function updateMessage(client, lastMessageId) {
 			const actionRow_0 = new ActionRowBuilder().addComponents(
 				await buildSelectMenu(
 					client,
-					["maggot", "cockroach"],
+					["maggot", "fly"],
 					"SelectNibbleUser", TextNibbleSelectMenu
 				)
 			);
@@ -554,13 +589,13 @@ async function updateMessage(client, lastMessageId) {
 
 			let content =
 				initContent +
-				`\n\n@${plagueInitiator} initiated a plague. Join plague with selected target. (Joined ${
+				`\n\n<@${plagueInitiatorId}> initiated a plague. Join plague with selected target. (Joined ${
 					Object.keys(plagueParticipants).length
 				} / ${ratsSize} rats.)`;
 			if (secondPhase)
 				content =
 					initContent +
-					`\n\nPlague initiated by @${plagueInitiator} is in the next phase. Join plague with selected target. (Joined ${
+					`\n\n<@${plagueInitiatorId}>'s plague is spreading to its second phase. Join plague with selected target. (Joined ${
 						Object.keys(plagueParticipants).length
 					} / ${ratsSize} rats.)`;
 
@@ -572,7 +607,7 @@ async function updateMessage(client, lastMessageId) {
 			const actionRow_0 = new ActionRowBuilder().addComponents(
 				await buildSelectMenu(
 					client,
-					["maggot", "cockroach"],
+					["maggot", "fly"],
 					"SelectNibbleUser", TextNibbleSelectMenu
 				)
 			);
@@ -612,7 +647,7 @@ async function messageRatCommands(client) {
 		channel = await client.channels.fetch(process.env.CHANNELIDRAT);
 		const serverText = gameState.isServerDown() ? "!!!!!!!!!!!!!!!!! SERVER IS DOWN !!!!!!!!!!!!!!!!!" : "";
 		const selectMenu = new ActionRowBuilder().addComponents(
-			await buildSelectMenu(client, ["maggot", "cockroach"], "SelectNibbleUser", TextNibbleSelectMenu)
+			await buildSelectMenu(client, ["maggot", "fly"], "SelectNibbleUser", TextNibbleSelectMenu)
 		);
 
 		const plagueSelectMenu = new ActionRowBuilder().addComponents(
@@ -651,6 +686,7 @@ async function resetComponents(client, lastMessageId) {
 		plagueParticipants = {};
 		selectedPlagueTargets = {};
 		plagueInitiator = null;
+		plagueIntiatorId = null;
 		plagueActive = false;
 		secondPhase = false;
 		await updateMessage(client, lastMessageId);

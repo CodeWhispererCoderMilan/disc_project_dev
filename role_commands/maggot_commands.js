@@ -125,13 +125,13 @@ async function setupMaggotBotEvents(client, lastMessageId) {
 						return;
 					}
 					await fester(client, userId, selectedPoops[userId].id);
-					const targetUsername = selectedPoops[userId].user.username;
+					const targetId = selectedPoops[userId].id;
 					selectedPoops[userId] = null;
-					const maggotUsername = interaction.user.username;
-					await sendInteractionReply(interaction, `Successfully latched on to poop ${targetUsername}, half their xp being funneled to you.`);
+					const maggotId = interaction.user.id;
+					await sendInteractionReply(interaction, `Successfully latched on to poop <@${targetId}>, half their drops are being funneled to you.`);
 					await updateFesterSelectMenu(client, lastMessageId);
-					eventEmitter.emit('notifyFesterTarget', targetUsername);
-					await festerNotification(client, maggotUsername, targetUsername);
+					eventEmitter.emit('notifyFesterTarget', targetId);
+					await festerNotification(client, maggotId, targetId);
 				} catch (err) {
 					return showErrorMsg(err);
 				}
@@ -148,12 +148,12 @@ async function setupMaggotBotEvents(client, lastMessageId) {
 	});
 	
 }
-async function festerNotification (client, maggotUsername, poopUsername){
+async function festerNotification (client, maggotId, targetId) {
 	try {
 		const cesspitChannel = await client.channels.fetch(process.env.CHANNELID_CESSPIT);
 		const putridWasteChannel = await client.channels.fetch(process.env.CHANNELID_PUTRID_WASTE);
-		await cesspitChannel.send(`@**${maggotUsername}** is festering @**${poopUsername}**, drainage of its drops....`);
-		await putridWasteChannel.send(`@**${maggotUsername}** festering....`);
+		await cesspitChannel.send(`<@${maggotId}> is festering <@${targetId}>, drainage of its drops....`);
+		await putridWasteChannel.send(`<@${maggotId}> festering....`);
 	} catch (err) {
 		showErrorMsg(err);
 	}

@@ -15,7 +15,14 @@ function wait(ms) {
 	});
 }
 
-
+async function messageChannel (client, channelId, message){
+	try {
+		const channel = await client.channels.fetch(channelId);
+		await channel.send(message);
+	} catch (err) {
+		showErrorMsg(err);
+	}
+}
 
 async function scheduledXpBoost(timeUntilNextBoost, client, iterations = Infinity) {
 	
@@ -75,7 +82,14 @@ async function checkAndApplyMissedXPBoost(client) {
 		console.error(`Error during missed XP boost check: ${err.message}`);
 	}
 }
-
+async function messageChannel (client, channelId, message){
+	try {
+		const channel = await client.channels.fetch(channelId);
+		await channel.send(message);
+	} catch (err) {
+		showErrorMsg(err);
+	}
+}
 async function buildSelectMenu(client, roleNames, customId, chooseText) {
 	const guild = await client.guilds.fetch(process.env.GUILDID);
 	const usersWithRoles = await CacheGetUsersByRoles(roleNames);
@@ -170,4 +184,5 @@ module.exports = {
 	grantAstralRealmAccess,
 	revokeAstralRealmAccess,
 	checkAndApplyMissedXPBoost,
+	messageChannel
 };

@@ -14,16 +14,9 @@ function wait(ms) {
 		setTimeout(resolve, ms);
 	});
 }
-
-async function messageChannel (client, channelId, message){
-	try {
-		const channel = await client.channels.fetch(channelId);
-		await channel.send(message);
-	} catch (err) {
-		showErrorMsg(err);
-	}
+async function showErrorMsg(err) {
+	console.log("botAction.js ERROR:", err);
 }
-
 async function scheduledXpBoost(timeUntilNextBoost, client, iterations = Infinity) {
 	
 	console.log(`waiting ${timeUntilNextBoost / 1000} sec to sync XP boost`);

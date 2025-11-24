@@ -71,7 +71,7 @@ async function setupPoopBotEvents(client, lastMessageId) {
 		try{
 			let channel = await client.channels.fetch(process.env.CHANNELID_CESSPIT);
 			const message = await channel.send({
-				content: `<@${targetId}>, a lowly peasant, was killed by <@${subhumanId}> in rabid rage...\n Hit the gutter. \n`,
+				content: `<@${targetId}>, an honest peasant, was killed by <@${subhumanId}> in rabid rage...\n Hit the gutter. \n`,
 			});
 
 		}catch(err){

@@ -1,6 +1,6 @@
 const {eventEmitter} = require('../functions/eventEmitter.js');
 const gameState = require("../game_state.js");
-const {sendInteractionReply, buildSelectMenu} = require("../functions/botActions");
+const {sendInteractionReply, buildSelectMenu, messageChannel} = require("../functions/botActions");
 const { CacheGetUsersByRoles,CacheGetUserXP, CacheGetCooldown, CacheSetCooldown} = require("../apis/redis/redisCache");
 const {ActionRowBuilder, ButtonBuilder, ButtonStyle} = require("discord.js");
 const {DBUpdateXP, changeRole} = require("../apis/firebase/querys");
@@ -174,7 +174,10 @@ async function setupSubhumanBotEvents(client, lastMessageId) {
 						await CacheSetCooldown("depravity", userId, DepravityCooldown);
 						eventEmitter.emit("DepravityComplete", targetId, interaction.user.id);
 						const XPLeft = parseInt(userXP) - parseInt(DepravityCost);
-						await sendInteractionReply(interaction,`(${XPLeft} drops left) Depravity committed successfully. \n<@${targetId}> has been reduced to poop.`);
+						await sendInteractionReply(interaction,`(${XPLeft} drops left) You've succesfully eaten your own kind. \n<@${targetId}> has been reduced to poop.`);
+						await messageChannel(client, process.env.CHANNELID_DECREPIT_TUNNELS, `Sub-human <@${interaction.user.id}> has eaten sub-human <@${targetId}>.`);
+						await messageChannel(client, process.env.CHANNELID_PUTRID_WASTE, `Sub-human <@${targetId}> has been eaten.`);
+						await messageChannel(client, process.env.CHANNELID_FOREST, `Sub-human <@${targetId}> has been eaten.`);
 					}
 				}
 			} catch (err) {
@@ -200,12 +203,16 @@ async function setupSubhumanBotEvents(client, lastMessageId) {
 					else {
 						targetId = selectedPeasants[userId].id;
 						await changeRole(selectedPeasants[userId], 'Poop',false);
-						selectedSubHumans[userId] = null;
+						selectedPeasants[userId] = null;
 						await DBUpdateXP(userId, -ManhuntCost, client);
 						await CacheSetCooldown("manhunt", userId, ManhuntCooldown);
 						eventEmitter.emit("ManhuntComplete",targetId , interaction.user.id);
 						const XPLeft = parseInt(userXP) - parseInt(ManhuntCost);
-						await sendInteractionReply(interaction, `(${XPLeft} drops left) Manhunt committed successfully. \n<@${targetId}> has been reduced to poop`);
+						await sendInteractionReply(interaction, `(${XPLeft} drops left) You've killed a scrambling peasant. <@${targetId}> has been reduced to poop.`);
+						await messageChannel(client, process.env.CHANNELID_DECREPIT_TUNNELS, `<@${userId}> killed Peasant <@${targetId}>.`);
+						await messageChannel(client, process.env.CHANNELID_FOREST, `Peasant <@${targetId}> was found mangled and covered in <@${userId}>'s fluids at the base of a beech tree.`);
+
+
 					}
 				}
 			} catch (err) {
@@ -235,7 +242,11 @@ async function setupSubhumanBotEvents(client, lastMessageId) {
 						await CacheSetCooldown("picking", userId, PickingCooldown);
 						eventEmitter.emit("PickingComplete", targetId, interaction.user.id);
 						const XPLeft = parseInt(userXP) - parseInt(PickingCost);
-						await sendInteractionReply(interaction, `(${XPLeft} XP left) Picking committed successfully. \n<@${targetId}> has been reduced to poop`);
+						await sendInteractionReply(interaction, `(${XPLeft} XP left) You've chewed on a pest until it stopped moving. \n<@${targetId}> has been reduced to poop.`);
+						await messageChannel(client, process.env.CHANNELID_DECREPIT_TUNNELS, `<@${userId}> snacked on <@${targetId}>.`);
+						await messageChannel(client, process.env.CHANNELID_PUTRID_WASTE, ` <@${targetId}> was gobbled up by <@${userId}>.`);
+
+
 					}
 				}
 			} catch (err) {

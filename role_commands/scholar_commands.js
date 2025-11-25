@@ -54,7 +54,7 @@ async function setupScholarBotEvents(client, lastMessageId) {
 			process.env.ROLEID_KNIGHT
 		);
 		const hadRoleBeforeNoble = member.roles.cache.has(
-			process.env.ROLEID_NOBLE
+			process.env.ROLEID_NOBLE`**Scholar <@${userId}>'s words flow upstream:\n**` +"**"
 		);
 		const hadRoleBeforeLord = member.roles.cache.has(
 			process.env.ROLEID_LORD
@@ -70,7 +70,7 @@ async function setupScholarBotEvents(client, lastMessageId) {
 			for (let userId in selectedRevolutionTargets) {
 				if (selectedRevolutionTargets[userId] && selectedRevolutionTargets[userId].id === member.id) {
 					selectedRevolutionTargets[userId] = null;
-				}
+			}
 			}
 		}
 		if ((hadRoleBeforeKnight || hadRoleBeforeNoble || hadRoleBeforeLord || 
@@ -274,6 +274,7 @@ async function setupScholarBotEvents(client, lastMessageId) {
 					return;
 				}
 				const isRevolutionParticipant = gameState.isRevolutionParticipant(userId);
+
 				if (isRevolutionParticipant) {
 					await sendInteractionReply(
 						interaction,
@@ -293,7 +294,7 @@ async function setupScholarBotEvents(client, lastMessageId) {
 				delete selectedRevolutionTargets[userId];
 				await sendInteractionReply(
 					interaction,
-					`You have joined the revolution with target @${target.user.username}.`
+					`You have joined the revolution with target @${target.user.id}.`
 				);
 			}
 			if (interaction.customId === "WithdrawRevolution") {
@@ -359,6 +360,7 @@ async function setupScholarBotEvents(client, lastMessageId) {
 						userId,
 						selectedEmperorCandidates[userId].user.id
 					);
+
 					delete selectedEmperorCandidates[userId];
 					await sendInteractionReply(
 						interaction,
@@ -373,18 +375,11 @@ async function setupScholarBotEvents(client, lastMessageId) {
 		if (interaction.isModalSubmit()) {
 			if (interaction.customId === "adviseModal") {
 				const userId = interaction.user.id;
-				const message = interaction.fields.getTextInputValue("messageInput");
-
+				const message =`**Scholar <@${userId}>'s words flow upstream:\n` + interaction.fields.getTextInputValue("messageInput") + `**`;
 				try {
-					// Defer reply to avoid timeout
 					await interaction.deferReply({ ephemeral: true });
-
-					// Emit event
-					eventEmitter.emit("sendMessageToRoyalCastle", userId, message);
-
-					// Set cooldown (e.g., 60 seconds)
+					eventEmitter.emit("sendMessageToRoyalCastle", message);
 					await CacheSetCooldown("advise", userId, AdviseCooldown);
-
 					await sendInteractionReply(
 						interaction,
 						"You have successfuly sent message to the royal castle."
@@ -482,6 +477,23 @@ async function setupScholarBotEvents(client, lastMessageId) {
 			showErrorMsg(err);
 		}
 	});
+
+	eventEmitter.on("sendMessageToRoyalCastle", async (message) => {
+		try {
+			const guild = await client.guilds.fetch(process.env.GUILDID);
+			if (!guild) {
+				console.error("Guild not found");
+				return;
+			}
+			const royalCastleChannel = await client.channels.fetch(
+				process.env.CHANNELIDROYALCASTLE
+			);
+			royalCastleChannel.send(message);
+		} catch (err) {
+			throw err;
+		}
+	});
+
 
 	eventEmitter.on("ServerStatusChange", async () => {
 		try {

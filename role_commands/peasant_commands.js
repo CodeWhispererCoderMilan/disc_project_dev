@@ -8,6 +8,7 @@ const {
 const {
 	buildSelectMenu,
 	sendInteractionReply,
+	messageChannel
 } = require("../functions/botActions");
 const {
 	CacheGetCooldown,
@@ -94,7 +95,12 @@ async function setupPeasantBotEvents(client, lastMessageId) {
 						peasantsSize = peasants.length;
 						if(mobFlayingParticipants.has(member.id)) {
 							mobFlayingParticipants.delete(member.id);
-
+							if (newMember.id === mobFlayingInitiatorId) {
+							const msg = `<@${mobFlayingInitiatorId}>, initiator of the mob flaying is no longer a peasant.`;
+							eventEmitter.emit("NotifyPeasantChannel", msg);
+							await ceaseMobFlaying(client, lastMessageId, true);
+							return;
+							}
 							const participationRate = mobFlayingParticipants.size / peasantsSize;
 							if (participationRate >= MobFlayingSuccessThreshold) {
 								await ceaseMobFlaying(client, lastMessageId);
@@ -113,12 +119,12 @@ async function setupPeasantBotEvents(client, lastMessageId) {
 				if (member.id === mobFlayingTargetId) {
 					const msg = `The role of the target @${mobFlayingTarget} has been changed.`;
 					eventEmitter.emit("NotifyPeasantChannel", msg);
-					await ceaseMobFlaying(client, lastMessageId);
+					await ceaseMobFlaying(client, lastMessageId, true);
 				}
 			}
 
 			// Clear mob flaying targets
-			if ((hadRoleBeforePeasant||hadRoleBeforeSubHuman) && !mobFlayingActive && !gameState.isRevolutionActive()) {
+			if ((hadRoleBeforePeasant||hadRoleBeforeSubHuman) && !mobFlayingActive ) {
 				for (let userId in selectedMobFlayingTargets) {
 					if (selectedMobFlayingTargets[userId] && selectedMobFlayingTargets[userId].id === member.id) {
 						selectedMobFlayingTargets[userId] = null;
@@ -205,9 +211,9 @@ async function setupPeasantBotEvents(client, lastMessageId) {
 							mobFlayingParticipants.size / peasantsSize;
 
 						if (newMember.id === mobFlayingInitiatorId) {
-							const msg = `The initiator ${mobFlayingInitiator} is no longer a peasant.`;
+							const msg = `<@${mobFlayingInitiatorId}>, initiator of the mob flaying is no longer a peasant.`;
 							eventEmitter.emit("NotifyPeasantChannel", msg);
-							await ceaseMobFlaying(client, lastMessageId);
+							await ceaseMobFlaying(client, lastMessageId, true);
 							return;
 						} else if (participationRate >= MobFlayingSuccessThreshold) {
 							await ceaseMobFlaying(client, lastMessageId);
@@ -230,9 +236,9 @@ async function setupPeasantBotEvents(client, lastMessageId) {
 		if (mobFlayingActive && (hadRoleBeforePeasant || hadRoleBeforeSubHuman)) {
 			if (newMember.id === mobFlayingTargetId) {
 				try {
-					const msg = `The role of the target @${mobFlayingTarget} has been changed.`;
+					const msg = `The role of <@${mobFlayingTargetId}>, the one to be flayed, has been changed.`;
 					eventEmitter.emit("NotifyPeasantChannel", msg);
-					await ceaseMobFlaying(client, lastMessageId);
+					await ceaseMobFlaying(client, lastMessageId, true);
 				} catch (e) {
 					showErrorMsg(e);
 				}
@@ -252,9 +258,7 @@ async function setupPeasantBotEvents(client, lastMessageId) {
 				hasRoleNowPeasant ||
 				hadRoleBeforeSubHuman ||
 				hasRoleNowSubhuman) &&
-			!mobFlayingActive &&
-			!gameState.isRevolutionActive()
-		) {
+			!mobFlayingActive) {
 			for (let userId in selectedMobFlayingTargets) {
 				if (selectedMobFlayingTargets[userId] && selectedMobFlayingTargets[userId].id === oldMember.id) {
 					selectedMobFlayingTargets[userId] = null;
@@ -345,6 +349,11 @@ async function setupPeasantBotEvents(client, lastMessageId) {
 				await sendInteractionReply(interaction, "Mob flaying is on cooldown");
 				return;
 			}
+			if (selectedMobFlayingTargets[userId].user.id === userId) {
+				await sendInteractionReply(interaction, "You cannot target yourself.");
+				return;
+			}
+
 
 			mobFlayingInitiatorId = userId;
 			mobFlayingInitiator = interaction.user.username;
@@ -352,11 +361,6 @@ async function setupPeasantBotEvents(client, lastMessageId) {
 			mobFlayingActive = true;
 			mobFlayingTarget = selectedMobFlayingTargets[userId].user.username;
 			mobFlayingTargetId = selectedMobFlayingTargets[userId].user.id;
-
-			if (mobFlayingTargetId === userId) {
-				await sendInteractionReply(interaction, "You cannot target yourself.");
-				return;
-			}
 
 			if (lastMessageId) {
 				try {
@@ -370,7 +374,7 @@ async function setupPeasantBotEvents(client, lastMessageId) {
 
 					await startMobFlaying(client, lastMessageId, MobFlayingTime);
 					await updateMessage(client, lastMessageId);
-
+					
 					const participationRate = mobFlayingParticipants.size / peasantsSize;
 					if (participationRate >= MobFlayingSuccessThreshold) {
 						await ceaseMobFlaying(client, lastMessageId);
@@ -452,7 +456,7 @@ async function setupPeasantBotEvents(client, lastMessageId) {
 			delete selectedRevolutionTargets[userId];
 			await sendInteractionReply(	
 				interaction,
-				`You have joined the revolution with target @${target.user.username}.`
+				`You have joined the revolution with target <@${target.user.id}>.`
 			);
 		}
 		if (interaction.customId === "WithdrawRevolution") {
@@ -675,30 +679,34 @@ async function setupPeasantBotEvents(client, lastMessageId) {
 }
 
 async function startMobFlaying(client, lastMessageId, timeout) {
+	await messageChannel(client, process.env.CHANNELID_FARMS, `A crowd has gathered, dancing, singing and ready for a good ol' mob flaying!`);
 	mobFlayingTimeout = setTimeout(async () => {
-		await handleMobFlayingEnd(client, lastMessageId);
+		await handleMobFlayingEnd(client, lastMessageId, false);
 	}, timeout);
 }
 
-async function handleMobFlayingEnd(client, lastMessageId) {
+async function handleMobFlayingEnd(client, lastMessageId, failed) {
 	const participationRate = mobFlayingParticipants.size / peasantsSize;
-	if (mobFlayingActive && participationRate >= MobFlayingSuccessThreshold) {
+	mobFlayingActive = false;
+	if (participationRate >= MobFlayingSuccessThreshold && !failed) {
 		const target = selectedMobFlayingTargets[mobFlayingInitiatorId];
 		if (target) await changeRole( target, "Poop", false);
-		const msg = `Mob flaying successful! @${mobFlayingTarget} has become a poop by @${mobFlayingInitiator}.`;
+		const msg = `Mob flaying successful! <@${mobFlayingTarget}> has been reduced to poop.`;
 		eventEmitter.emit("NotifyPeasantChannel", msg);
+		messageChannel(client, process.env.CHANNELID_FARMS, `Peasants jeer in exhaltation as strips of flesh are pulled off <@${mobFlayingTargetId}>'s sides. May the Two Gods accept<@${mobFlayingInitiatorId}>'s sacrifice.`);
+		messageChannel(client, process.env.CHANNELID_FOREST, `<@${mobFlayingTargetId}> was ripped apart by angry mob`);
 	} else {
-		const msg = `Mob flaying on @${mobFlayingTarget} initiated by @${mobFlayingInitiator} has failed.`;
+		const msg = `Mob flaying of <@${mobFlayingTargetId}> initiated by <@${mobFlayingInitiatorId}> has failed.`;
 		eventEmitter.emit("NotifyPeasantChannel", msg);
+		messageChannel(client, process.env.CHANNELID_FARMS, `The small crowd disperses, displeased with <@${mobFlayingInitiatorId}>'s failure to serve the Two Gods, stagnant scum...`);
 	}
 	await resetMobFlaying(client, lastMessageId);
 }
 
-async function ceaseMobFlaying(client, lastMessageId) {
-	mobFlayingActive = false;
-	if (mobFlayingTimeout) {
+async function ceaseMobFlaying(client, lastMessageId, failed) {
+	if (mobFlayingTimeout && mobFlayingActive) {
 		clearTimeout(mobFlayingTimeout);
-		await handleMobFlayingEnd(client, lastMessageId);
+		await handleMobFlayingEnd(client, lastMessageId, failed);
 	}
 }
 
@@ -758,7 +766,7 @@ async function updateMessage(client, lastMessageId,emperorReelectionSelectMenu) 
 				.setDisabled(false);
 			actionRow_2.components[0] = joinMobFlayingBtn;
 
-			mobFlayingStatusMsg = `\n@${mobFlayingInitiator} initiated a mob flaying. Join to downgrade ${mobFlayingTarget}. (Joined ${mobFlayingParticipants.size} / ${gameState.getRoleSize("Peasant")}.)`;
+			mobFlayingStatusMsg = `\n<@${mobFlayingInitiatorId}> initiated a mob flaying. Join to kill <@${mobFlayingTargetId}>. (Joined ${mobFlayingParticipants.size} / ${gameState.getRoleSize("Peasant")} peasants)`;
 		}
 		if (gameState.isRevolutionActive() && !coupActive) {
 			let revolutionBtn = new ButtonBuilder()
@@ -860,7 +868,6 @@ async function resetMobFlaying(client, lastMessageId) {
 		mobFlayingInitiator = null;
 		mobFlayingTargetId = null;
 		mobFlayingTarget = null;
-		mobFlayingActive = false;
 		mobFlayingParticipants = new Set();
 		mobFlayingStatusMsg = "";
 		await updateMessage(client, lastMessageId);

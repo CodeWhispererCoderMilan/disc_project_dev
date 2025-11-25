@@ -566,29 +566,6 @@ async function setupConsoleBotEvents(client, lastMessageId) {
 			}
 		}
 	});
-
-	// Send message to the royal castle
-	eventEmitter.on("sendMessageToRoyalCastle", async (memberId, message) => {
-		try {
-			const guild = await client.guilds.fetch(process.env.GUILDID);
-			if (!guild) {
-				console.error("Guild not found");
-				return;
-			}
-			const member = await guild.members.fetch(memberId);
-			if (!member) {
-				console.error("Member not found");
-				return;
-			}
-			const roaylCastleChannel = await client.channels.fetch(
-				process.env.CHANNELIDROYALCASTLE
-			);
-			roaylCastleChannel.send(`${member.user.username}: ${message}`);
-		} catch (err) {
-			throw err;
-		}
-	});
-
 	eventEmitter.on("StartRevolution", async (intiatorId, targetId, roleName) => {
 		try {
 			gameState.setRevolutionActive(true);

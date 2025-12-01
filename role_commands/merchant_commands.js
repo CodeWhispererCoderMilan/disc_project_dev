@@ -10,6 +10,7 @@ const {
 const {
 	buildSelectMenu,
 	sendInteractionReply,
+	messageChannel
 } = require("../functions/botActions");
 const {
 	CacheGetUsersByRoles,
@@ -314,11 +315,36 @@ async function setupMerchantBotEvents(client, lastMessageId) {
 					await CacheSetEndow(userId, targetId, endTime);
 					await DBUpdateXP(userId, EndowCost, client);
 					await CacheSetCooldown("Endow", userId, EndowCooldown);
+					const targetRoles =selectedEndowTargets[userId].roles.cache;
+					let channelId;
+					let message;
+					switch (true) {
+					case targetRoles.has(process.env.ROLEID_PEASANT):
+						message = `A peasant has been endowed, they gather half more drops...`;
+						channelID = process.env.CHANNELID_FARMS;
+						break;
+					case targetRoles.has(process.env.ROLEID_SCHOLAR):
+						message = `A scholar has been endowed, they gather half more drops...`;
+						channelID = process.env.CHANNELID_LIBRARY;
+						break;
+					case targetRoles.has(process.env.ROLEID_MERCHANT):
+						message = `A merchant has been endowed, they gather half more drops...`;
+						channelID = process.env.CHANNELID_MARKET;
+						break;
+					case targetRoles.has(process.env.ROLEID_KNIGHT):
+						message = `A knight has been endowed, they gather half more drops...`;
+						channelID = process.env.CHANNELID_BARRACKS;
+						break;
+					case targetRoles.has(process.env.ROLEID_NOBLE):
+						message = `A noble has been bribed, they gather half more drops...`;
+						channelID = process.env.CHANNELID_GREAT_COUNCIL;
+						break;
+					}
 					await sendInteractionReply(
 						interaction,
-						`Successfully endowed ${selectedEndowTargets[userId].user.username}. You will receive half of their XP gains while they receive 1.5x XP.`
+						`Successfully endowed <@${selectedEndowTargets[userId].user.id}>. You will receive half of their XP gains while they receive 1.5x XP.`
 					);
-
+					await messageChannel(client, channelID, message);
 					// Clear after endow
 					selectedEndowTargets[userId] = null;
 				} catch (err) {
@@ -546,19 +572,54 @@ async function setupMerchantBotEvents(client, lastMessageId) {
 					});
 					return;
 				}
-
 				// Deduct XP from merchant
 				await DBUpdateXP(interaction.user.id, -xpAmount, client);
-
 				// Give XP to the target member
 				const targetMember = selectedBribeTargets[userId];
+				const targetRoles =selectedBribeTargets[userId].roles.cache;
+				let message;
+				let channelID;
+				switch (true) {
+					case targetRoles.has(process.env.ROLEID_PEASANT):
+						message = `A peasant has been bribed, obscure drops flow downstream...`;
+						channelID = process.env.CHANNELID_FARMS;
+						break;
+					case targetRoles.has(process.env.ROLEID_SCHOLAR):
+						message = `A scholar has been bribed, obscure drops flow downstream...`;
+						channelID = process.env.CHANNELID_LIBRARY;
+						break;
+					case targetRoles.has(process.env.ROLEID_MERCHANT):
+						message = `A merchant has been bribed, obscure drops flow through the market...`;
+						channelID = process.env.CHANNELID_MARKET;
+						break;
+					case targetRoles.has(process.env.ROLEID_KNIGHT):
+						message = `A knight has been bribed, obscure drops flow upstream...`;
+						channelID = process.env.CHANNELID_BARRACKS;
+						break;
+					case targetRoles.has(process.env.ROLEID_NOBLE):
+						message = `A noble has been bribed, obscure drops flow upstream...`;
+						channelID = process.env.CHANNELID_GREAT_COUNCIL;
+						break;
+					case targetRoles.has(process.env.ROLEID_LORD):
+						message = `A lord has been bribed, obscure drops flow upstream...`;
+						channelID = process.env.CHANNELID_ROYAL_CASTLE;
+						break;
+					case targetRoles.has(process.env.ROLEID_KING):
+						message = `A king has been bribed, obscure drops flow upstream...`;
+						channelID = process.env.CHANNELID_THRONE_ROOM;
+						break;
+					case targetRoles.has(process.env.ROLEID_EMPEROR):
+						message = `The emperor has been bribed, obscure drops flow upstream...`;
+						channelID = process.env.CHANNELID_THRONE_ROOM;
+						break;
+				}
 				await DBUpdateXP(targetMember.user.id, xpAmount, client);
 				await interaction.reply({
 					content: `Successfully granted ${xpAmount} XP to ${targetMember.user.username}. Message: ${optionalMessage}`,
 					ephemeral: true,
 				});
 				await CacheSetCooldown("Bribe", userId, BribeCooldown);
-				eventEmitter.emit("BribeComplete", targetMember.user.id);
+				await messageChannel(client, channelID, message);
 			} catch (err) {
 				showErrorMsg(err);
 			}

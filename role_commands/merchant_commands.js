@@ -285,7 +285,7 @@ async function setupMerchantBotEvents(client, lastMessageId) {
 				}
 
 				const targetId = selectedEndowTargets[userId].user.id;
-				if (targetId === userId) {
+				if (targetId === userId) {1214562470434181141
 					await sendInteractionReply(interaction, "You cannot endow yourself!");
 					return;
 				}
@@ -301,7 +301,7 @@ async function setupMerchantBotEvents(client, lastMessageId) {
 				}
 				let userXP = await CacheGetUserXP(userId);
 				if (userXP < EndowCost) {
-					await sendInteractionReply(interaction, `Not enough XP (current XP: ${userXP})`);
+					await sendInteractionReply(interaction, `Not enough drops (current drops: ${userXP})`);
 					return;
 				}
 				try {
@@ -342,7 +342,7 @@ async function setupMerchantBotEvents(client, lastMessageId) {
 					}
 					await sendInteractionReply(
 						interaction,
-						`Successfully endowed <@${selectedEndowTargets[userId].user.id}>. You will receive half of their XP gains while they receive 1.5x XP.`
+						`Successfully endowed <@${selectedEndowTargets[userId].user.id}>. You will receive half of their drops while they receive half as much drops.`
 					);
 					await messageChannel(client, channelID, message);
 					// Clear after endow
@@ -381,20 +381,20 @@ async function setupMerchantBotEvents(client, lastMessageId) {
 				// Display the modal
 				const modal = new ModalBuilder()
 					.setCustomId("xpModal")
-					.setTitle("Grant XP to Member");
+					.setTitle("Grant drops to a human");
 
 				const xpInput = new TextInputBuilder()
 					.setCustomId("xpAmount")
-					.setLabel("XP Amount")
+					.setLabel("Amount of drops")
 					.setStyle(TextInputStyle.Short)
-					.setPlaceholder("Enter XP to grant")
+					.setPlaceholder("Enter amount of drops to grant")
 					.setRequired(true);
 
 				const messageInput = new TextInputBuilder()
 					.setCustomId("optionalMessage")
-					.setLabel("Optional Message")
+					.setLabel("Optional message to the receiver's channel")
 					.setStyle(TextInputStyle.Paragraph)
-					.setPlaceholder("Enter an optional message")
+					.setPlaceholder("Enter a message to the receiver's channel")
 					.setRequired(false);
 
 				const xpActionRow = new ActionRowBuilder().addComponents(xpInput);
@@ -559,15 +559,14 @@ async function setupMerchantBotEvents(client, lastMessageId) {
 			const userId = interaction.user.id;
 			const xpAmount = Number(interaction.fields.getTextInputValue("xpAmount"));
 			const optionalMessage =
-				interaction.fields.getTextInputValue("optionalMessage") ||
-				"No message provided";
+				interaction.fields.getTextInputValue("optionalMessage") || false;
 
 			try {
 				const merchantXPText = await CacheGetUserXP(userId);
 				const merchantXP = Number(merchantXPText);
 				if (merchantXP < xpAmount) {
 					await interaction.reply({
-						content: `You don't have enough XP to grant ${xpAmount}. You only have ${merchantXP} XP.`,
+						content: `You don't have enough drops to grant ${xpAmount}. You only have ${merchantXP} drops.`,
 						ephemeral: true,
 					});
 					return;
@@ -615,11 +614,11 @@ async function setupMerchantBotEvents(client, lastMessageId) {
 				}
 				await DBUpdateXP(targetMember.user.id, xpAmount, client);
 				await interaction.reply({
-					content: `Successfully granted ${xpAmount} XP to ${targetMember.user.username}. Message: ${optionalMessage}`,
+					content: `Successfully granted ${xpAmount} drops to ${targetMember.user.username}.` +(optionalMessage ? (`\n **Your message: **` + optionalMessage) : ""),
 					ephemeral: true,
 				});
 				await CacheSetCooldown("Bribe", userId, BribeCooldown);
-				await messageChannel(client, channelID, message);
+				await messageChannel(client, channelID, message +(optionalMessage ? (`\n **The merchant's message: **` + optionalMessage) : ""));
 			} catch (err) {
 				showErrorMsg(err);
 			}

@@ -486,7 +486,7 @@ async function setupScholarBotEvents(client, lastMessageId) {
 				return;
 			}
 			const royalCastleChannel = await client.channels.fetch(
-				process.env.CHANNELIDROYALCASTLE
+				process.env.CHANNELIDROYAL_CASTLE
 			);
 			royalCastleChannel.send(message);
 		} catch (err) {

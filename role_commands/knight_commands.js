@@ -7,6 +7,7 @@ const {
 const {
 	buildSelectMenu,
 	sendInteractionReply,
+    messageChannel,
 } = require("../functions/botActions");
 const {
 	CacheGetUserXP,
@@ -401,17 +402,17 @@ async function setupKnightBotEvents(client, lastMessageId) {
 						if (userXP < CutDownCost) {
 							await sendInteractionReply(
 								interaction,
-								`Not enough XP (current XP: ${userXP})`
+								`Not enough drops(current drops: ${userXP})`
 							);
 							return;
 						}
 						await DBUpdateXP(userId, -CutDownCost, client);
-						await performCutDown(interaction, targetId);
+						await performCutDown(interaction, targetId, client, userId, false);
 						await sendInteractionReply(
 							interaction,
 							`(${
 								userXP - CutDownCost
-							} XP left) Cut Down successful with no writ`
+							} drops left) Cut Down successful with no writ`
 						);
 					}
 				}
@@ -807,7 +808,7 @@ async function handleShowWrits(interaction) {
 		}
 
 		const writDescriptions = writs.map((writ, index) => {
-			return `${index + 1}. Type: ${getWritType(writ.writType)}, Target: <${
+			return `${index + 1}. Type: ${getWritType(writ.writType)}, Target: <@${
 				writ.targetId
 			}>, Status: ${getWritStatus(writ.writStatus)}, Message: ${
 				writ.writMessage
@@ -883,7 +884,7 @@ async function executeCutDown(interaction, userId, targetId, client) {
 			return;
 		}
 		await DBUpdateXP(userId, -CutDownCost, client);
-		await performCutDown(interaction, targetId);
+		await performCutDown(interaction, targetId,client,userId, false);
 		await sendInteractionReply(
 			interaction,
 			`(${userXP - CutDownCost} drops left) Cut Down successful with no writ`
@@ -908,7 +909,7 @@ async function executeCutDown(interaction, userId, targetId, client) {
 	// Apply XP reward and perform Cut Down
 	await DBUpdateXP(userId, parseInt(totalXpReward), client);
 	await CacheSetCooldown("cutdown", userId, CutDownCooldown);
-	await performCutDown(interaction, targetId);
+	await performCutDown(interaction, targetId,client,userId, true);
 
 	const newXP = parseInt(userXP) + totalXpReward;
 	const writDetails = relevantWrits
@@ -937,14 +938,44 @@ function getWritType(type) {
 }
 
 
-async function performCutDown(interaction, targetId) {
+async function performCutDown(interaction, targetId, client, userId, hasWrit) {
 	const target = await interaction.guild.members.fetch(targetId);
+	const targetRoles = target.roles.cache;
 	await changeRole(target, "Poop", false);
-	eventEmitter.emit(
-		"CutDownComplete",
-		target.user.username,
-		interaction.user.username
-	);
+	let message;
+	let channelId;
+	switch (true) {
+		case targetRoles.has(process.env.ROLEID_PEASANT):
+			message =hasWrit ?  `Peasant <@${targetId}> was cut down in service to those upstream.`:` <@${targetId}> was cut down by Knight <@${userId}>'s stagnant whims.`;
+			channelId = process.env.CHANNELID_FARMS;
+			break;
+		case targetRoles.has(process.env.ROLEID_SCHOLAR):
+			message =hasWrit ?  `Scholar <@${targetId}> was cut down in service to those upstream.`:` <@${targetId}> was cut down by Knight <@${userId}>'s stagnant whims.`;
+			channelId = process.env.CHANNELID_LIBRARY;
+			break;
+		case targetRoles.has(process.env.ROLEID_MERCHANT):
+			message =hasWrit ? `Merchant <@${targetId}> was cut down in service to those upstream.`:` <@${targetId}> was cut down by Knight <@${userId}>'s stagnant whims.`;  
+			channelId = process.env.CHANNELID_MARKET;
+			break;
+		case targetRoles.has(process.env.ROLEID_NOBLE):
+			message =hasWrit ? ` Noble <@${targetId}> was cut down in service to those upstream.`:` <@${targetId}> was cut down by Knight <@${userId}>'s stagnant whims.`;
+				channelId = process.env.CHANNELID_GREAT_COUNCIL;
+			break;
+		case targetRoles.has(process.env.ROLEID_KNIGHT):
+			message =hasWrit ?  `Knight <@${targetId}> was cut down in service to those upstream.`:` <@${targetId}> was cut down by Knight <@${userId}>'s stagnant whims.`;
+			channelId = process.env.CHANNELID_BARRACKS;
+			break;
+		case targetRoles.has(process.env.ROLEID_LORD):
+			message =hasWrit ?  `Lord <@${targetId}> was cut down in service to those upstream.`:` <@${targetId}> was cut down by by Knight <@${userId}>'s stagnant whims.`;
+			channelId = process.env.CHANNELID_ROYAL_CASTLE;
+			break;
+		case targetRoles.has(process.env.ROLEID_KING):
+			message =hasWrit ?  `King <@${targetId}> was cut down in service to those upstream.`:` <@${targetId}> was cut down by Knight <@${userId}>'s stagnant whims.`;
+			channelId = process.env.CHANNELID_ROYAL_CASTLE;
+			break;
+	}
+	await messageChannel(client, channelId, message);
+	eventEmitter.emit("Death", message);
 }
 
 async function updateMessage(client, lastMessageId, emperorReelectionSelectMenu) {

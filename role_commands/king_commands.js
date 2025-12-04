@@ -715,7 +715,7 @@ async function handleShowWrits(interaction) {
 		const writDescriptions = await Promise.all(writs.map(async (writ, index) => {
 			const knight = await interaction.client.users.fetch(writ.knightId).catch(() => ({ username: 'Unknown Knight' }));
 			const target = await interaction.client.users.fetch(writ.targetId).catch(() => ({ username: 'Unknown Target' }));
-			return `${index + 1}. Knight: ${knight.username}, Target: ${target.username}, Status: ${getWritStatus(writ.writStatus)}, Message: ${writ.writMessage}, Reward: ${writ.writAmount} drops`;
+			return `${index + 1}. Knight: <@${knight.id}>, Target: <@${target.id}>, Status: ${getWritStatus(writ.writStatus)}, Message: ${writ.writMessage}, Reward: ${writ.writAmount} drops`;
 		}));
 
 		const response = `Your issued writs:\n\n${writDescriptions.join('\n')}`;

@@ -518,7 +518,7 @@ async function handleShowWrits(interaction) {
 		const writDescriptions = await Promise.all(writs.map(async (writ, index) => {
 			const knight = await interaction.client.users.fetch(writ.knightId).catch(() => ({ username: 'Unknown Knight' }));
 			const target = await interaction.client.users.fetch(writ.targetId).catch(() => ({ username: 'Unknown Target' }));
-			return `${index + 1}. Knight: ${knight.username}, Target: ${target.username}, Status: ${getWritStatus(writ.writStatus)}, Message: ${writ.writMessage}, Reward: ${writ.writAmount} drops`;
+			return `${index + 1}. Knight: <@${knight.id}>, Target: <@${target.id}>, Status: ${getWritStatus(writ.writStatus)}, Message: ${writ.writMessage}, Reward: ${writ.writAmount} drops`;
 		}));
 
 		const response = `Your issued writs:\n\n${writDescriptions.join('\n')}`;
@@ -557,7 +557,7 @@ async function updateMessage(client, lastMessageId) {
 			);
 			const actionRow_1 = new ActionRowBuilder()
 				.addComponents(await buildSelectMenu(
-					client, ["peasant", "scholar", "merchant"], "SelectHuman", TextHighWritTargetSelectMenu
+					client, ["peasant", "scholar", "merchant", "knight"], "SelectHuman", TextHighWritTargetSelectMenu
 				));
 			const actionRow_2 = new ActionRowBuilder()
 				.addComponents(await buildSelectMenu(
@@ -601,7 +601,7 @@ async function updateMessage(client, lastMessageId) {
 			actionRow_0.components[0] = assassinationSelectMenu;
 			const actionRow_1 = new ActionRowBuilder()
 				.addComponents(await buildSelectMenu(
-					client, ["peasant", "scholar", "merchant"], "SelectHuman", TextHighWritTargetSelectMenu
+					client, ["peasant", "scholar", "merchant", "knight"], "SelectHuman", TextHighWritTargetSelectMenu
 				));
 			const actionRow_2 = new ActionRowBuilder()
 				.addComponents(await buildSelectMenu(
@@ -655,7 +655,7 @@ async function messageNobleCommands(client) {
 		);
 		const actionRow_1 = new ActionRowBuilder()
 			.addComponents(await buildSelectMenu(
-				client, ["peasant", "scholar", "merchant"], "SelectHuman", TextHighWritTargetSelectMenu
+				client, ["peasant", "scholar", "merchant", "knight"], "SelectHuman", TextHighWritTargetSelectMenu
 			));
 		const actionRow_2 = new ActionRowBuilder()
 			.addComponents(await buildSelectMenu(

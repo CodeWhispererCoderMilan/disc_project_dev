@@ -13,7 +13,9 @@ const {
 	checkAndApplyMissedXPBoost,
 	scheduledXpBoost,
 	grantAstralRealmAccess,
-	sendInteractionReply
+	sendInteractionReply,
+    messageChannel,
+    messageAllHumanChannels
 } = require("../functions/botActions");
 const {
 	DBAddUser,
@@ -302,7 +304,7 @@ async function setupConsoleBotEvents(client, lastMessageId) {
 				handleHigherRoleSizeChange();
 		}
 		if(gameState.isRevolutionActive()){
-			checkAndFailRevolution();
+			await checkAndFailRevolution();
 		}
 		if(gameState.isRevolutionActive() && !updatedRevolutionAndCoupMessages && oldPeopleCount != peopleCount){
 			updateRevolutionAndCoupMessages();
@@ -445,7 +447,7 @@ async function setupConsoleBotEvents(client, lastMessageId) {
 				handleHigherRoleSizeChange();
 		}
 		if(gameState.isRevolutionActive()){
-			checkAndFailRevolution();
+			await checkAndFailRevolution();
 		}
 		if(gameState.isRevolutionActive() && !updatedRevolutionAndCoupMessages && oldPeopleCount != peopleCount){
 			updateRevolutionAndCoupMessages();
@@ -461,7 +463,7 @@ async function setupConsoleBotEvents(client, lastMessageId) {
 			gameState.setPlayerCount(guild.memberCount - 16);
 			handleHigherRoleSizeChange();
 
-			if(gameState.isRevolutionActive()) checkAndFailRevolution();
+			if(gameState.isRevolutionActive()) await checkAndFailRevolution();
 			const channel = await client.channels.fetch(process.env.CHANNELIDSEWERS);
 			if (!channel) {
 				throw {
@@ -569,8 +571,9 @@ async function setupConsoleBotEvents(client, lastMessageId) {
 	eventEmitter.on("StartRevolution", async (intiatorId, targetId, roleName) => {
 		try {
 			gameState.setRevolutionActive(true);
-			changeRevolutionStatus(roleName,intiatorId, targetId);
+			await changeRevolutionStatus(roleName,intiatorId, targetId);
 			await CacheSetCooldown("Revolution", "Global", RevolutionCooldown);
+			await messageAllHumanChannels(client, `The Revolution sputters...still murk has befallen Griefhem, citizens yearning to restore the ebb and flow of service gather in rabid excitement.`);
 			eventEmitter.emit("RevolutionStarted");
 			setTimeout(async () => {
 				await handleFirstPhaseRevolutionEnd(client);
@@ -584,8 +587,9 @@ async function setupConsoleBotEvents(client, lastMessageId) {
 		try {
 			gameState.setRevolutionActive(true);
 			gameState.setStruggleMethod("Coup");
-			changeRevolutionStatus("Knight", intiatorId, targetId);
+			await changeRevolutionStatus("Knight", intiatorId, targetId);
 			await CacheSetCooldown("Coup", "Global", CoupCooldown);
+			await messageAllHumanChannels(client, `Some Knights grow weary of the corruption upstream.`);
 			eventEmitter.emit("CoupStarted");
 			setTimeout(async () => {
 				await handleFirstPhaseRevolutionEnd(client);
@@ -595,19 +599,19 @@ async function setupConsoleBotEvents(client, lastMessageId) {
 		}
 	});
 
-	eventEmitter.on("AddRevolutionParticipant", (roleName, userId, targetId) => {
+	eventEmitter.on("AddRevolutionParticipant", async (roleName, userId, targetId) => {
 		try {
-			changeRevolutionStatus(roleName, userId, targetId);
+			await changeRevolutionStatus(roleName, userId, targetId);
 			updateRevolutionAndCoupMessages();
 
 		} catch (err) {
 			showErrorMsg(err);
 		}
 	});
-	eventEmitter.on("RemoveRevolutionParticipant", (userId) => {
+	eventEmitter.on("RemoveRevolutionParticipant", async (userId) => {
 		try {
 			gameState.removeRevolutionParticipant(userId);
-			checkAndFailRevolution();
+			await checkAndFailRevolution();
 			updateRevolutionAndCoupMessages();
 		} catch (err) {
 			showErrorMsg(err);
@@ -623,18 +627,18 @@ async function setupConsoleBotEvents(client, lastMessageId) {
 
 }
 
-function changeRevolutionStatus(roleName, userId, targetId){
+async function changeRevolutionStatus(roleName, userId, targetId){
 	try {
 		gameState.addRevolutionParticipant(roleName, userId, targetId);
 		const revolutionarySize = gameState.getRevolutionarySize();
 		const peopleSize = gameState.getPeopleSize();
 		const coupActive = gameState.isCoupActive();
-		checkAndFailRevolution();
+		await checkAndFailRevolution();
 	} catch (err) {
 		throw err;
 	}
 }
-function checkAndFailRevolution() {
+async function checkAndFailRevolution() {
 	const revolutionarySize = gameState.getRevolutionarySize();
 	const peopleSize = gameState.getPeopleSize();
 	const coupActive = gameState.isCoupActive();
@@ -651,6 +655,14 @@ function checkAndFailRevolution() {
 			clearTimeout(revolutionTimeout);
 			gameState.resetRevolution();
 			eventEmitter.emit(`${struggleMethod}Finished`);
+			switch (struggleMethod) {
+				case "Revolution":
+					await messageAllHumanChannels(client, `The Revolution fades to memory...Those gathered died or dispersed`);
+					break;
+				case "Coup":
+					await messageAllHumanChannels(client, `The Coup collapses...without support it insults The Two Gods.`);
+					break;
+			}
 			notifyRevolutionResult(
 				`${struggleMethod} failed because of insufficient number of participants.`
 			);
@@ -699,8 +711,6 @@ function handleHigherRoleSizeChange(){
 		gameState.setDisableCoup(true);
 		eventEmitter.emit("DisableCoup");
 	}
-	console.log(`HigherRoleSize: ${higherRoleSize}  PlayerCount: ${playerCount}  HigherRoleRatio: ${higherRoleSize/playerCount}  DisableRevolution: ${disableRevolution}  DisableCoup: ${disableCoup}`);
-
 }
 async function handleFirstPhaseRevolutionEnd(client) {
 	let revolutionarySize = gameState.getRevolutionarySize();
@@ -711,20 +721,28 @@ async function handleFirstPhaseRevolutionEnd(client) {
 	if (coupActive) success = revolutionarySize / peopleSize >= COUPTHRESHOLD;
 	if (success) {
 		gameState.setRevolutionSecondPhase(true);
-		checkAndFailRevolution();
+		await checkAndFailRevolution();
 		eventEmitter.emit(`${struggleMethod}MovedToSecondPhase`);
 		if (coupActive) {
 			revolutionTimeout = setTimeout(async () => {
 				await handleSecondPhaseRevolutionEnd(client);
 			}, CoupSecondPhaseTime);
 		} else {
-			revolutionTimeout = setTimeout(async () => {
+			revolutionTimeout = setTimeout(async () => { 
 				await handleSecondPhaseRevolutionEnd(client);
 			}, RevolutionSecondPhaseTime);
 		}
 	} else {
 		gameState.resetRevolution();
 		eventEmitter.emit(`${struggleMethod}Finished`);
+		switch (struggleMethod) {
+			case "Revolution":
+				await messageAllHumanChannels(client, `The Revolution fades to memory...there weren't enough willing.`);
+				break;
+			case "Coup":
+				await messageAllHumanChannels(client, `The Coup collapses...too few Knights willing to take up arms.`);
+				break;
+		}
 		notifyRevolutionResult(`${struggleMethod} Failed. The unrest is but a simmer`);
 
 	}
@@ -762,29 +780,33 @@ async function handleSecondPhaseRevolutionEnd(client) {
 		console.log(`Revolution targetId: ${target.targetId}  targetCount: ${target.targetCount}`);
 		const guild = await client.guilds.fetch(process.env.GUILDID);
 		const member = await guild.members.fetch(target.targetId);
+		let roleName;
 		if (coupActive) {
 			if (
 				member.roles.cache.has(
 					process.env.ROLEID_NOBLE
 				) &&
 				target.targetCount >= CoupKillNoble
-			)
+			){
 				killTarget = true;
-			else if (
+				roleName = "Noble";
+			}else if (
 				member.roles.cache.has(
 					process.env.ROLEID_LORD
 				) &&
 				target.targetCount >= CoupKillLord
-			)
+			){
 				killTarget = true;
-			else if (
+				roleName = "Lord";
+			}else if (
 				member.roles.cache.has(
 					process.env.ROLEID_KING
 				) &&
 				target.targetCount >= CoupKillKing
-			)
+			){
 				killTarget = true;
-			else if (
+				roleName = "King";
+			}else if (
 				member.roles.cache.has(
 					process.env.ROLEID_EMPEROR
 				) &&
@@ -792,6 +814,7 @@ async function handleSecondPhaseRevolutionEnd(client) {
 			) {
 				killTarget = true;
 				isEmperorDead = true;
+				roleName = "Emperor";
 			}
 		} else {
 			if (
@@ -799,46 +822,52 @@ async function handleSecondPhaseRevolutionEnd(client) {
 					process.env.ROLEID_KNIGHT
 				) &&
 				target.targetCount >= RevolutionKillKnight
-			)
+			){
 				killTarget = true;
-			else if (
+				roleName = "Knight";
+			}else if (
 				member.roles.cache.has(
 					process.env.ROLEID_NOBLE
 				) &&
 				target.targetCount >= RevolutionKillNoble
-			)
+			){
 				killTarget = true;
-			else if (
+				roleName = "Noble";
+			}else if (
 				member.roles.cache.has(
 					process.env.ROLEID_LORD
 				) &&
 				target.targetCount >= RevolutionKillLord
-			)
+			){
 				killTarget = true;
-			else if (
+				roleName = "Lord";
+			}else if (
 				member.roles.cache.has(
 					process.env.ROLEID_KING
 				) &&
 				target.targetCount >= RevolutionKillKing
-			)
+			){
 				killTarget = true;
-			else if (
+				roleName = "King";
+			}else if (
 				member.roles.cache.has(
 					process.env.ROLEID_EMPEROR
 				) &&
 				target.targetCount >= RevolutionKillEmperor
 			) {
 				killTarget = true;
+				roleName = "Emperor";
 				isEmperorDead = true;
 			}
 		}
 
 		if (killTarget) {
 			await changeRole( member, "Poop", false);
-
+			await sendStruggleKillNotification(client, roleName, member.user.id, struggleMethod);
 			await notifyRevolutionResult(
-				`@${member.user.username} has fallen below the waves of the ${struggleMethod}.`
+				`<@${member.user.id}> has fallen below the waves of the ${struggleMethod}.`
 			);
+
 		}
 	};
 
@@ -854,6 +883,14 @@ async function handleSecondPhaseRevolutionEnd(client) {
 	} else {
 		gameState.resetRevolution();
 		eventEmitter.emit(`${struggleMethod}Finished`);
+		switch (struggleMethod) {
+			case "Revolution":
+				await messageAllHumanChannels(client, `Revolution succesfull...Bloodshed was not the unfortunate by-product of the Revolution, it was the source of energy.`);
+				break;
+			case "Coup":
+				await messageAllHumanChannels(client, `Coup succesfull...Heaven's Favour shines upon its' servile swords.`);
+				break;
+		}
 		notifyRevolutionResult(`${struggleMethod} Complete.`);
 	}
 }
@@ -899,15 +936,17 @@ async function handleEmperorElectionEnd(client) {
 		const targetMember = await guild.members.fetch(target.targetId);
 		await changeRole( targetMember, "Emperor", true);
 		gameState.resetRevolution();
-		eventEmitter.emit("ElectionEnthronement", targetMember.user.username);
+		eventEmitter.emit("ElectionEnthronement", targetMember.user.id);
 		eventEmitter.emit(`${struggleMethod}Finished`);
-		notifyRevolutionResult(`${targetMember.user.username} has been elected Emperor. Order has been restored to Griefhem`);
+		await messageAllHumanChannels(client,`Hail our new Emperor, <@${targetMember.user.id}> ascending from the foam of the turmoil. The ${struggleMethod} ends. Heaven's Favor once more graces the land.`);
+		notifyRevolutionResult(`<@${targetMember.user.id}> has been elected Emperor. Order has been restored to Griefhem`);
 
 	} else if (finalCandidatesCount > 1) {
 		gameState.resetRevolutionParticipants();
 		gameState.resetRevolutionTargets();
 		const emperorReelectionSelectMenu = await buildEmperorReelectionTargetSelectMenu(client, candidates);
 		eventEmitter.emit("RevolutionMovedInEmperorReelection", emperorReelectionSelectMenu);
+		await messageAllHumanChannels(client,`The votes are tied between ${finalCandidatesCount} claims to the Throne of Griefhem. A reelection will commence...`);
 		notifyRevolutionResult(
 			`${finalCandidatesCount} candidates have same votes. Starting reelection...`
 		);
@@ -919,11 +958,13 @@ async function handleEmperorElectionEnd(client) {
 			gameState.resetRevolution();
 			eventEmitter.emit(`${struggleMethod}Finished`);
 			eventEmitter.emit("EmperorElectionNoCandidates");
+			await messageAllHumanChannels(client,`The election for a new emperor has failed as no worthy candidates. The ${struggleMethod} ends. Griefhem slows into disorder, the still stream awaits a worthy contender...`);
 			notifyRevolutionResult(`No one is eligible to be elected as emperor. The struggle has ended in chaos. A worhy emperor will spring forth soon enough.`);
 			return;
 		}
+		await messageAllHumanChannels(client,`The election for a new emperor has failed as no one stepped forth to claim the Throne of Griefhem. A new vote will commence...`);
 		notifyRevolutionResult(
-			`No one participated in election! Let's vote a new emperor.`
+			`No one participated in the election! A new vote is underway`
 		);
 		gameState.resetRevolutionParticipants();
 		gameState.resetRevolutionTargets();
@@ -941,7 +982,27 @@ async function notifyRevolutionResult(message) {
 	eventEmitter.emit("NotifyScholarChannel", message);
 
 }
-
+async function sendStruggleKillNotification(client, role, id, struggleMethod) {
+	switch (role) {
+		case "Knight":
+			await messageChannel(client, process.env.CHANNELID_BARRACKS,`Knight <@${id}> was killed in the ${struggleMethod}.`);
+			break;
+		case "Noble":
+			await messageChannel(client, process.env.CHANNELID_GREAT_COUNCIL,`Noble <@${id}> was killed in the ${struggleMethod}.`);
+			break;
+		case "Lord":
+			await messageChannel(client, process.env.CHANNELID_ROYAL_CASTLE,`Lord <@${id}> was killed in the ${struggleMethod}.`);
+			break;
+		case "King":
+			await messageChannel(client, process.env.CHANNELID_ROYAL_CASTLE,`King <@${id}> was killed in the ${struggleMethod}.`);
+			break;
+		case "Emperor":
+			await messageAllHumanChannels(client,`Emperor <@${id}> was slain in the ${struggleMethod}. A vote is underway...`);
+			break;
+		default:
+			break;
+	}			
+}
 
 async function handleAdminRoleChange(client, interaction, targetId, roleName, keepXP) {
 

@@ -464,11 +464,11 @@ async function setupScholarBotEvents(client, lastMessageId) {
 			showErrorMsg(err);
 		}
 	});
-	eventEmitter.on("ElectionEnthronement", async (emperorUsername) => {
+	eventEmitter.on("ElectionEnthronement", async (emperorId) => {
 		try {
 			const channel = await client.channels.fetch(process.env.CHANNELIDSCHOLAR);
 			const tmpMessage = await channel.send(
-				`Hail our new Emperor! ${emperorUsername}, you have risen to the mountain spring in the spray of revolution, may your rule last 1000 years!`
+				`Hail our new Emperor! <@${emperorId}>, you have risen to the mountain spring in the spray of revolution, may your rule last 1000 years!`
 			);
 			setTimeout(() => {
 				tmpMessage.delete().catch(showErrorMsg);

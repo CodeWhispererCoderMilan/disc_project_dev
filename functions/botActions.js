@@ -83,6 +83,19 @@ async function messageChannel (client, channelId, message){
 		showErrorMsg(err);
 	}
 }
+async function messageAllHumanChannels (client, message){
+	try {
+		await messageChannel(client, process.env.CHANNELID_FARMS, message);
+		await messageChannel(client, process.env.CHANNELID_LIBRARY, message);
+		await messageChannel(client, process.env.CHANNELID_MARKET, message);
+		await messageChannel(client, process.env.CHANNELID_BARRACKS, message);
+		await messageChannel(client, process.env.CHANNELID_GREAT_COUNCIL, message);
+		await messageChannel(client, process.env.CHANNELID_ROYAL_CASTLE, message);
+		await messageChannel(client, process.env.CHANNELID_THRONE_ROOM, message);
+	} catch (err) {
+		showErrorMsg(err);
+	}
+}
 async function buildSelectMenu(client, roleNames, customId, chooseText) {
 	const guild = await client.guilds.fetch(process.env.GUILDID);
 	const usersWithRoles = await CacheGetUsersByRoles(roleNames);
@@ -158,7 +171,7 @@ async function grantAstralRealmAccess(member, client, type) {
 }
 
 async function revokeAstralRealmAccess(member, client) {
-	try {
+	try {	
 		const channel = await client.channels.fetch(process.env.CHANNELIDASTRALREALM);
 		await channel.permissionOverwrites.delete(member);
 		return true;
@@ -177,5 +190,6 @@ module.exports = {
 	grantAstralRealmAccess,
 	revokeAstralRealmAccess,
 	checkAndApplyMissedXPBoost,
-	messageChannel
+	messageChannel,
+	messageAllHumanChannels
 };

@@ -133,7 +133,7 @@ async function DBUpdateXP(userId, xpChange, client) {
 		throw new Error(`User ID: ${userId} not found`)
 	}
 	const userData = userDataSnapshot.val();
-	if (!userData) {
+	if (!userData) {	
 		throw new Error(`User ID :${userId} not found`);
 	}
 	const endowingMerchants = await CacheGetEndows(userId);
@@ -283,7 +283,7 @@ async function DBBoostXPForAllUsers(BoostCount, client) {
 
 	let usersToUpdate = Object.keys(users); // List of user IDs to update
 	console.log(`User list : ${usersToUpdate}`)
-	let retryCount = 0;
+	let retryCount = 0;	
 	while (usersToUpdate.length > 0 && retryCount < 3) {
 		console.log(`Attempt ${retryCount + 1}: Boosting XP for ${usersToUpdate.length} users.`);
 		let retryUsers = [];
@@ -509,7 +509,7 @@ async function evaluateThresholds(client) {
 	if(!shouldOpen && isThresholdOpen(12)) {
 		closeThreshold(12);
 
-		eventEmitter.emit("FirstEnthronement", emperorMembers[0].username);
+		eventEmitter.emit("FirstEnthronement", emperorMembers[0].id);
 
 	}	
 	const kings = await CacheGetUsersByRoles(["king"]);

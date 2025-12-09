@@ -61,14 +61,14 @@ async function setupEmperorBotEvents(client, lastMessageId) {
 			selectedKnight = null;
 			selectedHuman = null;
 			await openThreshold(12, client);
-			eventEmitter.emit("EmperorVanished", member.username);		}
+			eventEmitter.emit("EmperorVanished", member.id);		}
 			await updateSelectMenu(client, lastMessageId);
 	});
 	client.on("guildMemberUpdate", async (oldMember, newMember) => {
 		let hasRoleEmperor = newMember.roles.cache.has(process.env.ROLEID_EMPEROR);
 		if( hasRoleEmperor && isThresholdOpen(12) ){
 			closeThreshold(12);
-			eventEmitter.emit("FirstEnthronement", newMember.username);
+			eventEmitter.emit("FirstEnthronement", newMember.id);
 		}
 		if (oldMember.roles.cache.has(process.env.ROLEID_KING)) {
 			if (selectedKing && selectedKing.id === oldMember.id) {
@@ -323,7 +323,7 @@ async function setupEmperorBotEvents(client, lastMessageId) {
 						eventEmitter.emit(
 							"Enthronement",
 							selectedHeir,
-							interaction.user.username
+							interaction.user.id
 						);
 					}
 				}
@@ -332,7 +332,7 @@ async function setupEmperorBotEvents(client, lastMessageId) {
 			}
 		}
 	});
-	eventEmitter.on("Enthronement", async (selectedHeir, initiatorUsername) => {
+	eventEmitter.on("Enthronement", async (selectedHeir, initiatorId) => {
 		try {
 			selectedLord = null;
 			selectedKing = null;
@@ -340,14 +340,14 @@ async function setupEmperorBotEvents(client, lastMessageId) {
 			selectedKnight = null;
 			const channel = await client.channels.fetch(process.env.CHANNELIDEMPEROR);
 			await changeRole( selectedHeir, "Emperor", true);
-			const heirUsername = selectedHeir.user.username;
+			const heirId = selectedHeir.user.id;
 			const tmpMessage = await channel.send(
-				`Hail our new Emperor! ${heirUsername} heir to ${initiatorUsername}, may your rule last 1000 years !`
+				`Hail our new Emperor! <@${heirId}> heir to <@${initiatorId}>, may your rule last 1000 years !`
 			);
 			eventEmitter.emit(
 				"heirSuccessionComplete",
-				heirUsername,
-				initiatorUsername
+				heirId,
+				initiatorId
 			);
 			setTimeout(() => {
 				tmpMessage.delete().catch(showErrorMsg);
@@ -356,17 +356,17 @@ async function setupEmperorBotEvents(client, lastMessageId) {
 			showErrorMsg(err);
 		}
 	});
-	eventEmitter.on("FirstEnthronement", async (emperorUsername) => {
+	eventEmitter.on("FirstEnthronement", async (emperorId) => {
 		try {
 			const channel = await client.channels.fetch(process.env.CHANNELIDEMPEROR);
 
 			const tmpMessage = await channel.send(
-				`Hail our first Emperor! ${emperorUsername} the Progenitor, may your rule last 1000 years !`
+					`Hail our first Emperor! <@${emperorId}> the Progenitor, may your rule last 1000 years !`
 			);
 			emperorUsername
 			eventEmitter.emit(
 				"firstEnthronementComplete",
-				emperorUsername
+				emperorId
 			);
 			setTimeout(() => {
 				tmpMessage.delete().catch(showErrorMsg);
@@ -375,7 +375,7 @@ async function setupEmperorBotEvents(client, lastMessageId) {
 			showErrorMsg(err);
 		}
 	});
-	eventEmitter.on("ElectionEnthronement", async (emperorUsername) => {
+	eventEmitter.on("ElectionEnthronement", async (emperorId) => {
 		try {
 			selectedLord = null;
 			selectedKing = null;
@@ -383,7 +383,7 @@ async function setupEmperorBotEvents(client, lastMessageId) {
 			selectedKnight = null;
 			const channel = await client.channels.fetch(process.env.CHANNELIDEMPEROR);
 			const tmpMessage = await channel.send(
-				`Hail our new Emperor! ${emperorUsername}, you have risen to the mountain spring in the spray of revolution, may your rule last 1000 years!`
+				`Hail our new Emperor! <@${emperorId}>, you have risen to the mountain spring in the spray of revolution, may your rule last 1000 years!`
 			);
 			setTimeout(() => {
 				tmpMessage.delete().catch(showErrorMsg);
@@ -399,13 +399,13 @@ async function setupEmperorBotEvents(client, lastMessageId) {
 			showErrorMsg(err);
 		}
 	});
-	eventEmitter.on("EmperorElectionNoCandidates", async (username) => {
+	eventEmitter.on("EmperorElectionNoCandidates", async (emperorId) => {
 			selectedKing = null;
 			selectedLord = null;
 			selectedKnight = null;
 			selectedHuman = null;
 			await openThreshold(12, client);
-			eventEmitter.emit("EmperorVanished", username);
+			eventEmitter.emit("EmperorVanished", emperorId);
 			await updateSelectMenu(client, lastMessageId);
 	});
 

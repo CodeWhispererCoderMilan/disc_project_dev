@@ -582,11 +582,11 @@ async function setupKingBotEvents(client, lastMessageId) {
 	);
 	eventEmitter.on(
 		"FirstEnthronementComplete",
-		async (emperorUsername) => {
+		async (emperorId) => {
 			try {
 				const channel = await client.channels.fetch(process.env.CHANNELIDKING);
 				const tmpMessage = await channel.send(
-					`Hail our first Emperor! ${emperorUsername} The Progenitor, has taken the throne.`
+					`Hail our first Emperor! <@${emperorId}> The Progenitor, has taken the throne.`
 				);
 				setTimeout(() => {
 					tmpMessage.delete().catch(showErrorMsg);
@@ -616,14 +616,11 @@ async function setupKingBotEvents(client, lastMessageId) {
 					false
 				);
 				message =
-					siegeInitiator.user.username + "'s siege upon " + siegeTarget.user.username +
-					"'s domain ended in victory. Heaven's favor shimmers above as " +
-					siegeTarget.user.username +
-					" falls to the sewers.";
+					`<@${siegeInitiator.id}>'s siege upon <@${siegeTarget.user.id}>'s domain ended in victory. Heaven's favor shimmers above as
+					<@${siegeTarget.user.id}> falls to the sewers.`;
 			} else {
-				message =
-					siegeInitiator.user.username + "'s siege upon " + siegeTarget.user.username +
-					"'s has failed. Such folly does not go unnoticed as it ripples through the stream.";
+				message = `<@${siegeInitiator.id}>'s siege upon <@${siegeTarget.user.id}>'s domain has failed. Such folly does not go unnoticed as it ripples through the stream...`;
+					
 			}
 			await NotifyKingChannel(client, message);
 			gameState.clearSiegeTimeout();

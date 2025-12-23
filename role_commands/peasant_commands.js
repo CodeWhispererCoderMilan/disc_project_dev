@@ -694,7 +694,7 @@ async function handleMobFlayingEnd(client, lastMessageId, failed) {
 		const msg = `Mob flaying successful! <@${mobFlayingTarget}> has been reduced to poop.`;
 		eventEmitter.emit("NotifyPeasantChannel", msg);
 		messageChannel(client, process.env.CHANNELID_FARMS, `Peasants jeer in exhaltation as strips of flesh are pulled off <@${mobFlayingTargetId}>'s sides. May the Two Gods accept<@${mobFlayingInitiatorId}>'s sacrifice.`);
-		messageChannel(client, process.env.CHANNELID_FOREST, `<@${mobFlayingTargetId}> was ripped apart by angry mob`);
+		messageChannel(client, process.env.CHANNELID_FOREST, `<@${mobFlayingTargetId}> was ripped apart by an angry mob`);
 		eventEmitter.emit("Death", `<@${mobFlayingTargetId}> was torn apart by an angry mob.`);
 	} else {
 		const msg = `Mob flaying of <@${mobFlayingTargetId}> initiated by <@${mobFlayingInitiatorId}> has failed.`;

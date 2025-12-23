@@ -152,7 +152,7 @@ async function festerNotification (client, maggotId, targetId) {
 	try {
 		const cesspitChannel = await client.channels.fetch(process.env.CHANNELID_CESSPIT);
 		const putridWasteChannel = await client.channels.fetch(process.env.CHANNELID_PUTRID_WASTE);
-		await cesspitChannel.send(`<@${maggotId}> is festering <@${targetId}>, drainage of its drops....`);
+		await cesspitChannel.send(`<@${maggotId}> is festering <@${targetId}>, drainage of its' drops....`);
 		await putridWasteChannel.send(`<@${maggotId}> festering....`);
 	} catch (err) {
 		showErrorMsg(err);

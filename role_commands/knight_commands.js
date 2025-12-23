@@ -1119,9 +1119,9 @@ async function updateMessage(client, lastMessageId, emperorReelectionSelectMenu)
 				.setLabel(ButtonLabelJoinCoup)
 				.setStyle(ButtonStyle.Danger)
 				.setDisabled(gameState.isServerDown());
-			revolutionStatusMsg = `\nCoup initiated by sword of the Two Gods. May Heaven's Favour flood the land and sprout a new rule in its likeness. (${gameState.getRevolutionarySize()} / ${gameState.getRoleSize("Knight")} votes cast)`;
+			revolutionStatusMsg = `\nCoup initiated by sword of the Two Gods. May Heaven's Favour flood the land and sprout a new rule in its' likeness. (${gameState.getRevolutionarySize()} / ${gameState.getRoleSize("Knight")} votes cast)`;
 			if (gameState.isRevolutionSecondPhase()) {
-				revolutionStatusMsg = `\n Coup brimming, its second phase is underway. (Joined ${gameState.getRevolutionarySize()} / ${gameState.getRoleSize("Knight")}.)`;
+				revolutionStatusMsg = `\n Coup brimming, its' second phase is underway. (Joined ${gameState.getRevolutionarySize()} / ${gameState.getRoleSize("Knight")}.)`;
 				if (gameState.isEmperorElectionActive()) {
 					actionRow_2 = new ActionRowBuilder().addComponents( 
 						await buildSelectMenu(

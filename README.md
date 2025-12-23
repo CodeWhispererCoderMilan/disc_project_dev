@@ -51,7 +51,7 @@ I have put together this file to shed some light on the methods, functions, stac
 
 ## _**General**_
 
-"[] Griefhem" is a text based massive-multiplayer game centered around social deduction (the style of Town of Salem & Among Us), all within a Discord Server. It makes use of Discord's API, the main mechanic revolves around roles and channel permissions and the UI makes use of Discord ActionRows and Modals. Each player has a single role, namely their place on the social ladder (peasant, merchant, knight etc.) - this role also grants access to specific text channels which serve as our locations (farms, decrepit tunnels etc.). Each role has access to its respective ead-only role_commands channel, where each role can use their abilities through ActionRows (buttons + selectMenus). A player's goal is to climb up the ladder to emperor and avoid death using role-specific abilities, combined abilities(involving multiple players) along with schemeing and deceiving within the text channels.
+"[] Griefhem" is a text based massive-multiplayer game centered around social deduction (the style of Town of Salem & Among Us), all within a Discord Server. It makes use of Discord's API, the main mechanic revolves around roles and channel permissions and the UI makes use of Discord ActionRows and Modals. Each player has a single role, namely their place on the social ladder (peasant, merchant, knight etc.) - this role also grants access to specific text channels which serve as our locations (farms, decrepit tunnels etc.). Each role has access to its' respective ead-only role_commands channel, where each role can use their abilities through ActionRows (buttons + selectMenus). A player's goal is to climb up the ladder to emperor and avoid death using role-specific abilities, combined abilities(involving multiple players) along with schemeing and deceiving within the text channels.
 
 <a name="Drops System"></a>
 
@@ -65,7 +65,7 @@ Drops are the economy of the game. All abilities cost drops, some  abilities gra
 
 ## **Roles&Bots**
 
-Discord roles are the "levels" players go through. Each has its own read-only role_commands channel. Each channel has a role-specific bot assigned to it, the bot sends a single message which users can interact with to use their abilities and check their status(checking XP not yet implemented).
+Discord roles are the "levels" players go through. Each has its' own read-only role_commands channel. Each channel has a role-specific bot assigned to it, the bot sends a single message which users can interact with to use their abilities and check their status(checking XP not yet implemented).
 
 * Roles are:
 	* Poop
@@ -111,7 +111,7 @@ In order to get started working on the project a few steps are needed after clon
 
 ## __1. .env File__
 
-Add a .env file to the project's directory, this will store all your sensitive data(keys, tokens etc.). its contents should look like this:
+Add a .env file to the project's directory, this will store all your sensitive data(keys, tokens etc.). its' contents should look like this:
 
     TOKEN_CONSOLE=
 	TOKEN_POOP=

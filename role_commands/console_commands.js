@@ -657,10 +657,10 @@ async function checkAndFailRevolution() {
 			eventEmitter.emit(`${struggleMethod}Finished`);
 			switch (struggleMethod) {
 				case "Revolution":
-					await messageAllHumanChannels(client, `The Revolution fades to memory...Those gathered died or dispersed`);
+					await messageAllHumanChannels(client, `The Revolution fades to memory...Those gathered died or dispersed.`);
 					break;
 				case "Coup":
-					await messageAllHumanChannels(client, `The Coup collapses...without support it insults The Two Gods.`);
+					await messageAllHumanChannels(client, `The coup collapses...without support it insults The Two Gods.`);
 					break;
 			}
 			notifyRevolutionResult(
@@ -865,7 +865,8 @@ async function handleSecondPhaseRevolutionEnd(client) {
 			await changeRole( member, "Poop", false);
 			await sendStruggleKillNotification(client, roleName, member.user.id, struggleMethod);
 			await notifyRevolutionResult(
-				`<@${member.user.id}> has fallen below the waves of the ${struggleMethod}.`
+				`<@${member.user.id}> has fallen below the waves
+				of the ${struggleMethod.toLowerCase()}.`
 			);
 
 		}
@@ -885,13 +886,13 @@ async function handleSecondPhaseRevolutionEnd(client) {
 		eventEmitter.emit(`${struggleMethod}Finished`);
 		switch (struggleMethod) {
 			case "Revolution":
-				await messageAllHumanChannels(client, `Revolution succesfull...Bloodshed was not the unfortunate by-product of the Revolution, it was the source of energy.`);
+				await messageAllHumanChannels(client, `Revolution succesfull...bloodshed was not the unfortunate by-product of the revolution, it was the source of energy.`);
 				break;
 			case "Coup":
 				await messageAllHumanChannels(client, `Coup succesfull...Heaven's Favour shines upon its' servile swords.`);
 				break;
 		}
-		notifyRevolutionResult(`${struggleMethod} Complete.`);
+		notifyRevolutionResult(`${struggleMethod} complete.`);
 	}
 }
 
@@ -938,7 +939,7 @@ async function handleEmperorElectionEnd(client) {
 		gameState.resetRevolution();
 		eventEmitter.emit("ElectionEnthronement", targetMember.user.id);
 		eventEmitter.emit(`${struggleMethod}Finished`);
-		await messageAllHumanChannels(client,`Hail our new Emperor, <@${targetMember.user.id}> ascending from the foam of the turmoil. The ${struggleMethod} ends. Heaven's Favor once more graces the land.`);
+		await messageAllHumanChannels(client,`Hail our new Emperor, <@${targetMember.user.id}> ascending from the foam of turmoil. The ${struggleMethod.toLowerCase()} ends. Heaven's Favor once more graces the land.`);
 		notifyRevolutionResult(`<@${targetMember.user.id}> has been elected Emperor. Order has been restored to Griefhem`);
 
 	} else if (finalCandidatesCount > 1) {
@@ -958,7 +959,7 @@ async function handleEmperorElectionEnd(client) {
 			gameState.resetRevolution();
 			eventEmitter.emit(`${struggleMethod}Finished`);
 			eventEmitter.emit("EmperorElectionNoCandidates");
-			await messageAllHumanChannels(client,`The election for a new emperor has failed as no worthy candidates. The ${struggleMethod} ends. Griefhem slows into disorder, the still stream awaits a worthy contender...`);
+			await messageAllHumanChannels(client,`The election for a new emperor has failed as no worthy candidates. The ${struggleMethod.toLowerCase()} ends. Griefhem slows into disorder, the still stream awaits a worthy contender...`);
 			notifyRevolutionResult(`No one is eligible to be elected as emperor. The struggle has ended in chaos. A worhy emperor will spring forth soon enough.`);
 			return;
 		}
@@ -983,25 +984,42 @@ async function notifyRevolutionResult(message) {
 
 }
 async function sendStruggleKillNotification(client, role, id, struggleMethod) {
+	try{
+	let message;
 	switch (role) {
 		case "Knight":
-			await messageChannel(client, process.env.CHANNELID_BARRACKS,`Knight <@${id}> was killed in the ${struggleMethod}.`);
+			await messageAllHumanChannels(
+				client,`Knight <@${id}> was killed in the ${struggleMethod.toLowerCase()}.`,true
+			);
 			break;
 		case "Noble":
-			await messageChannel(client, process.env.CHANNELID_GREAT_COUNCIL,`Noble <@${id}> was killed in the ${struggleMethod}.`);
+			message = `Noble <@${id}> was killed in the ${struggleMethod.toLowerCase()}.`;
+			await messageChannel(client, process.env.CHANNELID_GREAT_COUNCIL,message);
+			await messageAllHumanChannels(client, message, true);
 			break;
 		case "Lord":
-			await messageChannel(client, process.env.CHANNELID_ROYAL_CASTLE,`Lord <@${id}> was killed in the ${struggleMethod}.`);
+			message = `Lord <@${id}> was killed in the ${struggleMethod.toLowerCase()}.`;
+			await messageChannel(client, process.env.CHANNELID_ROYAL_CASTLE,message);
+			await messageAllHumanChannels(client, message, true);
 			break;
 		case "King":
-			await messageChannel(client, process.env.CHANNELID_ROYAL_CASTLE,`King <@${id}> was killed in the ${struggleMethod}.`);
+			message = `King <@${id}> was killed in the ${struggleMethod.toLowerCase()}.`;
+			await messageChannel(client, process.env.CHANNELID_ROYAL_CASTLE, message);
+			await messageAllHumanChannels(client, message, true);
 			break;
 		case "Emperor":
-			await messageAllHumanChannels(client,`Emperor <@${id}> was slain in the ${struggleMethod}. A vote is underway...`);
+			await messageAllHumanChannels(client,`Emperor <@${id}> was slain in the ${struggleMethod.toLowerCase()}. A vote is underway...`);
 			break;
 		default:
 			break;
-	}			
+	}
+	
+	eventEmitter.emit("Death",`${role} <@${id}> was killed in the ${struggleMethod.toLowerCase()}.`);
+
+	}catch(err){
+		showErrorMsg(err);
+	}
+
 }
 
 async function handleAdminRoleChange(client, interaction, targetId, roleName, keepXP) {
@@ -1019,11 +1037,12 @@ async function handleAdminRoleChange(client, interaction, targetId, roleName, ke
 		(role) => role.name === roleName
 	);
 	if (!role && !member) {
-		interaction.reply("role or member ID does not exist");
+		await interaction.reply("role or member ID does not exist");
 		return;
 	}
+	await interaction.deferReply();
 	await changeRole( member, roleName, keepXP);
-	interaction.reply(`Role changed to ${roleName} for ${member.user.username}.`);
+	await interaction.editReply(`Role changed to ${roleName} for ${member.user.username}.`);
 }
 async function updateRevolutionAndCoupMessages(){
 	const coupActive = gameState.isCoupActive();

@@ -440,7 +440,7 @@ async function startFirstPhasePlague(client, lastMessageId, timeout) {
 
 async function handleFirstPhasePlagueEnd(client, lastMessageId) {
 	if (Object.keys(plagueParticipants).length >= PLAGUETHRESHOLD) {
-		const msg = `Heaven's Favor shines upon <@${plagueInitiatorId}>'s plague, its second phase begins.`;
+		const msg = `Heaven's Favor shines upon <@${plagueInitiatorId}>'s plague, its' second phase begins.`;
 		eventEmitter.emit("NotifyRatChannel", msg);
 		await messagePutridWaste(client, `The clarions grows louder filling the tunnels with thick anticipation, a plague is underway...`);
 		await startSecondPhasePlauge(client, lastMessageId, PlagueSecondPhaseTime);
@@ -597,7 +597,7 @@ async function updateMessage(client, lastMessageId) {
 			if (secondPhase)
 				content =
 					initContent +
-					`\n\n<@${plagueInitiatorId}>'s plague is spreading to its second phase. Join plague with selected target. (Joined ${
+					`\n\n<@${plagueInitiatorId}>'s plague is spreading to its' second phase. Join plague with selected target. (Joined ${
 						Object.keys(plagueParticipants).length
 					} / ${ratsSize} rats.)`;
 

@@ -83,15 +83,17 @@ async function messageChannel (client, channelId, message){
 		showErrorMsg(err);
 	}
 }
-async function messageAllHumanChannels (client, message){
+async function messageAllHumanChannels (client, message, onlyLowerRoles){
 	try {
 		await messageChannel(client, process.env.CHANNELID_FARMS, message);
 		await messageChannel(client, process.env.CHANNELID_LIBRARY, message);
 		await messageChannel(client, process.env.CHANNELID_MARKET, message);
 		await messageChannel(client, process.env.CHANNELID_BARRACKS, message);
-		await messageChannel(client, process.env.CHANNELID_GREAT_COUNCIL, message);
-		await messageChannel(client, process.env.CHANNELID_ROYAL_CASTLE, message);
-		await messageChannel(client, process.env.CHANNELID_THRONE_ROOM, message);
+		if(!onlyLowerRoles){
+			await messageChannel(client, process.env.CHANNELID_GREAT_COUNCIL, message);
+			await messageChannel(client, process.env.CHANNELID_ROYAL_CASTLE, message);
+			await messageChannel(client, process.env.CHANNELID_THRONE_ROOM, message);
+		}
 	} catch (err) {
 		showErrorMsg(err);
 	}

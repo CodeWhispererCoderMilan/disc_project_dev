@@ -986,26 +986,30 @@ async function notifyRevolutionResult(message) {
 async function sendStruggleKillNotification(client, role, id, struggleMethod) {
 	try{
 	let message;
+	const coupActive = gameState.isCoupActive();
 	switch (role) {
 		case "Knight":
-			await messageAllHumanChannels(
-				client,`Knight <@${id}> was killed in the ${struggleMethod.toLowerCase()}.`,true
-			);
+			message = `Knight <@${id}> was killed in the ${struggleMethod.toLowerCase()}.`;
+			!coupActive ? await messageAllHumanChannels(client,message,true) :
+				await messageChannel(client, process.env.CHANNELID_BARRACKS,message);
 			break;
 		case "Noble":
 			message = `Noble <@${id}> was killed in the ${struggleMethod.toLowerCase()}.`;
 			await messageChannel(client, process.env.CHANNELID_GREAT_COUNCIL,message);
-			await messageAllHumanChannels(client, message, true);
+			!coupActive ? await messageAllHumanChannels(client, message, true) :
+				await messageChannel(client, process.env.CHANNELID_BARRACKS,message);
 			break;
 		case "Lord":
 			message = `Lord <@${id}> was killed in the ${struggleMethod.toLowerCase()}.`;
 			await messageChannel(client, process.env.CHANNELID_ROYAL_CASTLE,message);
-			await messageAllHumanChannels(client, message, true);
+			!coupActive ? await messageAllHumanChannels(client, message, true) :
+				await messageChannel(client, process.env.CHANNELID_BARRACKS,message);
 			break;
 		case "King":
 			message = `King <@${id}> was killed in the ${struggleMethod.toLowerCase()}.`;
 			await messageChannel(client, process.env.CHANNELID_ROYAL_CASTLE, message);
-			await messageAllHumanChannels(client, message, true);
+			!coupActive ? await messageAllHumanChannels(client, message, true) :
+				await messageChannel(client, process.env.CHANNELID_BARRACKS,message);
 			break;
 		case "Emperor":
 			await messageAllHumanChannels(client,`Emperor <@${id}> was slain in the ${struggleMethod.toLowerCase()}. A vote is underway...`);

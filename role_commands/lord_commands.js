@@ -10,6 +10,8 @@ const {
 const {
 	buildSelectMenu,
 	sendInteractionReply,
+    messageAllHumanChannels,
+    messageChannel,
 } = require("../functions/botActions");
 const {
 	CacheGetCooldown,
@@ -124,7 +126,7 @@ async function setupLordBotEvents(client, lastMessageId) {
 					const participationRate = electionParticipants.size / lordsSize;
 
 					if (member.id === electionInitiatorId) {
-						const msg = `The initiator ${electionInitiator} is no longer a lord.`;
+						const msg = `<@${electionInitiatorId}>, who summoned the great council, is no longer a lord. The election is void.`;
 						eventEmitter.emit("NotifyLordChannel", msg);
 						electionActive = false;
 						await ceaseElection(client, lastMessageId);
@@ -152,7 +154,7 @@ async function setupLordBotEvents(client, lastMessageId) {
 		if (electionActive && (hadRoleBeforeNoble || hadRoleBeforeLord)) {
 			if(member.id === electionCandidateId){
 				try {
-					const msg = `The role of the candidate @${electionCandidate} has been changed.`;
+					const msg = `The role of the election candidate @${electionCandidateId} has changed. The election is void.`;
 					eventEmitter.emit("NotifyLordChannel", msg);
 					electionActive = false;
 					await ceaseElection(client, lastMessageId);
@@ -250,7 +252,7 @@ async function setupLordBotEvents(client, lastMessageId) {
 					const participationRate = electionParticipants.size / lordsSize;
 
 					if (newMember.id === electionInitiatorId) {
-						const msg = `The initiator ${electionInitiator} is no longer a lord.`;
+						const msg = `<@${electionInitiatorId}>, who summoned the great council, is no longer a lord. The election is void.`;
 						eventEmitter.emit("NotifyLordChannel", msg);
 						electionActive = false;
 						await ceaseElection(client, lastMessageId);
@@ -278,7 +280,7 @@ async function setupLordBotEvents(client, lastMessageId) {
 		if (electionActive && (hadRoleBeforeNoble || hadRoleBeforeLord)) {
 			if(newMember.id === electionCandidateId){
 				try {
-					const msg = `The role of the candidate @${electionCandidate} has been changed.`;
+					const msg = `The role of the election candidate <@${electionCandidateId}> has changed. The election is void.`;
 					eventEmitter.emit("NotifyLordChannel", msg);
 					electionActive = false;
 					await ceaseElection(client, lastMessageId);
@@ -343,17 +345,23 @@ async function setupLordBotEvents(client, lastMessageId) {
 				} else {
 					const cooldown = await CacheGetCooldown("exile", userId);
 					if (cooldown){
-						await sendInteractionReply(interaction, "Exile is on cooldown and cannot be used");
+						await sendInteractionReply(interaction,
+							"Exile is on cooldown and cannot be used");
 						return;
 					}
-					const targetUsername = selectedExileUsers[userId].user.username;
+					const targetId = selectedExileUsers[userId].user.id;
 					await changeRole( selectedExileUsers[userId], 'Sub-human', false);
+					await messageAllHumanChannels(`<@${targetId}> has been exiled,
+						poured into sub-human form by Lord <@${userId}>.`);
+					await messageChannel(client, proccess.env.CHANNELID_FOREST,
+						`<@${targetId}> fell out of Lord <@${serId}>'s graces.
+						They wander the forest as a sub-human, the comfort upstream renders them weak amongst their newfound kin.`);
 					selectedExileUsers[userId] = null;
 					await DBUpdateXP(userId, -ExileCost, client);
 					await CacheSetCooldown("exile", userId, ExileCooldown);
-					eventEmitter.emit("ExileComplete", targetUsername, interaction.user.username);
+					eventEmitter.emit("ExileComplete", targetId, userId);
 					const XPLeft = parseInt(userXP) - parseInt(ExileCost);
-					await sendInteractionReply(interaction, `(${XPLeft} XP left) Exile peasant committed successfully. \n${targetUsername} has been reduced to sub human`);
+					await sendInteractionReply(interaction, `(${XPLeft} drops left) You've exiled <@${targetId}> beyond the forest, stripping them of their humanity.`);
 				}
 			}catch (err) {
 				showErrorMsg(err);
@@ -413,7 +421,7 @@ async function setupLordBotEvents(client, lastMessageId) {
 				await CacheSetWrit(2, userId, selectedKnights[userId].id, selectedHumans[userId].id, 0, writMessage, writAmount);
 				await DBUpdateXP(userId, -writAmount, client);
 				await CacheSetCooldown("eminentWrit", userId, EminentWritCooldown);
-				await sendInteractionReply(interaction, `Eminent Writ of execution succesfully emitted! (XP left: ${userXP - writAmount})`);
+				await sendInteractionReply(interaction, `Eminent Writ of execution succesfully emitted! (drops left: ${userXP - writAmount})`);
 			}catch(err){
 				showErrorMsg(err);
 			}
@@ -480,10 +488,17 @@ async function setupLordBotEvents(client, lastMessageId) {
 					if (electionType === "Noble")
 						await startElection(client, lastMessageId, NobleLordElectionTime);
 					else await startElection(client, lastMessageId, LordKingElectionTime);
-
+						
 					await sendInteractionReply(
 						interaction,
 						"Election started, waiting for other lords to join."
+					);
+					let voteType = electionType === "Noble" ? "Lord" : "King";
+					
+					await messageChannel(
+						client,
+						process.env.CHANNELID_GREAT_COUNCIL,
+						`<@${interaction.user.id}> has summoned the council by proposing <@${electionCandidateId}> be ${voteType}. An election is underway.`
 					);
 
 					const participationRate = electionParticipants.size / lordsSize;
@@ -535,7 +550,8 @@ async function setupLordBotEvents(client, lastMessageId) {
 
 				electionParticipants.add(userId);
 				await sendInteractionReply(interaction, "You have joind the poll.");
-
+				let voteType = electionType === "Noble" ? "Lord" : "King";
+				await messageChannel(client, process.env.CHANNELID_GREAT_COUNCIL,`<@${interaction.user.id}> has voted in favor of <@${electionCandidateId}> becoming a ${voteType}.`);
 				const participationRate = electionParticipants.size / lordsSize;
 				if (electionActive) {
 					if (
@@ -576,6 +592,18 @@ async function setupLordBotEvents(client, lastMessageId) {
 			showErrorMsg(err);
 		}
 	});
+	eventEmitter.on("ExileComplete", async (subHumanId, initiatorId) => {
+		try {
+			const channel = await client.channels.fetch(process.env.CHANNELIDLORD);
+			const tmpMessage = await channel.send(`<@${subHumanId}> has been exiled by <@${initiatorId}>.`);
+			setTimeout(() => {
+				tmpMessage.delete.catch(showErrorMsg);
+			}, 30000);
+		} catch (err) {
+			showErrorMsg(err);
+		}
+	});
+
 }
 
 async function startElection(client, lastMessageId, timeout) {
@@ -586,6 +614,7 @@ async function startElection(client, lastMessageId, timeout) {
 
 async function handleElectionEnd(client, lastMessageId) {
 	const participationRate = electionParticipants.size / lordsSize;
+	let voteType = electionType === "Noble" ? "Lord" : "King";
 	if (
 		electionActive &&
 		((electionType === "Noble" &&
@@ -598,17 +627,19 @@ async function handleElectionEnd(client, lastMessageId) {
 		if (target) {
 			if (electionType === "Noble") {
 				await changeRole(target, "Lord", true);
-				msg = `Election successful! @${electionCandidate} has become a lord by @${electionInitiator}.`;
+				msg = `<@${electionCandidateId}> has been blessed with lordhood by The Two Gods through the service one has to another, through the great council.`;
 			}
 			if (electionType === "Lord") {
 				await changeRole(target, "King", true);
-				msg = `Election successful! @${electionCandidate} has become a king by @${electionInitiator}.`;
+				msg = `<@${electionCandidateId}> has been anointed king in drizlling drops by the great council, by the subservient watch of our lords. May his deluge run out into the stream.`;
 			}
 		}
-		eventEmitter.emit("NotifyLordChannel", msg);
+		eventEmitter.emit("NotifyLordChannel", `<@${electionInitiatorId}>'s election of <@${electionCandidateId}> as ${voteType} was successful.`);
+		await messageAllHumanChannel(client, msg);
 	} else {
-		const msg = `Election on @${electionCandidate} started by @${electionInitiator} has been failed.`;
-		eventEmitter.emit("NotifyLordChannel", msg);
+		const msg = ` <@${electionCandidateId}> dull attempt to make <@${electionInitiatorId}> has failed, reflecting his stagnant whims.`;
+		eventEmitter.emit("NotifyLordChannel", `<@${electionInitiatorId}>'s election of <@${electionCandidateId}> as ${voteType} has failed.`);
+		await messageChannel(client, proccess.env.CHANNELID_GREAT_COUNCIL, msg);
 	}
 	await resetComponents(client, lastMessageId);
 }
@@ -779,12 +810,12 @@ async function updateMessage(client, lastMessageId) {
 				.setStyle(ButtonStyle.Secondary)
 				.setDisabled(gameState.isServerDown())
 			);
-
+			let voteType = electionType === "Noble" ? "Lord" : "King";
 			await messageToEdit.edit({
 				content:
 				serverText + '\n' +
 				initContent +
-				`\n@${electionInitiator} started election. Let's vote for ${electionType} @${electionCandidate}. (Joined ${electionParticipants.size} / ${lordsSize}.)`,
+				`\n <@${electionInitiatorId}> summoned the great council, proposing the election of <@${electionCandidateId}> as ${voteType}. (Joined ${electionParticipants.size} / ${lordsSize}.)`,
 				components: [actionRow_0,actionRow_1,actionRow_2,actionRow_3, buttonRow],
 			});
 		}

@@ -10,6 +10,7 @@ const {
 const {
 	buildSelectMenu,
 	sendInteractionReply,
+    messageChannel,
 } = require("../functions/botActions");
 const {
 	CacheGetUsersByRoles,
@@ -343,19 +344,24 @@ async function setupNobleBotEvents(client, lastMessageId) {
 				sendInteractionReply(interaction, "Assassination is on cooldown");
 				return;
 			}
+			if (assassinationTargetId === userId) {
+				sendInteractionReply(interaction, "You cannot target yourself.");
+				return;	
+			}		
 
+			await messageChannel(client, process.env.CHANNELID_GREAT_COUNCIL,
+				`Baleful nobles leave their estates like a knife leaves its' scabbard.
+				Someone is in grave danger.`);
 			assassinationInitiatorId = userId;
 			assassinationInitiator = interaction.user.username;
 			assassinationParticipants.add(userId);
 			assassinationActive = true;
 			assassinationTarget = selectedTargets[userId].user.username;
 			assassinationTargetId = selectedTargets[userId].user.id;
-
-			if (assassinationTargetId === userId) {
-				sendInteractionReply(interaction, "You cannot target yourself.");
-				return;	
-			}
-
+			
+			await messageChannel(client, process.env.CHANNELID_BOGLAND_ESTATES,
+				`A plot to kill <@${assassinationTargetId}> is foaming at the surface,
+				the bog beckons...`);
 			if (lastMessageId) {
 				try {
 					// Set cooldown
@@ -415,6 +421,8 @@ async function setupNobleBotEvents(client, lastMessageId) {
 					interaction,
 					"You have joind the assassination."
 				);
+				await messageChannel(client, process.env.CHANNELID_GREAT_COUNCIL,
+				`Another noble has joined the conspiracy...`);
 
 				if (
 					assassinationActive &&
@@ -466,10 +474,18 @@ async function handleAssassinationEnd(client, lastMessageId) {
 	) {
 		const target = selectedTargets[assassinationInitiatorId];
 		if (target) await changeRole(target, "Poop", false);
-		const msg = `Assassination successful! @${assassinationTarget} has become a poop by @${assassinationInitiator}.`;
+		eventEmitter.emit("Death", `<@${assassinationTargetId}> has been assassinated.`);
+		const msg = `Assasination succesfull. <@${assassinationTargetId}> has been killed, 
+			stabbed ${assassinationParticipants.size} times in <@${assassinationInitiatorId}>'s plot.`;
+		await messageChannel(client, process.env.CHANNELID_GREAT_COUNCIL,
+			`<@${assassinationTargetId}> has been killed,
+			stabbed ${assassinationParticipants.size} times.`);
 		eventEmitter.emit("NotifyNobleChannel", msg);
 	} else {
-		const msg = `Assassination on @${assassinationTarget} initiated by @${assassinationInitiator} has been failed.`;
+		const msg = `Assasination failed. <@${assassinationInitiatorId}>'s plot was foiled.`;
+		await messageChannel(client, process.env.CHANNELID_GREAT_COUNCIL,
+			`<@${assassinationInitiatorId}>'s plot to kill <@${assassinationTargetId}> has been foiled,
+			 murky scum, even for a noble.`);
 		eventEmitter.emit("NotifyNobleChannel", msg);
 	}
 	await resetComponents(client, lastMessageId);

@@ -255,17 +255,6 @@ async function setupSubhumanBotEvents(client, lastMessageId) {
 		}
 	});
 
-	client.on("ExileComplete", async (subHumanUsername, initiatorUsername) => {
-		try {
-			const channel = await client.channels.fetch(process.env.CHANNELIDLORD);
-			const tmpMessage = await channel.send(`${subHumanUsername} has become a sub-human by ${initiatorUsername}.`);
-			setTimeout(() => {
-				tmpMessage.delete.catch(showErrorMsg);
-			}, 30000);
-		} catch (err) {
-			showErrorMsg(err);
-		}
-	});
 	eventEmitter.on("ServerStatusChange", async () => {
 		try{
 			await updateSelectMenu(client, lastMessageId);

@@ -10,6 +10,8 @@ const {
 const {
 	buildSelectMenu,
 	sendInteractionReply,
+	messageChannel,
+	messageAllHumanChannels
 } = require("../functions/botActions");
 const {
 	CacheGetUserXP,
@@ -368,7 +370,7 @@ async function setupKingBotEvents(client, lastMessageId) {
 				await CacheSetWrit(3, userId, selectedKnights[userId].id, selectedWritHumans[userId].id, 0, writMessage, writAmount);
 				await DBUpdateXP(userId, -writAmount, client);
 				await CacheSetCooldown("highWrit", userId, RoyalWritCooldown);
-				await sendInteractionReply(interaction, `Royal Writ of execution succesfully emitted! (XP left: ${userXP - writAmount})`);
+				await sendInteractionReply(interaction, `Royal Writ of execution succesfully emitted! (drops left: ${userXP - writAmount})`);
 			}catch(err){
 				showErrorMsg(err);
 			}
@@ -413,7 +415,7 @@ async function setupKingBotEvents(client, lastMessageId) {
 				if (userXP < DegradationCost) {
 					await sendInteractionReply(
 						interaction,
-						`Not enough XP (current XP: ${userXP})`
+						`Not enough drops (current drops: ${userXP})`
 					);
 					return;
 				} else {
@@ -430,7 +432,7 @@ async function setupKingBotEvents(client, lastMessageId) {
 							"Merchant",
 							false
 						);
-						const targetUsername = selectedKnights[userId].user.username;
+						const targetId = selectedKnights[userId].id;
 						selectedKnights[userId] = null;
 						await DBUpdateXP(userId, -DegradationCost, client);
 						await CacheSetCooldown(
@@ -438,16 +440,13 @@ async function setupKingBotEvents(client, lastMessageId) {
 							userId,
 							DegradationCooldown
 						);
-						eventEmitter.emit(
-							"DegradationComplete",
-							targetUsername,
-							interaction.user.username
-						);
 						const XPLeft = parseInt(userXP) - parseInt(DegradationCost);
 						await sendInteractionReply(
 							interaction,
-							`(${XPLeft} XP left) Degradation  successful. \n${targetUsername} has been reduced to merchant`
+							`(${XPLeft} drops left) Degradation  successful. \n<@${targetId}> has been reduced to merchant`
 						);
+						await messageChannel(clinet, process.env.CHANNELID_MARKET,`Knight <@${targetId}> is now a dropless merchant.`);
+						await messageChannel(clinet, process.env.CHANNELID_BARRACKS,`Knight <@${targetId}> lost his rank, degraded by King <@${userId}>.`);
 					}
 				}
 			} catch (err) {
@@ -467,7 +466,7 @@ async function setupKingBotEvents(client, lastMessageId) {
 				if (userXP < KnightCost) {
 					await sendInteractionReply(
 						interaction,
-						`Not enough XP (current XP: ${userXP})`
+						`Not enough drops (current drops: ${userXP})`
 					);
 					return;
 				} else {
@@ -480,20 +479,16 @@ async function setupKingBotEvents(client, lastMessageId) {
 						return;
 					} else {
 						eventEmitter.emit("changeRole", selectedHumans[userId],"Knight",true);
-						const targetUsername = selectedHumans[userId].user.username;
+						const targetId = selectedHumans[userId].id;
 						selectedHumans[userId] = null;
 						await DBUpdateXP(userId, -KnightCost, client);
 						await CacheSetCooldown("knight", userId, KnightCooldown);
-						eventEmitter.emit(
-							"KnightComplete",
-							targetUsername,
-							interaction.user.username
-						);
 						const XPLeft = parseInt(userXP) - parseInt(KnightCost);
 						await sendInteractionReply(
 							interaction,
-							`(${XPLeft} XP left) ${targetUsername} has been knighted`
+							`(${XPLeft} drops left) ${targetId} has been knighted`
 						);
+						await messageAllHumanChannels(clinet, `<@${targetId}> has been knighted by King <@${userId}>, may his servile fashion guide his cuts.`);
 					}
 				}
 			} catch (err) {
@@ -844,18 +839,18 @@ async function updateMessage(client, lastMessageId) {
 				.setStyle(ButtonStyle.Secondary)
 			);
 			let content = "";
-			const siegeInitiator = gameState.getSiegeInitiator();
-			const siegeTarget = gameState.getSiegeTarget();
+			const siegeInitiatorId = gameState.getSiegeInitiatorId();
+			const siegeTargetId = gameState.getSiegeTargetId();
 			const siegeParticipantsSize = gameState.getSiegeParticipantsSize();
 			const knightsSize = gameState.getRoleSize("Knight");
 			if (knightsSize > 0) {
 				content =
 					initContent +
-					`\n${siegeInitiator.user.username} initiated a siege to downgrade ${siegeTarget.user.username}. (Joined ${siegeParticipantsSize} / ${knightsSize})`;
+					`\nKing <@${siegeInitiatorId}> initiated a siege against King <@${siegeTargetId}>'s domain. (Joined ${siegeParticipantsSize} / ${knightsSize})`;
 			} else {
 				content =
 					initContent +
-					`\n${siegeInitiator.user.username} initiated a siege to downgrade ${siegeTarget.user.username}.`;
+					`\nKing <@${siegeInitiatorId}> initiated a siege to downgrade <@${siegeTargetId}>.`;
 			}
 
 			await messageToEdit.edit({
@@ -958,6 +953,9 @@ async function startSiege(siegeInitiator, siegeTarget, client, lastMessageId) {
 	}, SiegeTime);
 	gameState.setSiegeTimeout(siegeTimeout);
 	eventEmitter.emit("siegeStarted");
+	messageChannel(clinet, process.env.CHANNELID_BARRACKS,`King <@${siegeInitiator.id}> has launched a siege of King <@${siegeTarget.id}>'s fortress. Knights may join to canonize the siege.`);
+	messageChannel(clinet, process.env.CHANNELID_ROYAL_CASTLE,`King <@${siegeInitiator.id}> has launched a siege of King <@${siegeTarget.id}>'s fortress. Will swords gather to reflect A God Upon Another or the folly drowned below?`);
+
 }
 
 async function handleSiegeEnd(client, lastMessageId) {
@@ -967,36 +965,26 @@ async function handleSiegeEnd(client, lastMessageId) {
 			}
 			const siegeRatio = gameState.getRoleSize("Knight") / gameState.getRoleSize("King");
 			const siegeParticipantsSize = gameState.getSiegeParticipantsSize();
-			console.log(`Siege participants: ${siegeParticipantsSize} Needed for success: ${siegeRatio}`);
 			const success = siegeParticipantsSize >= siegeRatio;
 			let message = "";
-			siegeInitiator = gameState.getSiegeInitiator();
-			console.log(`Siege initiator: ${siegeInitiator.user.username}`);
-			siegeInitiatorId = siegeInitiator.id;
-			siegeInitiatorUsername = siegeInitiator.user.username;
+			const siegeInitiatorId = gameState.getSiegeInitiatorId();
 			const targetMember = selectedKings[siegeInitiatorId];
-			siegeTarget = gameState.getSiegeTarget();
+			const siegeTargetId = gameState.getSiegeTargetId();
 			await resetSiege(client, lastMessageId);
 			if (success) {
-				
 				await changeRole(
 					targetMember,
 					"Poop",
 					false
 				);
 				message =
-					siegeInitiatorUsername + "'s siege upon " + siegeTarget.user.username +
-					"'s domain ended in victory. Heaven's favor shimmers above as " +
-					siegeTarget.user.username +
-					" falls to the sewers.";
+					`King <@${siegeInitiatorId}>'s siege upon King <@${siegeTargetId}>'s domain ended in victory. Heaven's favor shimmers above as <@${siegeTargetId}> falls to the sewers.`;
 			} else {
 				message =
-					siegeInitiatorUsername + "'s siege upon " + siegeTarget.user.username +
-					"'s has failed. Such folly does not go unnoticed as it ripples through the stream.";
+					`King <@${siegeTargetId}> fortress was steadfast against King  <@${siegeInitiatorId}>'s siege. Such folly does not go unnoticed as it ripples through the stream.`;
 			}
-		await NotifyKingChannel(client, message);
-
-		eventEmitter.emit("siegeResult", message);
+			await messageAllHumanChannels(client, message);
+			eventEmitter.emit("siegeResult");
 	} catch (err) {
 		showErrorMsg(err);
 	}

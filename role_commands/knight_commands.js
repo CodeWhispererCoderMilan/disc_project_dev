@@ -447,6 +447,8 @@ async function setupKnightBotEvents(client, lastMessageId) {
 				}
 				eventEmitter.emit("KnightParticipatedOnSiege", userId);
 				await sendInteractionReply(interaction, "You have joind the siege.");
+				await messageChannel(client, process.env.CHANNELID_BARRACKS, `<@${userId}> has joined King <@${gameState.getSiegeInitiatorId()}>'s siege on King <@${gameState.getSiegeTargetId()}'s fortress!`);
+				await messageChannel(client, process.env.CHANNELID_ROYAL_CASTLE, `<@${userId}> has joined King <@${gameState.getSiegeInitiatorId()}>'s siege on King <@${gameState.getSiegeTargetId()}'s fortress!`);
 			} catch (err) {
 				throw err;
 			}
@@ -668,10 +670,9 @@ async function setupKnightBotEvents(client, lastMessageId) {
 			showErrorMsg(err);
 		}
 	});
-	eventEmitter.on("siegeResult", async (message) => {
+	eventEmitter.on("siegeResult", async () => {
 		try {
 			await updateMessage(client, lastMessageId);
-			eventEmitter.emit("NotifyKnightChannel", message);
 
 		} catch (err) {
 			showErrorMsg(err);

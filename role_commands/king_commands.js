@@ -543,38 +543,8 @@ async function setupKingBotEvents(client, lastMessageId) {
 		}
 	});
 
-	eventEmitter.on(
-		"coronationComplete",
-		async (kingUsername, initiatorUsername) => {
-			try {
-				const channel = await client.channels.fetch(process.env.CHANNELIDKING);
-				const tmpMessage = await channel.send(
-					`Coronation successfully! ${kingUsername} has become a king by ${initiatorUsername}.`
-				);
-				setTimeout(() => {
-					tmpMessage.delete().catch(showErrorMsg);
-				}, 30000);
-			} catch (err) {
-				showErrorMsg(err);
-			}
-		}
-	);
-	eventEmitter.on(
-		"heirSuccessionComplete",
-		async (heirUsername, initiatorUsername) => {
-			try {
-				const channel = await client.channels.fetch(process.env.CHANNELIDKING);
-				const tmpMessage = await channel.send(
-					`Hail the new Emperor! ${heirUsername} heir to ${initiatorUsername} has taken the throne,`
-				);
-				setTimeout(() => {
-					tmpMessage.delete().catch(showErrorMsg);
-				}, 30000);
-			} catch (err) {
-				showErrorMsg(err);
-			}
-		}
-	);
+
+	
 	eventEmitter.on(
 		"FirstEnthronementComplete",
 		async (emperorId) => {

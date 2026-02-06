@@ -621,10 +621,25 @@ async function setupConsoleBotEvents(client, lastMessageId) {
 		try{
 			await updateMessage(client, lastMessageId);
 		} catch(err){
-			console.error(err);
+			showErrorMsg(err);
 		}
 	});
-
+	eventEmitter.on("EmperorVanished", async (emperorId, reason) => {
+		try{
+			let message;
+			switch(reason){
+				case "left":
+					message = `The emperor <@${emperorId}> has left the realm. Griefhem is falling apart...`;
+					break;
+				case "election":
+					message = `The emperor <@${emperorId}> has been killed in the struggle. The Two Gods ruled no suitable liege may ascend to the highest service. Griefhem is falling apart...`;
+					break;
+			}
+			await messageAllHumanChannels(client, message);
+		} catch(err){
+			showErrorMsg(err);
+		}
+	});
 }
 
 async function changeRevolutionStatus(roleName, userId, targetId){

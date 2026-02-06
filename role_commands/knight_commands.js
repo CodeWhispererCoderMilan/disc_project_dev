@@ -770,21 +770,7 @@ async function setupKnightBotEvents(client, lastMessageId) {
 			showErrorMsg(err);
 		}
 	});
-	eventEmitter.on("ElectionEnthronement", async (emperorId) => {
-		try {
-			const channel = await client.channels.fetch(process.env.CHANNELIDKNIGHT);
-			const tmpMessage = await channel.send(
-				`Hail our new Emperor! <@${emperorId}>, you have risen to the mountain spring in the spray of revolution, may your rule last 1000 years!`
-			);
-			setTimeout(() => {
-				tmpMessage.delete().catch(showErrorMsg);
-			}, 30000);
-		} catch (err) {
-			showErrorMsg(err);
-		}
-	});
-
-
+	
 	eventEmitter.on('ReturnWritReward', async (userId, writAmount) => {
 		await DBUpdateXP(userId, writAmount, client); 
 	});

@@ -11,6 +11,7 @@ const gameState = require("../game_state.js");
 const {
 	buildSelectMenu,
 	sendInteractionReply,
+	messageChannel,
 } = require("../functions/botActions");
 const {
 	CacheGetUsersByRoles,
@@ -202,7 +203,7 @@ async function setupScholarBotEvents(client, lastMessageId) {
 
 				modal.addComponents(actionRow);
 
-				const cooldown = await CacheGetCooldown("Advise", userId);
+				const cooldown = await CacheGetCooldown("advise", userId);
 				if (cooldown) {
 					await sendInteractionReply(
 						interaction,
@@ -375,14 +376,14 @@ async function setupScholarBotEvents(client, lastMessageId) {
 		if (interaction.isModalSubmit()) {
 			if (interaction.customId === "adviseModal") {
 				const userId = interaction.user.id;
-				const message =`**Scholar <@${userId}>'s words flow upstream:\n` + interaction.fields.getTextInputValue("messageInput") + `**`;
+				const message =`**Scholar <@${userId}>'s words flow upstream:\n` + interaction.fields.getTextInputValue("messageInput").toString() + `**`;
 				try {
 					await interaction.deferReply({ ephemeral: true });
-					eventEmitter.emit("sendMessageToRoyalCastle", message);
-					await CacheSetCooldown("advise", userId, AdviseCooldown);
+					await messageChannel(client, process.env.CHANNELID_ROYAL_CASTLE, message);
+					await CacheSetCooldown("advise", userId, AdviseCooldown); 
 					await sendInteractionReply(
 						interaction,
-						"You have successfuly sent message to the royal castle."
+						"You have successfuly sent a message to the royal castle."
 					);
 				} catch (err) {
 					showErrorMsg(err);
@@ -465,21 +466,6 @@ async function setupScholarBotEvents(client, lastMessageId) {
 		}
 	});
 
-	eventEmitter.on("sendMessageToRoyalCastle", async (message) => {
-		try {
-			const guild = await client.guilds.fetch(process.env.GUILDID);
-			if (!guild) {
-				console.error("Guild not found");
-				return;
-			}
-			const royalCastleChannel = await client.channels.fetch(
-				process.env.CHANNELIDROYAL_CASTLE
-			);
-			royalCastleChannel.send(message);
-		} catch (err) {
-			throw err;
-		}
-	});
 
 
 	eventEmitter.on("ServerStatusChange", async () => {

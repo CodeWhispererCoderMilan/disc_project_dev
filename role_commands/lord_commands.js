@@ -340,7 +340,7 @@ async function setupLordBotEvents(client, lastMessageId) {
 				}
 				const userXP = await CacheGetUserXP(userId);
 				if (userXP < ExileCost) {
-					await sendInteractionReply(interaction, `Not enough XP (current XP: ${userXP})`);
+					await sendInteractionReply(interaction, `Not enough drops(current drops: ${userXP})`);
 					return;
 				} else {
 					const cooldown = await CacheGetCooldown("exile", userId);
@@ -349,12 +349,16 @@ async function setupLordBotEvents(client, lastMessageId) {
 							"Exile is on cooldown and cannot be used");
 						return;
 					}
+					await interaction.deferReply({ephemeral: true});
 					const targetId = selectedExileUsers[userId].user.id;
 					await changeRole( selectedExileUsers[userId], 'Sub-human', false);
-					await messageAllHumanChannels(`<@${targetId}> has been exiled,
-						poured into sub-human form by Lord <@${userId}>.`);
-					await messageChannel(client, proccess.env.CHANNELID_FOREST,
-						`<@${targetId}> fell out of Lord <@${serId}>'s graces.
+					await messageAllHumanChannels(client, `<@${targetId}>'s words fly up,
+						Their thoughts remain below,
+						Words without thoughts never to Heaven go.
+
+							Exiled to the forest by Lord <@${userId}>.`);
+					await messageChannel(client, process.env.CHANNELID_FOREST,
+						`<@${targetId}> fell out of Lord <@${userId}>'s graces.
 						They wander the forest as a sub-human, the comfort upstream renders them weak amongst their newfound kin.`);
 					selectedExileUsers[userId] = null;
 					await DBUpdateXP(userId, -ExileCost, client);
@@ -596,8 +600,8 @@ async function setupLordBotEvents(client, lastMessageId) {
 		try {
 			const channel = await client.channels.fetch(process.env.CHANNELIDLORD);
 			const tmpMessage = await channel.send(`<@${subHumanId}> has been exiled by <@${initiatorId}>.`);
-			setTimeout(() => {
-				tmpMessage.delete.catch(showErrorMsg);
+			setTimeout(async () => {
+				await tmpMessage.delete().catch(showErrorMsg);
 			}, 30000);
 		} catch (err) {
 			showErrorMsg(err);
@@ -639,7 +643,7 @@ async function handleElectionEnd(client, lastMessageId) {
 	} else {
 		const msg = ` <@${electionCandidateId}> dull attempt to make <@${electionInitiatorId}> has failed, reflecting his stagnant whims.`;
 		eventEmitter.emit("NotifyLordChannel", `<@${electionInitiatorId}>'s election of <@${electionCandidateId}> as ${voteType} has failed.`);
-		await messageChannel(client, proccess.env.CHANNELID_GREAT_COUNCIL, msg);
+		await messageChannel(client, process.env.CHANNELID_GREAT_COUNCIL, msg);
 	}
 	await resetComponents(client, lastMessageId);
 }

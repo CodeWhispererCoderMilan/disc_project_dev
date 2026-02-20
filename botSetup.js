@@ -125,6 +125,13 @@ async function initializeBots() {
 	const clients = [];
 	
 	clients.push(await createBot(
+		process.env.TOKEN_CONSOLE,
+		process.env.CHANNELIDCONSOLE,
+		setupConsoleBotEvents,
+		messageConsoleCommands,
+		true
+	));
+	clients.push(await createBot(
 		process.env.TOKEN_EMPEROR,
 		process.env.CHANNELIDEMPEROR,
 		setupEmperorBotEvents,
@@ -205,13 +212,6 @@ async function initializeBots() {
 		messageKingCommands
 	));
 	
-	clients.push(await createBot(
-		process.env.TOKEN_CONSOLE,
-		process.env.CHANNELIDCONSOLE,
-		setupConsoleBotEvents,
-		messageConsoleCommands,
-		true
-	));
 	gameState.setServerDown(false);
 	eventEmitter.emit("ServerStatusChange");
 	return clients;

@@ -10,8 +10,8 @@ const {
 const {
 	buildSelectMenu,
 	sendInteractionReply,
-    messageAllHumanChannels,
-    messageChannel,
+    	messageAllHumanChannels,
+    	messageChannel,
 } = require("../functions/botActions");
 const {
 	CacheGetCooldown,
@@ -51,8 +51,6 @@ const gameState = require("../game_state");
 
 let selectedElectionCandidates = {};
 let selectedExileUsers = {};
-let lords = [];
-let lordsSize = 0;
 let electionInitiatorId = null;
 let electionInitiator = null;
 let electionCandidateId = null;
@@ -62,6 +60,7 @@ let electionParticipants = new Set();
 let electionTimeout;
 let electionType = "";
 let disableElection = true;
+
 const selectedHumans = {};
 const selectedKnights = {};
 
@@ -72,12 +71,13 @@ function showErrorMsg(err) {
 }
 
 async function setupLordBotEvents(client, lastMessageId) {
-		client.on("guildMemberRemove", async (member) => {
+
+	client.on("guildMemberRemove", async (member) => {
 		const hadRoleBeforeNoble = member.roles.cache.has(
 			process.env.ROLEID_NOBLE
 		);
 		const hadRoleBeforeLord = member.roles.cache.has(
-			process.env.ROLEID_LORD
+			process.env.ROLEID_LORD,
 		);
 		const hadRoleBeforePeasant = member.roles.cache.has(process.env.ROLEID_PEASANT);
 		const hadRoleBeforeScholar = member.roles.cache.has(process.env.ROLEID_SCHOLAR);
@@ -86,7 +86,7 @@ async function setupLordBotEvents(client, lastMessageId) {
 		const hadRoleBeforeSubhuman = member.roles.cache.has(process.env.ROLEID_SUBHUMAN); 
 		if (hadRoleBeforePeasant || hadRoleBeforeScholar || hadRoleBeforeMerchant ||
 			hadRoleBeforeNoble ||hadRoleBeforeKnight || hadRoleBeforeSubhuman
-			) {
+		) {
 			if(member.id != electionCandidateId) await updateMessage(client, lastMessageId);
 			for(let userId of selectedHumans){
 				if(selectedHumans[userId] && selectedHumans[userId].id === member.id){
@@ -99,23 +99,6 @@ async function setupLordBotEvents(client, lastMessageId) {
 				}
 			}
 		}
-		if( hadRoleBeforeLord){
-			try{
-				lords = await CacheGetUsersByRoles(["lord"]);
-				lordsSize = lords.length;
-				if(lordsSize < MinimumLordSize && !isThresholdOpen(10)){
-					await openThreshold(10, client);
-				}
-				
-				if(lordsSize < MinimumLordSizeForElection && disableElection === false){
-					disableElection = true;
-					if(!electionActive && lastMessageId) await updateMessage(client,lastMessageId);
-				}
-				
-			}catch(err){
-				showErrorMsg(err);
-			}
-		}
 
 		if (electionActive && hadRoleBeforeLord ) {
 			if(electionParticipants.has(member.id)){
@@ -123,7 +106,7 @@ async function setupLordBotEvents(client, lastMessageId) {
 					selectedElectionCandidates[member.id] = null;
 					electionParticipants.delete(member.id);
 
-					const participationRate = electionParticipants.size / lordsSize;
+					const participationRate = electionParticipants.size / gameState.getRoleSize("Lord");
 
 					if (member.id === electionInitiatorId) {
 						const msg = `<@${electionInitiatorId}>, who summoned the great council, is no longer a lord. The election is void.`;
@@ -167,7 +150,7 @@ async function setupLordBotEvents(client, lastMessageId) {
 		if (electionActive && hadRoleBeforeLord) {
 			if(!member.id === electionCandidateId && !electionParticipants.has(member.id)){	
 				try {
-					const participationRate = electionParticipants.size / lordsSize;
+					const participationRate = electionParticipants.size / gameState.getRoleSize("Lord");
 					if (
 						electionType === "Noble" &&
 						participationRate >= NobleLordElectionSuccessThreshold
@@ -220,28 +203,6 @@ async function setupLordBotEvents(client, lastMessageId) {
 				}
 			}
 		}
-		if( hadRoleBeforeLord || hasRoleNowLord){
-			try{
-				lords = await CacheGetUsersByRoles(["lord"]);
-				lordsSize = lords.length;
-				if(lordsSize < MinimumLordSize && !isThresholdOpen(10)){
-					await openThreshold(10,client);
-				}
-				if(lordsSize >= MinimumLordSize && isThresholdOpen(10)){
-					closeThreshold(10);
-				}
-				if(lordsSize < MinimumLordSizeForElection && disableElection === false){
-					disableElection = true;
-					if(!electionActive && lastMessageId) await updateMessage(client,lastMessageId);
-				}
-				if(lordsSize >= MinimumLordSizeForElection && disableElection === true){
-					disableElection = false;
-					if(!electionActive && lastMessageId) await updateMessage(client,lastMessageId);
-				}
-			}catch(err){
-				showErrorMsg(err);
-			}
-		}
 
 		if (electionActive && hadRoleBeforeLord ) {
 			if(electionParticipants.has(newMember.id)){
@@ -249,7 +210,8 @@ async function setupLordBotEvents(client, lastMessageId) {
 					selectedElectionCandidates[newMember.id] = null;
 					electionParticipants.delete(newMember.id);
 
-					const participationRate = electionParticipants.size / lordsSize;
+					const participationRate =
+						electionParticipants.size / gameState.getRoleSize("Lord");
 
 					if (newMember.id === electionInitiatorId) {
 						const msg = `<@${electionInitiatorId}>, who summoned the great council, is no longer a lord. The election is void.`;
@@ -277,8 +239,8 @@ async function setupLordBotEvents(client, lastMessageId) {
 				}
 			}
 		}
-		if (electionActive && (hadRoleBeforeNoble || hadRoleBeforeLord)) {
-			if(newMember.id === electionCandidateId){
+		if (electionActive && (hadRoleBeforeNoble || hadRoleBeforeLord) 
+			&& newMember.id === electionCandidateId){
 				try {
 					const msg = `The role of the election candidate <@${electionCandidateId}> has changed. The election is void.`;
 					eventEmitter.emit("NotifyLordChannel", msg);
@@ -288,12 +250,12 @@ async function setupLordBotEvents(client, lastMessageId) {
 				} catch (e) {
 					showErrorMsg(e);
 				}
-			}
 		}
 		if (electionActive && (hadRoleBeforeLord || hasRoleNowLord)) {
 			if(!newMember.id === electionCandidateId &&!electionParticipants.has(newMember.id)){	
 				try {
-					const participationRate = electionParticipants.size / lordsSize;
+					const participationRate =
+						electionParticipants.size / gameState.getRoleSize("Lord");
 					if (
 						electionType === "Noble" &&
 						participationRate >= NobleLordElectionSuccessThreshold
@@ -325,7 +287,7 @@ async function setupLordBotEvents(client, lastMessageId) {
 			try {
 				await interaction.deferUpdate();
 				selectedExileUsers[userId] = await interaction.guild.members.fetch(selectedUserId);
-				
+
 			} catch (err) {
 				showErrorMsg(err);
 			}
@@ -356,7 +318,7 @@ async function setupLordBotEvents(client, lastMessageId) {
 						Their thoughts remain below,
 						Words without thoughts never to Heaven go.
 
-							Exiled to the forest by Lord <@${userId}>.`);
+						Exiled to the forest by Lord <@${userId}>.`);
 					await messageChannel(client, process.env.CHANNELID_FOREST,
 						`<@${targetId}> fell out of Lord <@${userId}>'s graces.
 						They wander the forest as a sub-human, the comfort upstream renders them weak amongst their newfound kin.`);
@@ -446,8 +408,6 @@ async function setupLordBotEvents(client, lastMessageId) {
 		}
 
 		if (interaction.customId === "Election") {
-			lords = await CacheGetUsersByRoles(["lord"]);
-			lordsSize = lords.length;
 
 			if (!selectedElectionCandidates[userId]) {
 				await sendInteractionReply(interaction, "No member selected");
@@ -486,26 +446,31 @@ async function setupLordBotEvents(client, lastMessageId) {
 
 			if (lastMessageId) {
 				try {
-					// Set cooldown
+					if(gameState.getRoleSize("Lord") < MinimumLordSizeForElection){
+						await sendInteractionReply(interaction,
+							`There must be at least ${MinimumLordSizeForElection} lords for an election to be held. Current number of lords: ${gameState.getRoleSize("Lord")}`);
+						return;
+					}
 					await CacheSetCooldown("Election", userId, LordElectionCooldown);
 					await updateMessage(client, lastMessageId);
 					if (electionType === "Noble")
 						await startElection(client, lastMessageId, NobleLordElectionTime);
 					else await startElection(client, lastMessageId, LordKingElectionTime);
-						
+
 					await sendInteractionReply(
 						interaction,
 						"Election started, waiting for other lords to join."
 					);
 					let voteType = electionType === "Noble" ? "Lord" : "King";
-					
+
 					await messageChannel(
 						client,
 						process.env.CHANNELID_GREAT_COUNCIL,
 						`<@${interaction.user.id}> has summoned the council by proposing <@${electionCandidateId}> be ${voteType}. An election is underway.`
 					);
 
-					const participationRate = electionParticipants.size / lordsSize;
+					const participationRate =
+						electionParticipants.size / gameState.getRoleSize("Lord");
 					if (
 						electionType === "Noble" &&
 						participationRate >= NobleLordElectionSuccessThreshold
@@ -556,7 +521,7 @@ async function setupLordBotEvents(client, lastMessageId) {
 				await sendInteractionReply(interaction, "You have joind the poll.");
 				let voteType = electionType === "Noble" ? "Lord" : "King";
 				await messageChannel(client, process.env.CHANNELID_GREAT_COUNCIL,`<@${interaction.user.id}> has voted in favor of <@${electionCandidateId}> becoming a ${voteType}.`);
-				const participationRate = electionParticipants.size / lordsSize;
+				const participationRate = electionParticipants.size / gameState.getRoleSize("Lord");
 				if (electionActive) {
 					if (
 						(electionType === "Noble" &&
@@ -574,6 +539,14 @@ async function setupLordBotEvents(client, lastMessageId) {
 			} catch (err) {
 				throw err;
 			}
+		}
+	});
+
+	eventEmitter.on("UpdateLordMessageIfNoElectionOngoing", async () => {
+		try {
+			if (!electionActive) await updateMessage(client, lastMessageId);
+		} catch (err) {
+			showErrorMsg(err);
 		}
 	});
 	eventEmitter.on("NotifyLordChannel", async (msg) => {
@@ -617,7 +590,7 @@ async function startElection(client, lastMessageId, timeout) {
 }
 
 async function handleElectionEnd(client, lastMessageId) {
-	const participationRate = electionParticipants.size / lordsSize;
+	const participationRate = electionParticipants.size / gameState.getRoleSize("Lord");
 	let voteType = electionType === "Noble" ? "Lord" : "King";
 	if (
 		electionActive &&
@@ -639,7 +612,7 @@ async function handleElectionEnd(client, lastMessageId) {
 			}
 		}
 		eventEmitter.emit("NotifyLordChannel", `<@${electionInitiatorId}>'s election of <@${electionCandidateId}> as ${voteType} was successful.`);
-		await messageAllHumanChannel(client, msg);
+		await messageAllHumanChannels(client, msg);
 	} else {
 		const msg = ` <@${electionCandidateId}> dull attempt to make <@${electionInitiatorId}> has failed, reflecting his stagnant whims.`;
 		eventEmitter.emit("NotifyLordChannel", `<@${electionInitiatorId}>'s election of <@${electionCandidateId}> as ${voteType} has failed.`);
@@ -714,7 +687,6 @@ function getWritStatus(status) {
 		default: return 'Unknown';
 	}
 }
-
 async function updateMessage(client, lastMessageId) {
 	try {
 		const channel = await client.channels.fetch(process.env.CHANNELIDLORD);
@@ -755,7 +727,7 @@ async function updateMessage(client, lastMessageId) {
 				.setCustomId("Election")
 				.setLabel(ButtonLabelElection)
 				.setStyle(ButtonStyle.Primary)
-				.setDisabled(disableElection || gameState.isServerDown()),
+				.setDisabled(gameState.getDisableElection() || gameState.isServerDown()),
 				new ButtonBuilder()
 				.setCustomId("EminentWrit")
 				.setLabel(ButtonLabelEminentWrit)
@@ -779,11 +751,11 @@ async function updateMessage(client, lastMessageId) {
 				messageToEdit.components[1].toJSON()
 			);
 			const electionSelectMenu = StringSelectMenuBuilder.from(
-				actionRow_1.components[1].toJSON()
+				actionRow_1.components[0].toJSON()
 			)
 				.setDisabled(true)
 				.setPlaceholder(electionCandidate);
-			actionRow_1.components[1] = electionSelectMenu;
+			actionRow_1.components[0] = electionSelectMenu;
 			const actionRow_2 = new ActionRowBuilder()
 				.addComponents(await buildSelectMenu(
 					client, ["peasant", "scholar", "merchant","noble"], "SelectHuman", TextEminentWritTargetSelectMenu
@@ -819,7 +791,7 @@ async function updateMessage(client, lastMessageId) {
 				content:
 				serverText + '\n' +
 				initContent +
-				`\n <@${electionInitiatorId}> summoned the great council, proposing the election of <@${electionCandidateId}> as ${voteType}. (Joined ${electionParticipants.size} / ${lordsSize}.)`,
+				`\n <@${electionInitiatorId}> summoned the great council, proposing the election of <@${electionCandidateId}> as ${voteType}. (Joined ${electionParticipants.size} / ${gameState.getRoleSize("Lord")}.)`,
 				components: [actionRow_0,actionRow_1,actionRow_2,actionRow_3, buttonRow],
 			});
 		}
@@ -862,7 +834,7 @@ async function messageLordCommands(client) {
 			.setCustomId("Election")
 			.setLabel(ButtonLabelElection)
 			.setStyle(ButtonStyle.Primary)
-			.setDisabled(disableElection || gameState.isServerDown()),
+			.setDisabled(gameState.getDisableElection() || gameState.isServerDown()),
 			new ButtonBuilder()
 			.setCustomId("EminentWrit")
 			.setLabel(ButtonLabelEminentWrit)
@@ -893,8 +865,6 @@ async function resetComponents(client, lastMessageId) {
 		electionCandidate = null;
 		electionCandidateId = null;
 		electionParticipants.clear();
-		lordsSize = 0;
-		lords = [];
 		electionType = "";
 		await updateMessage(client, lastMessageId);
 	} catch (err) {

@@ -9,6 +9,7 @@ let reelectionActive = false;
 let disableRevolution = true;
 let disableCoup = true;
 let disableSiege = true;
+let disableElection = true;
 let struggleMethod = "Revolution";
 let playerCount = 0;
 let serverDown = true;
@@ -56,6 +57,9 @@ module.exports = {
 	// Player Count
 	getPlayerCount: () => playerCount,
 	setPlayerCount: (count) => { playerCount = count; },
+	//Election
+	setDisableElection: (val) => { disableElection = val; },
+	getDisableElection: () => disableElection,
 	//struggleMethod
 	setStruggleMethod: (method) => { struggleMethod = method; },
 	getStruggleMethod: () => struggleMethod,

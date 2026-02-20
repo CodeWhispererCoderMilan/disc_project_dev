@@ -24,7 +24,9 @@ const {
 	DBSetRole,
 	DBResetXP,
 	changeRole,
-	openThreshold
+	isThresholdOpen,
+	openThreshold,
+	closeThreshold
 } = require("../apis/firebase/querys.js");
 const {
 	CacheGetUsersByRoles,
@@ -66,7 +68,9 @@ const {
 	MinimumHigherRoleRatioForRevolution,
 	MinimumHigherRoleRatioForCoup,
 	MinimumKnightSizeForCoup,
-	MinimumKnightToKingSiegeRatio
+	MinimumKnightToKingSiegeRatio,
+	MinimumLordSize,
+	MinimumLordSizeForElection
 } = require("../game_config.json");
 
 const gameState = require("../game_state.js");
@@ -99,7 +103,21 @@ async function setupConsoleBotEvents(client, lastMessageId) {
 		const knights = await CacheGetUsersByRoles(["knight"]);
 		gameState.setRoleSize("Knight", knights.length);
 		const lords = await CacheGetUsersByRoles(["lord"]);
-		gameState.setRoleSize("Lord", lords.length);
+		const lordsSize = lords.length;
+		gameState.setRoleSize("Lord", lordsSize);
+		if(lordsSize < MinimumLordSize && !isThresholdOpen(10)){
+			await openThreshold(10, client);
+		}
+		if(lordsSize >= MinimumLordSize && isThresholdOpen(10)){
+			await closeThreshold(10);
+		}
+		if(lordsSize < MinimumLordSizeForElection && gameState.getDisableElection() === false){
+			gameState.setDisableElection(true);
+		}
+		if(lordsSize >= MinimumLordSizeForElection && gameState.getDisableElection() === true){
+			gameState.setDisableElection(false);
+		}
+		
 		const kings = await CacheGetUsersByRoles(["king"]);
 		gameState.setRoleSize("King", kings.length);
 		const nobles = await CacheGetUsersByRoles(["noble"]);
@@ -216,7 +234,7 @@ async function setupConsoleBotEvents(client, lastMessageId) {
 		console.log(`People count: ${peopleCount}`);
 		let updatedRevolutionAndCoupMessages = false;
 		gameState.setPlayerCount(peopleCount);
-		
+
 		const hadOrHasRevolutionRole = hadRoleBeforePeasant || hasRoleNowPeasant || hadRoleBeforeScholar || hasRoleNowScholar ||
 			hadRoleBeforeMerchant || hasRoleNowMerchant || hadRoleBeforeKnight || hasRoleNowKnight ||
 			hadRoleBeforeLord || hasRoleNowLord || hadRoleBeforeKing || hasRoleNowKing ||
@@ -273,10 +291,27 @@ async function setupConsoleBotEvents(client, lastMessageId) {
 				break;
 			case hadRoleBeforeLord || hasRoleNowLord:
 				const lords = await CacheGetUsersByRoles(["lord"]);
-				gameState.setRoleSize("Lord", lords.length);
+				const lordsSize = lords.length;
+				gameState.setRoleSize("Lord", lordsSize);
 				handleHigherRoleSizeChange();
 				if (hadRoleBeforeLord && gameState.isRevolutionActive()){
 					gameState.removeRevolutionParticipant(newMember.id);
+				}
+				if(lordsSize < MinimumLordSize && !isThresholdOpen(10)){
+					await openThreshold(10, client);
+				}
+				if(lordsSize >= MinimumLordSize && isThresholdOpen(10)){
+					await closeThreshold(10);
+				}
+				if(lordsSize < MinimumLordSizeForElection &&
+					gameState.getDisableElection() === false){	
+					gameState.setDisableElection(true);
+					eventEmitter.emit("UpdateLordMessageIfNoElectionOngoing");
+
+				}
+				if(lordsSize >= MinimumLordSizeForElection && gameState.getDisableElection() === true){
+					gameState.setDisableElection(false);
+					eventEmitter.emit("UpdateLordMessageIfNoElectionOngoing");
 				}
 				break;
 			case hadRoleBeforeKing || hasRoleNowKing:
@@ -311,7 +346,7 @@ async function setupConsoleBotEvents(client, lastMessageId) {
 		}
 	});
 	client.on("guildMemberRemove", async (member) => {
-		
+
 		const hadRoleBeforePeasant = member.roles.cache.has(
 			process.env.ROLEID_PEASANT
 		);	
@@ -362,7 +397,6 @@ async function setupConsoleBotEvents(client, lastMessageId) {
 		const peopleCount = guild.memberCount - 16;
 		let updatedRevolutionAndCoupMessages = false;
 		gameState.setPlayerCount(peopleCount);
-		console.log(`People count: ${peopleCount}`);
 		const hadRevolutionRole = hadRoleBeforePeasant || hadRoleBeforeScholar || hadRoleBeforeMerchant ||
 			hadRoleBeforeKnight ||	hadRoleBeforeLord || hadRoleBeforeKing ||
 			hadRoleBeforeNoble || hadRoleBeforeEmperor;
@@ -417,10 +451,19 @@ async function setupConsoleBotEvents(client, lastMessageId) {
 				break;
 			case hadRoleBeforeLord:
 				const lords = await CacheGetUsersByRoles(["lord"]);
-				gameState.setRoleSize("Lord", lords.length);
+				const lordsSize = lords.length;
+				gameState.setRoleSize("Lord", lordsSize);
 				handleHigherRoleSizeChange();
 				if (gameState.isRevolutionActive())
 					gameState.removeRevolutionParticipant(member.id);
+				if(lordsSize < MinimumLordSize && !isThresholdOpen(10)){
+					await openThreshold(10, client);
+				}
+				if(lordsSize < MinimumLordSizeForElection &&
+					gameState.getDisableElection() === false){
+					gameState.setDisableElection(true);
+					eventEmitter.emit("UpdateLordMessageIfNoElectionOngoing");
+				}
 				break;
 			case hadRoleBeforeKing:
 				const kings = await CacheGetUsersByRoles(["king"]);
@@ -1000,40 +1043,40 @@ async function notifyRevolutionResult(message) {
 }
 async function sendStruggleKillNotification(client, role, id, struggleMethod) {
 	try{
-	let message;
-	const coupActive = gameState.isCoupActive();
-	switch (role) {
-		case "Knight":
-			message = `Knight <@${id}> was killed in the ${struggleMethod.toLowerCase()}.`;
-			!coupActive ? await messageAllHumanChannels(client,message,true) :
-				await messageChannel(client, process.env.CHANNELID_BARRACKS,message);
-			break;
-		case "Noble":
-			message = `Noble <@${id}> was killed in the ${struggleMethod.toLowerCase()}.`;
-			await messageChannel(client, process.env.CHANNELID_GREAT_COUNCIL,message);
-			!coupActive ? await messageAllHumanChannels(client, message, true) :
-				await messageChannel(client, process.env.CHANNELID_BARRACKS,message);
-			break;
-		case "Lord":
-			message = `Lord <@${id}> was killed in the ${struggleMethod.toLowerCase()}.`;
-			await messageChannel(client, process.env.CHANNELID_ROYAL_CASTLE,message);
-			!coupActive ? await messageAllHumanChannels(client, message, true) :
-				await messageChannel(client, process.env.CHANNELID_BARRACKS,message);
-			break;
-		case "King":
-			message = `King <@${id}> was killed in the ${struggleMethod.toLowerCase()}.`;
-			await messageChannel(client, process.env.CHANNELID_ROYAL_CASTLE, message);
-			!coupActive ? await messageAllHumanChannels(client, message, true) :
-				await messageChannel(client, process.env.CHANNELID_BARRACKS,message);
-			break;
-		case "Emperor":
-			await messageAllHumanChannels(client,`Emperor <@${id}> was slain in the ${struggleMethod.toLowerCase()}. A vote is underway...`);
-			break;
-		default:
-			break;
-	}
-	
-	eventEmitter.emit("Death",`${role} <@${id}> was killed in the ${struggleMethod.toLowerCase()}.`);
+		let message;
+		const coupActive = gameState.isCoupActive();
+		switch (role) {
+			case "Knight":
+				message = `Knight <@${id}> was killed in the ${struggleMethod.toLowerCase()}.`;
+				!coupActive ? await messageAllHumanChannels(client,message,true) :
+					await messageChannel(client, process.env.CHANNELID_BARRACKS,message);
+				break;
+			case "Noble":
+				message = `Noble <@${id}> was killed in the ${struggleMethod.toLowerCase()}.`;
+				await messageChannel(client, process.env.CHANNELID_GREAT_COUNCIL,message);
+				!coupActive ? await messageAllHumanChannels(client, message, true) :
+					await messageChannel(client, process.env.CHANNELID_BARRACKS,message);
+				break;
+			case "Lord":
+				message = `Lord <@${id}> was killed in the ${struggleMethod.toLowerCase()}.`;
+				await messageChannel(client, process.env.CHANNELID_ROYAL_CASTLE,message);
+				!coupActive ? await messageAllHumanChannels(client, message, true) :
+					await messageChannel(client, process.env.CHANNELID_BARRACKS,message);
+				break;
+			case "King":
+				message = `King <@${id}> was killed in the ${struggleMethod.toLowerCase()}.`;
+				await messageChannel(client, process.env.CHANNELID_ROYAL_CASTLE, message);
+				!coupActive ? await messageAllHumanChannels(client, message, true) :
+					await messageChannel(client, process.env.CHANNELID_BARRACKS,message);
+				break;
+			case "Emperor":
+				await messageAllHumanChannels(client,`Emperor <@${id}> was slain in the ${struggleMethod.toLowerCase()}. A vote is underway...`);
+				break;
+			default:
+				break;
+		}
+
+		eventEmitter.emit("Death",`${role} <@${id}> was killed in the ${struggleMethod.toLowerCase()}.`);
 
 	}catch(err){
 		showErrorMsg(err);

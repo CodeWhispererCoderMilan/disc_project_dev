@@ -70,7 +70,10 @@ const {
 	MinimumKnightSizeForCoup,
 	MinimumKnightToKingSiegeRatio,
 	MinimumLordSize,
-	MinimumLordSizeForElection
+	MinimumLordSizeForElection,
+	MinimumNobleSize,
+	MinimumNobleSizeForAssassination,
+	MinimumKingSize
 } = require("../game_config.json");
 
 const gameState = require("../game_state.js");
@@ -119,9 +122,29 @@ async function setupConsoleBotEvents(client, lastMessageId) {
 		}
 		
 		const kings = await CacheGetUsersByRoles(["king"]);
-		gameState.setRoleSize("King", kings.length);
+		const kingsSize = kings.length;
+		gameState.setRoleSize("King", kingsSize);
+		if(kingsSize < MinimumKingSize && !isThresholdOpen(11)){
+			await openThreshold(11, client);
+		}
+		if(kingsSize >= MinimumKingSize && isThresholdOpen(11)){
+			await closeThreshold(11);
+		}
 		const nobles = await CacheGetUsersByRoles(["noble"]);
-		gameState.setRoleSize("Noble", nobles.length);
+		const noblesSize = nobles.length;
+		gameState.setRoleSize("Noble", noblesSize);
+		if(noblesSize < MinimumNobleSize && !isThresholdOpen(9)){
+			await openThreshold(9, client);
+		}
+		if(noblesSize >= MinimumNobleSize && isThresholdOpen(9)){
+			await closeThreshold(9);
+		}
+		if(noblesSize < MinimumNobleSizeForAssassination && gameState.getDisableAssassination() === false){
+			gameState.setDisableAssassination(true);
+		}
+		if(noblesSize >= MinimumNobleSizeForAssassination && gameState.getDisableAssassination() === true){
+			gameState.setDisableAssassination(false);
+		}
 		const emperors = await CacheGetUsersByRoles(["emperor"]);
 		gameState.setRoleSize("Emperor", emperors.length);
 		const guild = await client.guilds.fetch(process.env.GUILDID);
@@ -316,17 +339,41 @@ async function setupConsoleBotEvents(client, lastMessageId) {
 				break;
 			case hadRoleBeforeKing || hasRoleNowKing:
 				const kings = await CacheGetUsersByRoles(["king"]);
-				gameState.setRoleSize("King", kings.length);
+				const kingsSize = kings.length;
+				gameState.setRoleSize("King", kingsSize);
 				handleHigherRoleSizeChange();
 				if (hadRoleBeforeKing && gameState.isRevolutionActive())
 					gameState.removeRevolutionParticipant(newMember.id);
+				if(kingsSize < MinimumKingSize && !isThresholdOpen(11)){
+					await openThreshold(11, client);
+				}
+				if(kingsSize >= MinimumKingSize && isThresholdOpen(11)){
+					await closeThreshold(11);
+				}
+				eventEmitter.emit("UpdateKingMessageIfNoSiegeOngoing");
 				break;
 			case hadRoleBeforeNoble || hasRoleNowNoble:
 				const nobles = await CacheGetUsersByRoles(["noble"]);
-				gameState.setRoleSize("Noble", nobles.length);
+				const noblesSize = nobles.length;
+				gameState.setRoleSize("Noble", noblesSize);
 				handleHigherRoleSizeChange();
 				if (hadRoleBeforeNoble && gameState.isRevolutionActive())
 					gameState.removeRevolutionParticipant(newMember.id);
+				if(noblesSize < MinimumNobleSize && !isThresholdOpen(9)){
+					await openThreshold(9, client);
+				}
+				if(noblesSize >= MinimumNobleSize && isThresholdOpen(9)){
+					await closeThreshold(9);
+				}
+				if(noblesSize < MinimumNobleSizeForAssassination && gameState.getDisableAssassination() === false){
+					gameState.setDisableAssassination(true);
+					eventEmitter.emit("UpdateNobleMessageIfNoAssassinationOngoing");
+				}
+				if(noblesSize >= MinimumNobleSizeForAssassination && gameState.getDisableAssassination() === true){
+					gameState.setDisableAssassination(false);
+					eventEmitter.emit("UpdateNobleMessageIfNoAssassinationOngoing");
+				}
+				eventEmitter.emit("UpdateNobleMessageIfNoAssassinationOngoing");
 				break;
 			case hadRoleBeforeEmperor || hasRoleNowEmperor:
 				const emperors = await CacheGetUsersByRoles(["emperor"]);
@@ -448,6 +495,7 @@ async function setupConsoleBotEvents(client, lastMessageId) {
 						updatedRevolutionAndCoupMessages = true;
 					}			
 				}
+				eventEmitter.emit("UpdateKingMessageIfNoSiegeOngoing");
 				break;
 			case hadRoleBeforeLord:
 				const lords = await CacheGetUsersByRoles(["lord"]);
@@ -467,17 +515,30 @@ async function setupConsoleBotEvents(client, lastMessageId) {
 				break;
 			case hadRoleBeforeKing:
 				const kings = await CacheGetUsersByRoles(["king"]);
-				gameState.setRoleSize("King", kings.length);
+				const kingsSize = kings.length;
+				gameState.setRoleSize("King", kingsSize);
 				handleHigherRoleSizeChange();
 				if (gameState.isRevolutionActive())
 					gameState.removeRevolutionParticipant(member.id);
+				if(kingsSize < MinimumKingSize && !isThresholdOpen(11)){
+					await openThreshold(11, client);
+				}
+				eventEmitter.emit("UpdateKingMessageIfNoSiegeOngoing");
 				break;
 			case hadRoleBeforeNoble:
 				const nobles = await CacheGetUsersByRoles(["noble"]);
-				gameState.setRoleSize("Noble", nobles.length);
+				const noblesSize = nobles.length;
+				gameState.setRoleSize("Noble", noblesSize);
 				handleHigherRoleSizeChange();
 				if (gameState.isRevolutionActive())
 					gameState.removeRevolutionParticipant(member.id);
+				if(noblesSize < MinimumNobleSize && !isThresholdOpen(9)){
+					await openThreshold(9, client);
+				}
+				if(noblesSize < MinimumNobleSizeForAssassination && gameState.getDisableAssassination() === false){
+					gameState.setDisableAssassination(true);
+					eventEmitter.emit("UpdateNobleMessageIfNoAssassinationOngoing");
+				}
 				break;
 			case hadRoleBeforeEmperor:
 				const emperors = await CacheGetUsersByRoles(["emperor"]);

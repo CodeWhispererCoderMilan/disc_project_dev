@@ -10,6 +10,7 @@ let disableRevolution = true;
 let disableCoup = true;
 let disableSiege = true;
 let disableElection = true;
+let disableAssassination = true;
 let struggleMethod = "Revolution";
 let playerCount = 0;
 let serverDown = true;
@@ -39,9 +40,6 @@ let roleSizes = {
 	King: 0,
 	Emperor: 0,
 };
-let knights = [];
-let knightsSize = 0;
-let kingsSize = 0;
 
 // =====================
 	// SIEGE TARGET INFO
@@ -60,6 +58,9 @@ module.exports = {
 	//Election
 	setDisableElection: (val) => { disableElection = val; },
 	getDisableElection: () => disableElection,
+	//Assassination
+	setDisableAssassination: (val) => { disableAssassination = val; },
+	getDisableAssassination: () => disableAssassination,
 	//struggleMethod
 	setStruggleMethod: (method) => { struggleMethod = method; },
 	getStruggleMethod: () => struggleMethod,

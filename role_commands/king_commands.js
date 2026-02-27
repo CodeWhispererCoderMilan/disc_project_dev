@@ -18,8 +18,7 @@ const {
 	CacheGetCooldown,
 	CacheSetCooldown,
 	CacheGetWriterWrits,
-	CacheSetWrit,
-    	CacheGetUsersByRoles
+	CacheSetWrit
 } = require("../apis/redis/redisCache");
 const {
 	DegradationCost,
@@ -41,11 +40,9 @@ const {
 	ButtonLabelKnight,
 	ButtonLabelSiege,
 	ButtonLabelShowWrits,
-	MinimumKingSize,
-	MinimumKnightToKingSiegeRatio
 } = require("../game_config.json");
 const { eventEmitter } = require("../functions/eventEmitter.js");
-const { DBUpdateXP, isThresholdOpen, changeRole, openThreshold, closeThreshold } = require("../apis/firebase/querys");
+const { DBUpdateXP, changeRole } = require("../apis/firebase/querys");
 const gameState = require("../game_state.js");
 let selectedHumans = {};
 let selectedKnights = {};
@@ -89,46 +86,11 @@ async function setupKingBotEvents(client, lastMessageId) {
 			}
 		}	
 
-		if( hadRoleBeforeKing || hadRoleBeforeKnight ){
-			try{
-				
-				if(hadRoleBeforeKing ){
-					const kings = await CacheGetUsersByRoles(["king"]);
-					const kingSize = kings.length;
-					gameState.setRoleSize("King",kingSize);
-					if(kingSize < MinimumKingSize && !isThresholdOpen(11)){
-						await openThreshold(11, client);
-					}
-
-				}
-				if(hadRoleBeforeKnight ){
-					const knights = await CacheGetUsersByRoles(["knight"]);
-					const numberOfKnights = knights.length;
-					gameState.setRoleSize("Knight",numberOfKnights);
-				}	
-				const numberOfKnights = gameState.getRoleSize("Knight");
-				const kingSize = gameState.getRoleSize("King");
-				const disableSiege = gameState.getDisableSiege();
-				const siegeRatio = numberOfKnights / kingSize;
-				if(siegeRatio >= MinimumKnightToKingSiegeRatio && disableSiege === true){
-					gameState.setDisableSiege(false);
-				}
-				if(siegeRatio < MinimumKnightToKingSiegeRatio && disableSiege === false){
-					gameState.setDisableSiege(true);
-				}
-			}catch(err){
-				showErrorMsg(err);
-			}
-		}
 		if(hadRoleBeforeKing) {
 			for(let userId in selectedKings){
 				if(selectedKings[userId] && selectedKings[userId].id == member.id){
-					selectedKnights[userId] = null;
-
+					selectedKings[userId] = null;
 				}
-			}
-			if(!gameState.isSiegeActive()) {
-				await updateMessage(client, lastMessageId);
 			}
 		}		
 		if (gameState.isSiegeActive() && hadRoleBeforeKnight) {
@@ -155,8 +117,6 @@ async function setupKingBotEvents(client, lastMessageId) {
 						selectedKnights[userId] = null;
 					}
 				}
-				if(!gameState.isSiegeActive())
-					await updateMessage(client, lastMessageId);
 			}
 			else await updateMessage(client, lastMessageId);
 		}
@@ -209,36 +169,6 @@ async function setupKingBotEvents(client, lastMessageId) {
 			}
 		}	
 
-		if( hadRoleBeforeKing || hasRoleNowKing || hadRoleBeforeKnight || hasRoleNowKnight){
-			try{
-				if(hadRoleBeforeKing || hasRoleNowKing){
-					const kings = await CacheGetUsersByRoles(["king"]);
-					const kingSize = kings.length;
-					gameState.setRoleSize("King",kingSize);
-					if(kingSize < MinimumKingSize && !isThresholdOpen(11)){
-						await openThreshold(11, client);
-					}
-					if(kingSize >= MinimumKingSize && isThresholdOpen(11)){
-						closeThreshold(11);
-					}
-				}
-				if(hadRoleBeforeKnight || hasRoleNowKnight){
-					const knights = await CacheGetUsersByRoles(["knight"]);
-					const numberOfKnights = knights.length;
-					gameState.setRoleSize("Knight",numberOfKnights);
-				}
-				const siegeRatio = gameState.getRoleSize("Knight") / gameState.getRoleSize("King");
-				const disableSiege = gameState.getDisableSiege();
-				if(siegeRatio >= MinimumKnightToKingSiegeRatio && disableSiege === true){
-					gameState.setDisableSiege(false);
-				}
-				if(siegeRatio < MinimumKnightToKingSiegeRatio && disableSiege === false){
-					gameState.setDisableSiege(true);
-				}
-			}catch(err){
-				showErrorMsg(err);
-			}
-		}
 		if (oldMember.roles.cache.has(process.env.ROLEID_PEASANT) ||
 			oldMember.roles.cache.has(process.env.ROLEID_SCHOLAR) ||
 			oldMember.roles.cache.has(process.env.ROLEID_MERCHANT) ||
@@ -626,6 +556,13 @@ async function setupKingBotEvents(client, lastMessageId) {
 			setTimeout(async () => {
 				await message.delete().catch(console.error);
 			}, RoleChangeMessageDisplayTime);
+		} catch (err) {
+			showErrorMsg(err);
+		}
+	});
+	eventEmitter.on("UpdateKingMessageIfNoSiegeOngoing", async () => {
+		try {
+			if (!gameState.isSiegeActive()) await updateMessage(client, lastMessageId);
 		} catch (err) {
 			showErrorMsg(err);
 		}

@@ -13,7 +13,6 @@ const {
     messageChannel,
 } = require("../functions/botActions");
 const {
-	CacheGetUsersByRoles,
 	CacheGetCooldown,
 	CacheSetCooldown,
 	CacheGetUserXP,
@@ -33,16 +32,12 @@ const {
 	TextAssassinationSelectMenu,
 	TextHighWritKnightSelectMenu,
 	TextHighWritTargetSelectMenu,
-	MinimumNobleSize,
-	MinimumNobleSizeForAssassination
 } = require("../game_config.json");
 const { eventEmitter } = require("../functions/eventEmitter.js");
-const { DBUpdateXP, isThresholdOpen, changeRole, openThreshold, closeThreshold } = require("../apis/firebase/querys");
+const { DBUpdateXP, changeRole } = require("../apis/firebase/querys");
 const gameState = require("../game_state");
 
 let selectedTargets = {};
-let nobles = [];
-let noblesSize = 1;
 let assassinationInitiatorId = null;
 let assassinationInitiator = null;
 let assassinationTarget = null;
@@ -52,7 +47,6 @@ let assassinationParticipants = new Set();
 let assassinationTimeout;
 const selectedHumans = {};
 const selectedKnights = {};
-let disableAssassination = false; 
 const initContent = TextNobleMessageContent;
 function showErrorMsg(err) {
 	console.error("ERROR: noble_commands.js", err);
@@ -127,18 +121,6 @@ async function setupNobleBotEvents(client, lastMessageId) {
 				}
 			}	
 
-			if( hadRoleBeforeNoble ){
-				nobles = await CacheGetUsersByRoles(["noble"]);
-				noblesSize = nobles.length;
-				if(noblesSize < MinimumNobleSize && !isThresholdOpen(9)){
-					await openThreshold(9, client);
-				}
-
-				if(noblesSize < MinimumNobleSizeForAssassination && disableAssassination === false){
-					disableAssassination = true;
-				}
-				await updateMessage(client,lastMessageId);
-			}
 
 		} catch (err) {
 			showErrorMsg(err);
@@ -224,27 +206,6 @@ async function setupNobleBotEvents(client, lastMessageId) {
 			}
 		}	
 
-		if( hadRoleBeforeNoble || hasRoleNowNoble){
-			try{
-				nobles = await CacheGetUsersByRoles(["noble"]);
-				noblesSize = nobles.length;
-				if(noblesSize < MinimumNobleSize && !isThresholdOpen(9)){
-					await openThreshold(9, client);
-				}
-				if(noblesSize >= MinimumNobleSize && isThresholdOpen(9)){
-					closeThreshold(9);
-				}
-				if(noblesSize < MinimumNobleSizeForAssassination && disableAssassination === false){
-					disableAssassination = true;
-				}
-				if(noblesSize >= MinimumNobleSizeForAssassination && disableAssassination === true){
-					disableAssassination = false;
-				}
-				await updateMessage(client,lastMessageId);
-			}catch(err){
-				showErrorMsg(err);
-			}
-		}
 	});
 
 	client.on("interactionCreate", async (interaction) => {
@@ -326,9 +287,6 @@ async function setupNobleBotEvents(client, lastMessageId) {
 		}
 
 		if (interaction.customId === "Assassination") {
-			nobles = await CacheGetUsersByRoles(["noble"]);
-			noblesSize = nobles.length;
-
 			if (!selectedTargets[userId]) {
 				sendInteractionReply(interaction, "No member selected");
 				return;
@@ -450,6 +408,13 @@ async function setupNobleBotEvents(client, lastMessageId) {
 			}, RoleChangeMessageDisplayTime);
 		} catch (err) {
 			throw err;
+		}
+	});
+	eventEmitter.on("UpdateNobleMessageIfNoAssassinationOngoing", async () => {
+		try {
+			if (!assassinationActive) await updateMessage(client, lastMessageId);
+		} catch (err) {
+			showErrorMsg(err);
 		}
 	});
 	eventEmitter.on('ServerStatusChange', async () => {
@@ -585,7 +550,7 @@ async function updateMessage(client, lastMessageId) {
 				.setCustomId("Assassination")
 				.setLabel(ButtonLabelAssassination)
 				.setStyle(ButtonStyle.Danger)
-				.setDisabled(disableAssassination || gameState.isServerDown()),
+				.setDisabled(gameState.getDisableAssassination() || gameState.isServerDown()),
 				new ButtonBuilder()
 				.setCustomId("HighWrit")
 				.setLabel(ButtonLabelHighWrit)
@@ -647,7 +612,7 @@ async function updateMessage(client, lastMessageId) {
 				content:
 				serverText + '\n' +
 				initContent +
-				`\n@${assassinationInitiator} initiated assassination. Join assassination to kill @${assassinationTarget}. (Joined ${assassinationParticipants.size} / ${noblesSize} nobles.)`,
+				`\n@${assassinationInitiator} initiated assassination. Join assassination to kill @${assassinationTarget}. (Joined ${assassinationParticipants.size} / ${gameState.getRoleSize("Noble")} nobles.)`,
 				components: [actionRow_0, actionRow_1, actionRow_2, buttonRow, infoBtnRow],
 			});
 		}
@@ -683,7 +648,7 @@ async function messageNobleCommands(client) {
 			.setCustomId("Assassination")
 			.setLabel(ButtonLabelAssassination)
 			.setStyle(ButtonStyle.Danger)
-			.setDisabled(disableAssassination || gameState.isServerDown()),
+			.setDisabled(gameState.getDisableAssassination() || gameState.isServerDown()),
 			new ButtonBuilder()
 			.setCustomId("HighWrit")
 			.setLabel(ButtonLabelHighWrit)
@@ -716,8 +681,6 @@ async function resetComponents(client, lastMessageId) {
 		assassinationTarget = null;
 		assassinationTargetId = null;
 		assassinationParticipants.clear();
-		noblesSize = 1;
-		nobles = [];
 		await updateMessage(client, lastMessageId);
 	} catch (err) {
 		throw err;

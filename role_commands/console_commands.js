@@ -350,7 +350,6 @@ async function setupConsoleBotEvents(client, lastMessageId) {
 				if(kingsSize >= MinimumKingSize && isThresholdOpen(11)){
 					await closeThreshold(11);
 				}
-				eventEmitter.emit("UpdateKingMessageIfNoSiegeOngoing");
 				break;
 			case hadRoleBeforeNoble || hasRoleNowNoble:
 				const nobles = await CacheGetUsersByRoles(["noble"]);
@@ -495,7 +494,6 @@ async function setupConsoleBotEvents(client, lastMessageId) {
 						updatedRevolutionAndCoupMessages = true;
 					}			
 				}
-				eventEmitter.emit("UpdateKingMessageIfNoSiegeOngoing");
 				break;
 			case hadRoleBeforeLord:
 				const lords = await CacheGetUsersByRoles(["lord"]);
@@ -523,7 +521,6 @@ async function setupConsoleBotEvents(client, lastMessageId) {
 				if(kingsSize < MinimumKingSize && !isThresholdOpen(11)){
 					await openThreshold(11, client);
 				}
-				eventEmitter.emit("UpdateKingMessageIfNoSiegeOngoing");
 				break;
 			case hadRoleBeforeNoble:
 				const nobles = await CacheGetUsersByRoles(["noble"]);
@@ -801,10 +798,12 @@ function handleHigherRoleSizeChange(){
 	const knightToKingRatio = kingSize > 0 ? knightSize / kingSize : knightSize;
 	if(knightToKingRatio < MinimumKnightToKingSiegeRatio && !gameState.getDisableSiege()){
 		gameState.setDisableSiege(true);
+		eventEmitter.emit("UpdateSiegeButton");
 
 	}
 	if(knightToKingRatio >= MinimumKnightToKingSiegeRatio && gameState.getDisableSiege()){
 		gameState.setDisableSiege(false);
+		eventEmitter.emit("UpdateSiegeButton");
 	}
 	if (((higherRoleSize >= MinimumHigherRoleSizeForRevolution) &&
 		(higherRoleSize/playerCount >= MinimumHigherRoleRatioForRevolution)) &&

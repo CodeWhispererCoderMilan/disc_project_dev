@@ -117,8 +117,14 @@ async function setupKingBotEvents(client, lastMessageId) {
 						selectedKnights[userId] = null;
 					}
 				}
+				if(!gameState.isSiegeActive()){
+					try{
+						await updateMessage(client, lastMessageId);
+					}catch(err){
+						showErrorMsg(err);
+					}
+				}
 			}
-			else await updateMessage(client, lastMessageId);
 		}
 		if (gameState.isSiegeActive() &&(hadRoleBeforeKnight || hadRoleBeforeKing)){
 			try {
@@ -564,6 +570,13 @@ async function setupKingBotEvents(client, lastMessageId) {
 		try {
 			if (!gameState.isSiegeActive()) await updateMessage(client, lastMessageId);
 		} catch (err) {
+			showErrorMsg(err);
+		}
+	});
+	eventEmitter.on("UpdateSiegeButton", async () => {
+		try{
+			await updateMessage(client, lastMessageId);
+		}catch(err){
 			showErrorMsg(err);
 		}
 	});

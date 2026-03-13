@@ -121,7 +121,7 @@
 	"NobleLordElectionSuccessThreshold": 0.5,
 	"LordKingElectionTime": 40000,
 	"LordKingElectionSuccessThreshold": 0.6,
-	"LordElectionCooldown": 20000,
+	"LordElectionCooldown": 60000,
 	"GlobalCooldown": 20000,
 	"BribeCooldown": 20000,
 	"RevolutionCooldown": 4000,

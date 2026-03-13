@@ -451,7 +451,7 @@ async function setupLordBotEvents(client, lastMessageId) {
 							`There must be at least ${MinimumLordSizeForElection} lords for an election to be held. Current number of lords: ${gameState.getRoleSize("Lord")}`);
 						return;
 					}
-					await CacheSetCooldown("Election", userId, LordElectionCooldown);
+					
 					await updateMessage(client, lastMessageId);
 					if (electionType === "Noble")
 						await startElection(client, lastMessageId, NobleLordElectionTime);
@@ -556,7 +556,7 @@ async function setupLordBotEvents(client, lastMessageId) {
 				content: msg,
 			});
 			setTimeout(async () => {
-				await message.delete().catch(console.error);
+				await message.delete().catch(showErrorMsg);
 			}, RoleChangeMessageDisplayTime);
 		} catch (err) {
 			throw err;
@@ -590,10 +590,12 @@ async function startElection(client, lastMessageId, timeout) {
 }
 
 async function handleElectionEnd(client, lastMessageId) {
+	const wasActive = electionActive;
+	electionActive = false; 	
 	const participationRate = electionParticipants.size / gameState.getRoleSize("Lord");
 	let voteType = electionType === "Noble" ? "Lord" : "King";
 	if (
-		electionActive &&
+		wasActive &&
 		((electionType === "Noble" &&
 			participationRate >= NobleLordElectionSuccessThreshold) ||
 			(electionType === "Lord" &&
@@ -614,10 +616,11 @@ async function handleElectionEnd(client, lastMessageId) {
 		eventEmitter.emit("NotifyLordChannel", `<@${electionInitiatorId}>'s election of <@${electionCandidateId}> as ${voteType} was successful.`);
 		await messageAllHumanChannels(client, msg);
 	} else {
-		const msg = ` <@${electionCandidateId}> dull attempt to make <@${electionInitiatorId}> has failed, reflecting his stagnant whims.`;
+		const msg = ` <@${electionInitiatorId}> dull attempt to make <@${electionCandidateId}> ${voteType} has failed, reflecting his stagnant whims.`;
 		eventEmitter.emit("NotifyLordChannel", `<@${electionInitiatorId}>'s election of <@${electionCandidateId}> as ${voteType} has failed.`);
 		await messageChannel(client, process.env.CHANNELID_GREAT_COUNCIL, msg);
 	}
+	await CacheSetCooldown("Election", electionInitiatorId, LordElectionCooldown);
 	await resetComponents(client, lastMessageId);
 }
 

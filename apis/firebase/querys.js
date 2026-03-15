@@ -549,4 +549,52 @@ async function evaluateThresholds(client) {
 	}	
 
 }
-module.exports = { CacheDataFromDB, CacheFesteringUsers , DBGetUsers, DBGetUserById, DBAddUser, DBRemoveUser, DBUpdateXP, DBSetRole, DBGetLastXPBoostTime, DBSetLastXPBoostTime, DBBoostXPForAllUsers, DBResetXP, DBSetFestering, DBGetActiveFestering, DBClearFestering, DBGetFestering, isThresholdOpen,changeRole, startupEmperorThreshold, evaluateThresholds, openThreshold, closeThreshold }
+async function syncDowntimeUsers(client) {
+	console.log('Downtime sync: starting...');
+	try {
+		const guild = await client.guilds.fetch(process.env.GUILDID);
+		await guild.members.fetch();
+		const godRole = guild.roles.cache.find(r => r.name === 'God');
+		const guildMembers = guild.members.cache.filter(m =>
+			!m.user.bot &&
+			!(godRole && m.roles.cache.has(godRole.id)) &&
+			!m.permissions.has('Administrator')
+		);
+		const dbUsers = await DBGetUsers() || {};
+
+		const guildMemberIds = new Set(guildMembers.keys());
+		const dbUserIds = new Set(Object.keys(dbUsers));
+
+		// Add users who joined during downtime
+		for (const [memberId, member] of guildMembers) {
+			if (!dbUserIds.has(memberId)) {
+				console.log(`Downtime sync: adding new member ${member.displayName}`);
+				try {
+					const poopRole = guild.roles.cache.find(r => r.name === 'Poop');
+					if (poopRole) await member.roles.add(poopRole);
+					await DBAddUser(member);
+				} catch (err) {
+					console.error(`Downtime sync: failed to add ${member.displayName}: ${err.message}`);
+				}
+			}
+		}
+
+		// Remove users who left during downtime
+		for (const userId of dbUserIds) {
+			if (!guildMemberIds.has(userId)) {
+				console.log(`Downtime sync: removing departed user ${dbUsers[userId].username}`);
+				try {
+					await DBRemoveUser({ id: userId, displayName: dbUsers[userId].username });
+				} catch (err) {
+					console.error(`Downtime sync: failed to remove ${dbUsers[userId].username}: ${err.message}`);
+				}
+			}
+		}
+
+		console.log('Downtime sync: complete.');
+	} catch (err) {
+		console.error(`Downtime sync: failed — ${err.message}`);
+	}
+}
+
+module.exports = { CacheDataFromDB, CacheFesteringUsers , DBGetUsers, DBGetUserById, DBAddUser, DBRemoveUser, DBUpdateXP, DBSetRole, DBGetLastXPBoostTime, DBSetLastXPBoostTime, DBBoostXPForAllUsers, DBResetXP, DBSetFestering, DBGetActiveFestering, DBClearFestering, DBGetFestering, isThresholdOpen,changeRole, startupEmperorThreshold, evaluateThresholds, openThreshold, closeThreshold, syncDowntimeUsers }

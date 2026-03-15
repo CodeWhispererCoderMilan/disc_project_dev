@@ -1,6 +1,7 @@
 const { GatewayIntentBits, Client } = require("discord.js");
 const { eventEmitter } = require("./functions/eventEmitter.js");
 const gameState = require("./game_state.js");
+const { syncDowntimeUsers } = require("./apis/firebase/querys.js");
 const {
 	setupConsoleBotEvents,
 	messageConsoleCommands,
@@ -106,6 +107,7 @@ async function createBot(token, channelId, setupEventsFunction, messageCommands,
 				let lastMessageId = sentMessage.id;
 				await setupEventsFunction(client, lastMessageId);
 				if(isConsole){
+					await syncDowntimeUsers(client);
 					eventEmitter.emit("startXpBoost&RevolutionStates");
 				}
 				resolve();

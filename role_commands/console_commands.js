@@ -566,11 +566,11 @@ async function setupConsoleBotEvents(client, lastMessageId) {
 			handleHigherRoleSizeChange();
 
 			if(gameState.isRevolutionActive()) await checkAndFailRevolution();
-			const channel = await client.channels.fetch(process.env.CHANNELIDSEWERS);
+			const channel = await client.channels.fetch(process.env.CHANNELID_CESSPIT);
 			if (!channel) {
 				throw {
 					name: "ChannelNotFound",
-					message: `Channel with ID "${process.env.CHANNELIDSEWERS}" not found`,
+					message: `Channel with ID "${process.env.CHANNELID_CESSPIT}" not found`,
 				};
 			}
 			await channel.send(`welcome to the sewers, ${member.user.username}!`);

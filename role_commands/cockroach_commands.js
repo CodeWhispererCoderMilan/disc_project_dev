@@ -3,6 +3,7 @@ const {
 	ButtonBuilder,
 	ButtonStyle,
 	StringSelectMenuBuilder,
+	MessageFlags,
 } = require("discord.js");
 const {
 	CacheGetUsersByRoles,
@@ -242,7 +243,7 @@ async function setupCockroachBotEvents(client, lastMessageId) {
 			if (cooldown) {
 				interaction.reply({
 					content: "Swarm is on cooldown",
-					ephemeral: true,
+					flags: MessageFlags.Ephemeral,
 				});
 				return;
 			}
@@ -250,7 +251,7 @@ async function setupCockroachBotEvents(client, lastMessageId) {
 			if (!selectedSubhumans[userId]) {
 				interaction.reply({
 					content: "No sub-human selected",
-					ephemeral: true,
+					flags: MessageFlags.Ephemeral,
 				});
 				return;
 			}
@@ -274,7 +275,7 @@ async function setupCockroachBotEvents(client, lastMessageId) {
 
 				await interaction.reply({
 					content: `Swarm initiated, ${SwarmThreshold - 1} other flies must join for it to spawn...`,
-					ephemeral: true,
+					flags: MessageFlags.Ephemeral,
 				});
 				await swarmStartNotification(client);
 			} catch (err) {
@@ -287,7 +288,7 @@ async function setupCockroachBotEvents(client, lastMessageId) {
 				if (!swarmActive) {
 					await interaction.reply({
 						content: "There is no active swarm to join.",
-						ephemeral: true,
+						flags: MessageFlags.Ephemeral,
 					});
 					return;
 				}
@@ -296,7 +297,7 @@ async function setupCockroachBotEvents(client, lastMessageId) {
 				if (userId === swarmInitiatorId) {
 					await interaction.reply({
 						content: "You can't join your own swarm.",
-						ephemeral: true,
+						flags: MessageFlags.Ephemeral,
 					});
 					return;
 				}
@@ -304,14 +305,14 @@ async function setupCockroachBotEvents(client, lastMessageId) {
 				if (swarmParticipants.has(userId)) {
 					await interaction.reply({
 						content: "You've already joined this swarm.",
-						ephemeral: true,
+						flags: MessageFlags.Ephemeral,
 					});
 					return;
 				}
 				if (swarmParticipants.size === SwarmThreshold) {
 					await interaction.reply({
 						content: "The swarm is full.",
-						ephemeral: true,
+						flags: MessageFlags.Ephemeral,
 					});
 					return;
 				}
@@ -351,13 +352,13 @@ async function setupCockroachBotEvents(client, lastMessageId) {
 					}, SwarmSpawnTime);
 					await interaction.reply({
 						content: "Swarm vote successful! The swarm is spawning...",
-						ephemeral: true,
+						flags: MessageFlags.Ephemeral,
 					});
 				} else{
 					await updateMessage(client, lastMessageId);
 					await interaction.reply({
 						content: `You've joined the swarm! (${swarmParticipants.size}/${SwarmThreshold})`,
-						ephemeral: true,
+						flags: MessageFlags.Ephemeral,
 					});
 				}
 			} catch (err) {
@@ -371,7 +372,7 @@ async function setupCockroachBotEvents(client, lastMessageId) {
 				try {
 					await interaction.reply({
 						content: `Not enough drops (current drops: ${userXP})`,
-						ephemeral: true,
+						flags: MessageFlags.Ephemeral,
 					});
 					return;
 				} catch (err) {
@@ -382,7 +383,7 @@ async function setupCockroachBotEvents(client, lastMessageId) {
 			if (!selectedMaggots[userId]){
 				await interaction.reply({
 					content: `No Maggot selected for infanticide`,
-					ephemeral: true,
+					flags: MessageFlags.Ephemeral,
 				});
 				return;
 			}
@@ -391,7 +392,7 @@ async function setupCockroachBotEvents(client, lastMessageId) {
 				try {
 					await interaction.reply({
 						content: "Infanticide is on cooldown and cannot be used",
-						ephemeral: true,
+						flags: MessageFlags.Ephemeral,
 					});
 					return;
 				} catch (err) {
@@ -415,7 +416,7 @@ async function setupCockroachBotEvents(client, lastMessageId) {
 				await interaction.reply({
 					content: `(${XPleft} drops left) You've eaten your spawn. 
 					<@${maggotId}> plummets to the cesspit...`,
-					ephemeral: true,
+					flags: MessageFlags.Ephemeral,
 				});
 			} catch (err) {
 				console.error(err);
@@ -680,7 +681,7 @@ async function swarmFailureNotificationInFlyCommands (client, swarmInitId){
 		const channel = await client.channels.fetch(
 			process.env.CHANNELIDCOCKROACH
 		);
-		const tempMessage = await channel.send(`<@${swarmInitId}> swarm failed, the little flies he gathered glide away...`);
+		const tempMessage = await channel.send(`<@${swarmInitId}> swarm failed, the little flies they gathered glide away...`);
 
 		// Delete the message after 30 seconds
 		setTimeout(() => {

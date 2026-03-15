@@ -6,6 +6,7 @@ const {
 	ModalBuilder,
 	TextInputBuilder,
 	TextInputStyle,
+	MessageFlags,
 } = require("discord.js");
 const gameState = require("../game_state.js");
 const {
@@ -378,7 +379,7 @@ async function setupScholarBotEvents(client, lastMessageId) {
 				const userId = interaction.user.id;
 				const message =`**Scholar <@${userId}>'s words flow upstream:\n` + interaction.fields.getTextInputValue("messageInput").toString() + `**`;
 				try {
-					await interaction.deferReply({ ephemeral: true });
+					await interaction.deferReply({ flags: MessageFlags.Ephemeral });
 					await messageChannel(client, process.env.CHANNELID_ROYAL_CASTLE, message);
 					await CacheSetCooldown("advise", userId, AdviseCooldown); 
 					await sendInteractionReply(

@@ -363,12 +363,12 @@ async function setupKingBotEvents(client, lastMessageId) {
 						);
 						return;
 					} else {
+						const targetId = selectedKnights[userId].id;
 						await changeRole(
 							selectedKnights[userId],
 							"Merchant",
 							false
 						);
-						const targetId = selectedKnights[userId].id;
 						selectedKnights[userId] = null;
 						await DBUpdateXP(userId, -DegradationCost, client);
 						await CacheSetCooldown(
@@ -381,8 +381,8 @@ async function setupKingBotEvents(client, lastMessageId) {
 							interaction,
 							`(${XPLeft} drops left) Degradation  successful. \n<@${targetId}> has been reduced to merchant`
 						);
-						await messageChannel(clinet, process.env.CHANNELID_MARKET,`Knight <@${targetId}> is now a dropless merchant.`);
-						await messageChannel(clinet, process.env.CHANNELID_BARRACKS,`Knight <@${targetId}> lost his rank, degraded by King <@${userId}>.`);
+						await messageChannel(client, process.env.CHANNELID_MARKET,`Knight <@${targetId}> is now a dropless merchant.`);
+						await messageChannel(client, process.env.CHANNELID_BARRACKS,`Knight <@${targetId}> lost his rank, degraded by King <@${userId}>`);
 					}
 				}
 			} catch (err) {
@@ -414,7 +414,7 @@ async function setupKingBotEvents(client, lastMessageId) {
 						);
 						return;
 					} else {
-						eventEmitter.emit("changeRole", selectedHumans[userId],"Knight",true);
+						await changeRole(selectedHumans[userId], "Knight");
 						const targetId = selectedHumans[userId].id;
 						selectedHumans[userId] = null;
 						await DBUpdateXP(userId, -KnightCost, client);
@@ -422,9 +422,9 @@ async function setupKingBotEvents(client, lastMessageId) {
 						const XPLeft = parseInt(userXP) - parseInt(KnightCost);
 						await sendInteractionReply(
 							interaction,
-							`(${XPLeft} drops left) ${targetId} has been knighted`
+							`(${XPLeft} drops left) You have knighted <@${targetId}>`
 						);
-						await messageAllHumanChannels(clinet, `<@${targetId}> has been knighted by King <@${userId}>, may his servile fashion guide his cuts.`);
+						await messageAllHumanChannels(client, `<@${targetId}> has been knighted by king <@${userId}>, may his servile fashion guide his cuts.`);
 					}
 				}
 			} catch (err) {
@@ -873,8 +873,8 @@ async function startSiege(siegeInitiator, siegeTarget, client, lastMessageId) {
 	}, SiegeTime);
 	gameState.setSiegeTimeout(siegeTimeout);
 	eventEmitter.emit("siegeStarted");
-	messageChannel(clinet, process.env.CHANNELID_BARRACKS,`King <@${siegeInitiator.id}> has launched a siege of King <@${siegeTarget.id}>'s fortress. Knights may join to canonize the siege.`);
-	messageChannel(clinet, process.env.CHANNELID_ROYAL_CASTLE,`King <@${siegeInitiator.id}> has launched a siege of King <@${siegeTarget.id}>'s fortress. Will swords gather to reflect A God Upon Another or the folly drowned below?`);
+	messageChannel(client, process.env.CHANNELID_BARRACKS,`King <@${siegeInitiator.id}> has launched a siege of king <@${siegeTarget.id}>'s fortress. Knights may join to canonize the siege.`);
+	messageChannel(client, process.env.CHANNELID_ROYAL_CASTLE,`King <@${siegeInitiator.id}> has launched a siege of king <@${siegeTarget.id}>'s fortress. Will swords gather to reflect A God Upon Another or the folly drowned below?`);
 
 }
 

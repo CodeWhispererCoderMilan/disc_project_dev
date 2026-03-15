@@ -71,7 +71,7 @@ async function setupEmperorBotEvents(client, lastMessageId) {
 		let hasRoleEmperor = newMember.roles.cache.has(process.env.ROLEID_EMPEROR);
 		if( hasRoleEmperor && isThresholdOpen(12) ){
 			closeThreshold(12);
-			messageAllHumanChannels(client, `All Hail Emperor <@${newMember.id}> The Progenitor! First of his line, may he serve as a God serves Another.`);
+			messageAllHumanChannels(client, `All Hail Emperor <@${newMember.id}> The Progenitor! First of his line, may they serve as a God serves Another.`);
 		}
 		if (oldMember.roles.cache.has(process.env.ROLEID_KING)) {
 			if (selectedKing && selectedKing.id === oldMember.id) {
@@ -166,6 +166,7 @@ async function setupEmperorBotEvents(client, lastMessageId) {
 					await sendInteractionReply(interaction, "Invalid amount of drops. Please enter a positive number.");
 					return;
 				}
+				const kingTarget = selectedKing;
 				const userXP = await CacheGetUserXP(userId);
 				if (userXP < writAmount) {
 					await sendInteractionReply(interaction, `You don't have enough drops. (drops left: ${userXP})`);
@@ -174,7 +175,7 @@ async function setupEmperorBotEvents(client, lastMessageId) {
 				await CacheSetWrit(4, userId, selectedKnight.id, selectedHuman.id, 0, writMessage, writAmount);
 				await DBUpdateXP(userId, -writAmount, client);
 				await CacheSetCooldown("ImperialWrit", userId, ImperialWritCooldown);
-				await sendInteractionReply(interaction, `Imperial Writ of execution succesfully emitted! (XP left: ${userXP - writAmount})`);
+				await sendInteractionReply(interaction, `Imperial Writ of execution succesfully emitted! (drops left: ${userXP - writAmount})`);
 			}catch(err){
 				showErrorMsg(err);
 			}
@@ -228,8 +229,8 @@ async function setupEmperorBotEvents(client, lastMessageId) {
 						);
 						return;
 					} else {
-						await changeRole( selectedLord, "King", true);
 						const targetId = selectedLord.id;
+						await changeRole( selectedLord, "King", true);
 						selectedLord = null;
 						await DBUpdateXP(userId, -CoronationCost, client);
 						await CacheSetCooldown("coronation", null, CoronationCooldown);
@@ -238,8 +239,8 @@ async function setupEmperorBotEvents(client, lastMessageId) {
 							interaction,
 							`(${XPLeft} drops left) \n<@${targetId}> was crowned as king`
 						);
-						await messageChannel(client, process.env.CHANNELID_ROYAL_CASTLE, `Emperor <@${userId}> has crowned <@${targetId}> King.`);
-						await messageChannel(client, process.env.CHANNELID_GREAT_COUNCIL, `Emperor <@${userId}> has crowned <@${targetId}> King.`);
+						await messageChannel(client, process.env.CHANNELID_ROYAL_CASTLE, `Emperor <@${userId}> has crowned <@${targetId}> king.`);
+						await messageChannel(client, process.env.CHANNELID_GREAT_COUNCIL, `Emperor <@${userId}> has crowned <@${targetId}> king.`);
 					}
 				}
 			} catch (err) {
@@ -268,15 +269,15 @@ async function setupEmperorBotEvents(client, lastMessageId) {
 						);
 						return;
 					} else {
+						const targetId = selectedKing.id;
 						await changeRole( selectedKing, "Lord", false);
-						const targetUsername = selectedKing.user.username;
 						selectedKing = null;
 						await DBUpdateXP(userId, -DethroneCost, client);
 						await CacheSetCooldown("dethrone", null, DethroneCooldown);
 						const XPLeft = parseInt(userXP) - parseInt(DethroneCost);
 						await sendInteractionReply(
 							interaction,
-							`(${XPLeft} drops left) Dethrone committed successfully. \n${targetUsername} has been reduced to lord`
+							`(${XPLeft} drops left) Dethrone committed successfully. \n<@${targetId}> has been reduced to lord`
 						);
 						await messageChannel(client, process.env.CHANNELID_ROYAL_CASTLE, `Emperor <@${userId}> has dethroned the false King <@${targetId}> and in his mercy bestowed upon him lordhood.`);
 						await messageChannel(client, process.env.CHANNELID_GREAT_COUNCIL, `Emperor <@${userId}> has dethroned the false King <@${targetId}> and in his mercy bestowed upon him lordhood.`);
@@ -317,8 +318,7 @@ async function setupEmperorBotEvents(client, lastMessageId) {
 						await changeRole( interaction.member, "King", true);
 						await DBUpdateXP(userId, -HeirCost, client);
 						await CacheSetCooldown("heirSuccession", null, HeirCooldown);
-						const selectedHeirId = selectedKing.id;
-						await enthronement(client, selectedHeirId, userId, false);
+						await enthronement(client, userId, false);
 					}
 				}
 			} catch (err) {
@@ -360,14 +360,15 @@ async function emperorVanished(client, emperorId, cause, lastMessageId) {
 		showErrorMsg(err);
 	}
 }	
-async function enthronement(client, heirId, initiatorId, isElection) {
+async function enthronement(client, initiatorId, isElection) {
 	try {
+		const heir = selectedKing;
+		const heirId = heir.id;
 		selectedLord = null;
 		selectedKing = null;
 		selectedHuman = null;
 		selectedKnight = null;
-		if(!isElection)await changeRole( selectedHeir, "Emperor", true);
-		const heirId = selectedHeir.id;
+		if(!isElection)await changeRole( heir, "Emperor", true);
 		await messageAllHumanChannels(client, isElection ? 
 			`Hail our new Emperor! <@${heirId}>, you have risen to the mountain spring
 			in the spray of revolution, may your rule last 1000 years!` :

@@ -75,7 +75,7 @@ async function createBot(token, channelId, setupEventsFunction, messageCommands,
 			],
 		});
 	await new Promise((resolve, reject) => {
-		client.once("ready", async () => {
+		client.once("clientReady", async () => {
 			try{
 				// Fetch the channel and delete all previous messages
 				const channel = client.channels.cache.get(channelId);

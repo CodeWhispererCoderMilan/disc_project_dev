@@ -71,7 +71,7 @@ describe('Redis Cache Functions', () => {
 
         beforeEach(async () => {
             // Add a test user before each test
-            await CacheAddUser(testUserId);
+            await CacheAddUser(testUserId, 'testuser');
         });
 
         afterEach(async () => {
@@ -81,7 +81,7 @@ describe('Redis Cache Functions', () => {
 
         test('CacheAddUser should add a user with initial XP of 0', async () => {
             const xp = await CacheGetUserXP(testUserId);
-            expect(xp).toBe('0');
+            expect(xp).toBe(0);
         });
 
         test('CacheSetUserXP should set and retrieve user XP correctly', async () => {
@@ -94,8 +94,8 @@ describe('Redis Cache Functions', () => {
 
         test('CacheRemoveUser should remove the user from cache', async () => {
             await CacheRemoveUser(testUserId);
-            
-            await expect(CacheGetUserXP(testUserId)).rejects.toThrow();
+
+            expect(await CacheGetUserXP(testUserId)).toBeUndefined();
         });
     });
 

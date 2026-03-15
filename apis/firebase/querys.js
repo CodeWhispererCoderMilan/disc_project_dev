@@ -494,7 +494,7 @@ async function startupEmperorThreshold(client) {
 	const emperorCount = emperors.length;
 	if(emperorCount > 0 && isThresholdOpen(12)) {
 		closeThreshold(12);
-	}if (emperorCount < 0 && !isThresholdOpen(12)) {
+	} else if (emperorCount === 0 && !isThresholdOpen(12)) {
 		await openThreshold(12, client);
 
 	}

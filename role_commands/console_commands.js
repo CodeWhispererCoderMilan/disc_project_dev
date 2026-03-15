@@ -6,7 +6,8 @@ const{
 	ButtonBuilder,
 	ButtonStyle,
 	SelectMenuBuilder,
-	StringSelectMenuBuilder
+	StringSelectMenuBuilder,
+	MessageFlags,
 } = require("discord.js");
 
 const {
@@ -588,13 +589,13 @@ async function setupConsoleBotEvents(client, lastMessageId) {
 				const keepXP = interaction.options.getBoolean("keep_xp") || false;
 
 				if (!target || !roleName) {
-					await interaction.reply({ content: "Missing user or role", ephemeral: true });
+					await interaction.reply({ content: "Missing user or role", flags: MessageFlags.Ephemeral });
 					return;
 				}
 				await handleAdminRoleChange(client, interaction, target.id, roleName, keepXP);	
 			} catch (err) {
 				console.error("Error in /changerole command:", err);
-				await interaction.reply({ content: "Error while processing role change.", ephemeral: true });
+				await interaction.reply({ content: "Error while processing role change.", flags: MessageFlags.Ephemeral });
 			}
 		}
 		if (!interaction.isButton()) return;
@@ -625,7 +626,7 @@ async function setupConsoleBotEvents(client, lastMessageId) {
 				if(!hasRoleScholar && !hasRoleEmperor){
 					await sendInteractionReply(
 						interaction,
-						"Only Emperors and Scholars can enter the Astral Realm"
+						"Only Emperors and Scholars can gaze whence the stream springs."
 					);
 					return;
 				}
@@ -639,7 +640,8 @@ async function setupConsoleBotEvents(client, lastMessageId) {
 				if (cooldown) {
 					await sendInteractionReply(
 						interaction,
-						"Your spirit is not yet ready to reenter the astral realm."
+						`Standing before the gods wears the mind, 
+						you must wait before further divination.`
 					);
 					return;
 				}

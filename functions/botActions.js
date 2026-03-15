@@ -1,4 +1,4 @@
-const { StringSelectMenuBuilder } = require("discord.js");
+const { StringSelectMenuBuilder, MessageFlags } = require("discord.js");
 const { XpBoostInterval, ScholarAstralRealmAccessDuration, EmperorAstralRealmAccessDuration} = require("../game_config.json");
 const {
 	DBGetLastXPBoostTime,
@@ -37,6 +37,16 @@ async function scheduledXpBoost(timeUntilNextBoost, client, iterations = Infinit
 async function checkAndApplyMissedXPBoost(client) {
 	const now = Date.now();
 	try {
+		await startupEmperorThreshold(client);
+	} catch (err) {
+		console.error("Error during startupOpenEmperorThreshold:", err.message);
+	}
+	try {
+		await evaluateThresholds(client);
+	} catch (err) {
+		console.error("Error during evaluateThresholds:", err.message);
+	}
+	try {
 		let lastXpBoostTime = await DBGetLastXPBoostTime();
 		if (!lastXpBoostTime) {
 			console.error("No XP boost time found, assuming first run.");
@@ -48,16 +58,6 @@ async function checkAndApplyMissedXPBoost(client) {
 		if (missedTime >= XpBoostInterval) {
 			console.log("Missed XP boost window detected, applying boost...");
 			let boostsMissed = Math.trunc(missedTime / XpBoostInterval);
-			try {
-				await startupEmperorThreshold(client);
-			}catch (err) {
-				console.error("Error during startupOpenEmperorThreshold:", err.message);
-			}
-			try{
-				await evaluateThresholds(client);
-			} catch (err) {
-				console.error("Error during evaluateThresholds:", err.message);
-			}
 			try{
 				await DBBoostXPForAllUsers(boostsMissed, client);
 			} catch (err) {
@@ -132,7 +132,7 @@ async function sendInteractionReply(interaction, msg) {
 		} else {
 			await interaction.reply({
 				content: msg,
-				ephemeral: true,
+				flags: MessageFlags.Ephemeral,
 			});
 		}
 	} catch (error) {
@@ -150,7 +150,7 @@ async function grantAstralRealmAccess(member, client, type) {
 			accessDuration = EmperorAstralRealmAccessDuration;
 			writePermission = true;
 		}
-		const channel = await client.channels.fetch(process.env.CHANNELIDASTRALREALM);
+		const channel = await client.channels.fetch(process.env.CHANNELID_MOUNTAIN_PEAK);
 		await channel.permissionOverwrites.create(member, {
 			ViewChannel: true,
 			SendMessages: writePermission,
@@ -174,7 +174,7 @@ async function grantAstralRealmAccess(member, client, type) {
 
 async function revokeAstralRealmAccess(member, client) {
 	try {	
-		const channel = await client.channels.fetch(process.env.CHANNELIDASTRALREALM);
+		const channel = await client.channels.fetch(process.env.CHANNELID_MOUNTAIN_PEAK);
 		await channel.permissionOverwrites.delete(member);
 		return true;
 	} catch (err) {

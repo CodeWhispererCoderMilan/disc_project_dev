@@ -29,6 +29,7 @@ const {
 	ButtonLabelShowWrits,
 	ButtonLabelHighWrit,
 	ButtonLabelAssassination,
+	ButtonLabelJoinAssassination,
 	TextAssassinationSelectMenu,
 	TextHighWritKnightSelectMenu,
 	TextHighWritTargetSelectMenu,
@@ -92,8 +93,8 @@ async function setupNobleBotEvents(client, lastMessageId) {
 				if(assassinationParticipants.has(member.id)){	
 					selectedTargets[member.id] = null;
 					assassinationParticipants.delete(member.id);
-					if (member.id === assassinationInitiatorId) {
-						const msg = `The initiator @${assassinationInitiator} is no longer a noble.`;
+					if (member.id === assassinationInitiatorId && assassinationActive) {
+						const msg = `The initiator <@${assassinationInitiatorId}> is no longer a noble.`;
 						eventEmitter.emit("NotifyNobleChannel", msg);
 						assassinationActive = false;
 						await ceaseAssassination(client, lastMessageId);
@@ -103,11 +104,9 @@ async function setupNobleBotEvents(client, lastMessageId) {
 			}
 
 			if (assassinationActive &&(hadRoleBeforeKnight || hadRoleBeforeNoble || hadRoleBeforeLord)){
-				if(member.id === assassinationTargetId){
-
-					const msg = `The role of the target @${assassinationTarget} has been changed.`;
+				if(member.id === assassinationTargetId && assassinationActive){
+					const msg = `The role of the target <@${assassinationTargetId}> has been changed.`;
 					eventEmitter.emit("NotifyNobleChannel", msg);
-					assassinationActive = false;
 					await ceaseAssassination(client, lastMessageId);
 					return;
 				}
@@ -165,10 +164,9 @@ async function setupNobleBotEvents(client, lastMessageId) {
 				try {
 					selectedTargets[newMember.id] = null;
 					assassinationParticipants.delete(newMember.id);
-					if (newMember.id === assassinationInitiatorId) {
-						const msg = `The initiator @${assassinationInitiator} is no longer a noble.`;
+					if (newMember.id === assassinationInitiatorId && assassinationActive) {
+						const msg = `The initiator <@${assassinationInitiatorId}> is no longer a noble.`;
 						eventEmitter.emit("NotifyNobleChannel", msg);
-						assassinationActive = false;
 						await ceaseAssassination(client, lastMessageId);
 						return;
 					} 
@@ -179,12 +177,11 @@ async function setupNobleBotEvents(client, lastMessageId) {
 		}
 
 		if (assassinationActive &&(hadRoleBeforeKnight || hadRoleBeforeNoble || hadRoleBeforeLord)){
-			if(newMember.id === assassinationTargetId){
+			if(newMember.id === assassinationTargetId && assassinationActive){
 
 				try {
-					const msg = `The role of the target @${assassinationTarget} has been changed.`;
+					const msg = `The role of the target <@${assassinationTargetId}> has been changed.`;
 					eventEmitter.emit("NotifyNobleChannel", msg);
-					assassinationActive = false;
 					await ceaseAssassination(client, lastMessageId);
 					return;
 				} catch (e) {
@@ -291,7 +288,10 @@ async function setupNobleBotEvents(client, lastMessageId) {
 				sendInteractionReply(interaction, "No member selected");
 				return;
 			}
-
+			if(selectedTargets[userId].id === userId){
+				sendInteractionReply(interaction, "You cannot target yourself.");
+				return;
+			}
 			let cooldown;
 			try {
 				cooldown = await CacheGetCooldown("NobleCooldown", userId);
@@ -323,7 +323,6 @@ async function setupNobleBotEvents(client, lastMessageId) {
 			if (lastMessageId) {
 				try {
 					// Set cooldown
-					await CacheSetCooldown("NobleCooldown", userId, GlobalCooldown);
 					await updateMessage(client, lastMessageId);
 					await startAssassination(client, lastMessageId, AssassinationTime);
 
@@ -353,7 +352,7 @@ async function setupNobleBotEvents(client, lastMessageId) {
 				if (userId === assassinationInitiatorId) {
 					await sendInteractionReply(
 						interaction,
-						"Once you created an assassination, you don't need to join your assassination since you are alreday a participant."
+						"You cannot join your own plot"
 					);
 					return;
 				}
@@ -361,7 +360,7 @@ async function setupNobleBotEvents(client, lastMessageId) {
 				if (userId === assassinationTargetId) {
 					await sendInteractionReply(
 						interaction,
-						"You cannot join assassination targeted yourself."
+						"You cannot join an assassination targeted you."
 					);
 					return;
 				}
@@ -369,7 +368,7 @@ async function setupNobleBotEvents(client, lastMessageId) {
 				if (assassinationParticipants.has(userId)) {
 					await sendInteractionReply(
 						interaction,
-						"You've already joined this assassination."
+						"You've already the plot."
 					);
 					return;
 				}
@@ -377,7 +376,7 @@ async function setupNobleBotEvents(client, lastMessageId) {
 				assassinationParticipants.add(userId);
 				await sendInteractionReply(
 					interaction,
-					"You have joind the assassination."
+					"You've joiend the assassination."
 				);
 				await messageChannel(client, process.env.CHANNELID_GREAT_COUNCIL,
 				`Another noble has joined the conspiracy...`);
@@ -433,26 +432,32 @@ async function startAssassination(client, lastMessageId, timeout) {
 }
 
 async function handleAssassinationEnd(client, lastMessageId) {
+	assassinationActive = false;
 	if (
-		assassinationActive &&
 		assassinationParticipants.size >= AssassinationThreshold
 	) {
 		const target = selectedTargets[assassinationInitiatorId];
 		if (target) await changeRole(target, "Poop", false);
 		eventEmitter.emit("Death", `<@${assassinationTargetId}> has been assassinated.`);
 		const msg = `Assasination succesfull. <@${assassinationTargetId}> has been killed, 
-			stabbed ${assassinationParticipants.size} times in <@${assassinationInitiatorId}>'s plot.`;
+			stabbed ${assassinationParticipants.size} times.`;
 		await messageChannel(client, process.env.CHANNELID_GREAT_COUNCIL,
 			`<@${assassinationTargetId}> has been killed,
 			stabbed ${assassinationParticipants.size} times.`);
+		await messageChannel(client, process.env.CHANNELID_BOGLAND_ESTATES,
+			`Will all of the Two Gods' ocean wash\n
+				fallen <@${assassinationTargetId}>'s blood off this land?`);
 		eventEmitter.emit("NotifyNobleChannel", msg);
 	} else {
 		const msg = `Assasination failed. <@${assassinationInitiatorId}>'s plot was foiled.`;
 		await messageChannel(client, process.env.CHANNELID_GREAT_COUNCIL,
 			`<@${assassinationInitiatorId}>'s plot to kill <@${assassinationTargetId}> has been foiled,
 			 murky scum, even for a noble.`);
+		await messageChannel(client, process.env.CHANNELID_BOGLAND_ESTATES,
+			`<@${assassinationInitiatorId}>'s fumbled their plot to kill <@${assassinationTargetId}>.`);
 		eventEmitter.emit("NotifyNobleChannel", msg);
 	}
+	await CacheSetCooldown("NobleCooldown", assassinationInitiatorId, GlobalCooldown);
 	await resetComponents(client, lastMessageId);
 }
 
@@ -592,7 +597,7 @@ async function updateMessage(client, lastMessageId) {
 			const buttonRow = new ActionRowBuilder().addComponents(
 				new ButtonBuilder()
 				.setCustomId("JoinAssassination")
-				.setLabel(ButtonLabelAssassination)
+				.setLabel(ButtonLabelJoinAssassination)
 				.setStyle(ButtonStyle.Primary)
 				.setDisabled(gameState.isServerDown()),
 				new ButtonBuilder()
@@ -612,7 +617,7 @@ async function updateMessage(client, lastMessageId) {
 				content:
 				serverText + '\n' +
 				initContent +
-				`\n@${assassinationInitiator} initiated assassination. Join assassination to kill @${assassinationTarget}. (Joined ${assassinationParticipants.size} / ${gameState.getRoleSize("Noble")} nobles.)`,
+				`\n <@${assassinationInitiatorId}> initiated assassination. Join assassination to kill <@${assassinationTargetId}>. (Joined: ${assassinationParticipants.size} / ${gameState.getRoleSize("Noble")} nobles)`,
 				components: [actionRow_0, actionRow_1, actionRow_2, buttonRow, infoBtnRow],
 			});
 		}
@@ -675,7 +680,6 @@ async function messageNobleCommands(client) {
 async function resetComponents(client, lastMessageId) {
 	try {
 		selectedTargets = {};
-		assassinationActive = false;
 		assassinationInitiator = null;
 		assassinationInitiatorId = null;
 		assassinationTarget = null;

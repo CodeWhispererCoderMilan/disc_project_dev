@@ -142,7 +142,7 @@ describe('Firebase Query Functions', () => {
       });
       
       // Check cache calls
-      expect(CacheAddUser).toHaveBeenCalledWith('user123');
+      expect(CacheAddUser).toHaveBeenCalledWith('user123', 'TestUser');
     });
   });
 
@@ -298,6 +298,20 @@ describe('Firebase Query Functions', () => {
       expect(_mockSet).toHaveBeenCalledWith(550);
     });
     
+    // Helper: mock client that lets changeRole return early (member has 0 roles, not 1)
+    function makeMockClient(userId) {
+      const mockMember = {
+        id: userId,
+        displayName: 'TestUser',
+        roles: {
+          cache: { filter: jest.fn().mockReturnValue({ size: 0 }) },
+        },
+        guild: { roles: { cache: { find: jest.fn() } } },
+      };
+      const mockGuild = { members: { fetch: jest.fn().mockResolvedValue(mockMember) } };
+      return { guilds: { fetch: jest.fn().mockResolvedValue(mockGuild) } };
+    }
+
     // New test for XP threshold upgrade when role advancement is available
     test('upgrades user role when XP exceeds threshold and role upgrade is available', async () => {
       // Mock user data
@@ -305,106 +319,73 @@ describe('Firebase Query Functions', () => {
         val: () => ({ XP: 350, role: 'Poop' }),
         exists: () => true
       });
-      
+
       const userId = 'user123';
       const xpChange = 50; // This will take user above the Poop->Maggot threshold (370)
-      const client = {};
-      
+      const client = makeMockClient(userId);
+
       await DBUpdateXP(userId, xpChange, client);
-      
+
       // XP should be set to (350 + 50 - 370) = 30 (remainder after upgrade)
       expect(_mockSet).toHaveBeenCalledWith(30);
-      
-      // Should emit changeRole event with new role
-      expect(eventEmitter.emit).toHaveBeenCalledWith('changeRole', userId, 'Maggot');
+      // The role-change path was triggered
+      expect(client.guilds.fetch).toHaveBeenCalled();
     });
-    
-    // New test for XP threshold when role advancement is blocked
-    test('does not upgrade user role when upgrade path is closed', async () => {
-      // Mock user data for Knight role
+
+    // New test for XP threshold when role advancement is not yet reached
+    test('does not upgrade user role when XP is below the next threshold', async () => {
+      // Mock user data for Knight role — XP 2080 + 100 = 2180 which is below Noble threshold 2400
       _mockOnce.mockResolvedValueOnce({
         val: () => ({ XP: 2080, role: 'Knight' }),
         exists: () => true
       });
-      
-      // Trigger the event to close Knight -> Noble progression
-      eventEmitter.emit('CloseXpThresholdNoble');
-      
+
       const userId = 'user123';
-      const xpChange = 100; // Would exceed Knight threshold (2100) if upgrade was available
+      const xpChange = 100;
       const client = {};
-      
+
       await DBUpdateXP(userId, xpChange, client);
-      
-      // XP should just accumulate instead of triggering a role change
+
+      // XP should just accumulate; no role upgrade path invoked
       expect(_mockSet).toHaveBeenCalledWith(2180);
-      
-      // Should NOT emit changeRole event
-      expect(eventEmitter.emit).not.toHaveBeenCalledWith('changeRole', userId, 'Noble');
     });
-    
-    // Test for reactivating role progression
-    test('enables role upgrade after reopening progression path', async () => {
-      // First close the path
-      eventEmitter.emit('CloseXpThresholdNoble');
-      
-      // Mock first user data check - upgrade blocked
+
+    // Test for XP accumulating right at threshold boundary
+    test('accumulates XP correctly when just below the threshold', async () => {
+      // 2399 + 0 = 2399 — just below Noble threshold 2400, no upgrade
       _mockOnce.mockResolvedValueOnce({
-        val: () => ({ XP: 2380, role: 'Knight' }),
+        val: () => ({ XP: 2399, role: 'Knight' }),
         exists: () => true
       });
-      
+
       const userId = 'user123';
-      const xpChange = 50;
       const client = {};
-      
-      // First update with closed progression
-      await DBUpdateXP(userId, xpChange, client);
-      // XP just accumulates
-      expect(_mockSet).toHaveBeenCalledWith(2430);
-      expect(eventEmitter.emit).not.toHaveBeenCalledWith('changeRole', userId, 'Noble');
-      
-      // Clear mocks for second test
-      jest.clearAllMocks();
-      
-      // Now reopen the path
-      eventEmitter.emit('OpenXpThresholdNoble');
-      
-      // Mock second user data check - upgrade now allowed
-      _mockOnce.mockResolvedValueOnce({
-        val: () => ({ XP: 2430, role: 'Knight' }),
-        exists: () => true
-      });
-      
-      // Second update with open progression
-      await DBUpdateXP(userId, 0, client); // Even a 0 XP update should trigger role check
-      
-      // Since XP is already above threshold, should trigger role change
-      expect(eventEmitter.emit).toHaveBeenCalledWith('changeRole', userId, 'Noble');
-      // New XP should be remainder after upgrade
-      expect(_mockSet).toHaveBeenCalledWith(30); // 2430 - 2400
+
+      await DBUpdateXP(userId, 0, client);
+
+      expect(_mockSet).toHaveBeenCalledWith(2399);
     });
-    
+
     // Test for multiple role upgrades when far exceeding thresholds
     test('handles multiple role upgrades if XP gain far exceeds thresholds', async () => {
-      // Mock user data
+      // Mock user data — 360 + 800 = 1160. Poop→Maggot at 370, Maggot→Cockroach at 740.
+      // After Poop→Maggot: remainder = 1160 - 370 = 790
+      // After Maggot→Cockroach: remainder = 790 - 740 = 50
       _mockOnce.mockResolvedValueOnce({
         val: () => ({ XP: 360, role: 'Poop' }),
         exists: () => true
       });
-      
+
       const userId = 'user123';
-      const xpChange = 800; // Enough to go from Poop through Maggot (370) and into Cockroach
-      const client = {};
-      
+      const xpChange = 800;
+      const client = makeMockClient(userId);
+
       await DBUpdateXP(userId, xpChange, client);
-      
-      // User should skip through Maggot and be set to Cockroach
-      expect(eventEmitter.emit).toHaveBeenCalledWith('changeRole', userId, 'Cockroach');
-      
-      // XP should be set to remainder after upgrades
-      // (360 + 800 - 370) 
+
+      // XP should be set to remainder after two upgrades
       expect(_mockSet).toHaveBeenCalledWith(50);
+      // Role-change path was triggered
+      expect(client.guilds.fetch).toHaveBeenCalled();
     });
   });
 

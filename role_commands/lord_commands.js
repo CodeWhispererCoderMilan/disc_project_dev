@@ -5,7 +5,8 @@ const {
 	ButtonStyle,
 	ModalBuilder,
 	TextInputBuilder,
-	TextInputStyle
+	TextInputStyle,
+	MessageFlags,
 } = require("discord.js");
 const {
 	buildSelectMenu,
@@ -311,7 +312,7 @@ async function setupLordBotEvents(client, lastMessageId) {
 							"Exile is on cooldown and cannot be used");
 						return;
 					}
-					await interaction.deferReply({ephemeral: true});
+					await interaction.deferReply({flags: MessageFlags.Ephemeral});
 					const targetId = selectedExileUsers[userId].user.id;
 					await changeRole( selectedExileUsers[userId], 'Sub-human', false);
 					await messageAllHumanChannels(client, `<@${targetId}>'s words fly up,

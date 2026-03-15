@@ -3,6 +3,7 @@ const {
 	ActionRowBuilder,
 	ButtonBuilder,
 	ButtonStyle,
+	MessageFlags,
 } = require("discord.js");
 const {
 	buildSelectMenu,
@@ -380,7 +381,7 @@ async function setupKnightBotEvents(client, lastMessageId) {
 					}
 
 					// Execute writ
-					await interaction.deferReply({ ephemeral: true });
+					await interaction.deferReply({ flags: MessageFlags.Ephemeral });
 					await executeCutDown(
 						interaction,
 						userId,
@@ -391,7 +392,7 @@ async function setupKnightBotEvents(client, lastMessageId) {
 					// No writ required
 					const activeWrit = await CacheCheckActiveWrit(userId, targetId);
 					if (activeWrit) {
-						await interaction.deferReply({ ephemeral: true });	
+						await interaction.deferReply({ flags: MessageFlags.Ephemeral });	
 						await executeCutDown(
 							interaction,
 							userId,
@@ -907,23 +908,6 @@ async function executeCutDown(interaction, userId, targetId, client) {
 		`(${newXP} drops) Cut Down successful. Executed ${relevantWrits.length} writ(s): ${writDetails}. Total reward: ${totalXpReward} drops`
 	);
 }
-
-function getWritType(type) {
-	switch (type) {
-		case 1:
-			return "High Writ";
-		case 2:
-			return "Eminent Writ";
-		case 3:
-			return "Royal Writ";
-		case 4:
-			return "Imperial Writ";
-		default:
-			showErrorMsg("Writ type incorrect");
-			return;
-	}
-}
-
 
 async function performCutDown(interaction, targetId, client, userId, hasWrit) {
 	const target = await interaction.guild.members.fetch(targetId);

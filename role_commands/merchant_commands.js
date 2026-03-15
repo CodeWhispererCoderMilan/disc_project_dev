@@ -6,6 +6,7 @@ const {
 	ModalBuilder,
 	TextInputBuilder,
 	TextInputStyle,
+	MessageFlags,
 } = require("discord.js");
 const {
 	buildSelectMenu,
@@ -567,7 +568,7 @@ async function setupMerchantBotEvents(client, lastMessageId) {
 				if (merchantXP < xpAmount) {
 					await interaction.reply({
 						content: `You don't have enough drops to grant ${xpAmount}. You only have ${merchantXP} drops.`,
-						ephemeral: true,
+						flags: MessageFlags.Ephemeral,
 					});
 					return;
 				}
@@ -615,7 +616,7 @@ async function setupMerchantBotEvents(client, lastMessageId) {
 				await DBUpdateXP(targetMember.user.id, xpAmount, client);
 				await interaction.reply({
 					content: `Successfully granted ${xpAmount} drops to ${targetMember.user.username}.` +(optionalMessage ? (`\n **Your message: **` + optionalMessage) : ""),
-					ephemeral: true,
+					flags: MessageFlags.Ephemeral,
 				});
 				await CacheSetCooldown("Bribe", userId, BribeCooldown);
 				await messageChannel(client, channelID, message +(optionalMessage ? (`\n **The merchant's message: **` + optionalMessage) : ""));
